@@ -9,7 +9,7 @@
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
-import { gridOf, shipped, varied } from './fixture.mjs'
+import { gridOf, FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -39,16 +39,16 @@ const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.
 let bad = 0
 
 const FUZZ = Number(process.env.FUZZ) || 20000
-for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
+for (const [name, { truth, width, height, n }] of FIXTURES) {
   installGlobals(1, n)
-  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const ALL = Array.from({ length: n }, (_, d) => d + 1)
   const seed = makeSeeder(rnd, ALL)
   bad += fuzzSoundness(`fillomino ${name} fixture`, {
     iters: FUZZ,
     draw: () => {
       const inst = {}
-      mod.setParams(inst, CELLS, n, n)
+      mod.setParams(inst, CELLS, width, height)
       return { truth, seed, parts: [{ mod, inst }] }
     }
   }).failures
@@ -141,15 +141,15 @@ for (const rule of Object.keys(RULES)) {
       }
     }
   }
-  for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
+  for (const [name, { truth, width, height, n }] of FIXTURES) {
     installGlobals(1, n)
-    const RCELLS = Array.from({ length: n * n }, (_, i) => i)
+    const RCELLS = Array.from({ length: width * height }, (_, i) => i)
     const seed = makeSeeder(rnd, Array.from({ length: n }, (_, d) => d + 1))
     bad += fuzzSoundness(`fillomino ${rule} alone, ${name}`, {
       iters: RULE_FUZZ,
       draw: () => {
         const inst = {}
-        solo.setParams(inst, RCELLS, n, n)
+        solo.setParams(inst, RCELLS, width, height)
         return { truth, seed, parts: [{ mod: solo, inst }] }
       }
     }).failures

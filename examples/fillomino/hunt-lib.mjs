@@ -13,10 +13,10 @@ export function loadComponent (here) {
 
 const dead = p => { for (const s of p._cand.values()) if (s.size === 0) return true; return false }
 
-function newPuzzle (side, cap, givens) {
+function newPuzzle (width, height, cap, givens) {
   const all = Array.from({ length: cap }, (_, i) => i + 1)
   const truth = {}
-  for (let i = 0; i < side * side; i++) truth[i] = 0
+  for (let i = 0; i < width * height; i++) truth[i] = 0
   return makePuzzle(truth, i => (givens[i] === undefined ? all : [givens[i]]))
 }
 
@@ -32,20 +32,20 @@ function propagate (mod, inst, p) {
   return { passes: MAX_PASSES, dead: false }
 }
 
-const rowsOf = (p, side) =>
-  Array.from({ length: side }, (_, r) =>
-    Array.from({ length: side }, (_, c) => [...p._cand.get(r * side + c)][0]))
+const rowsOf = (p, width, height) =>
+  Array.from({ length: height }, (_, r) =>
+    Array.from({ length: width }, (_, c) => [...p._cand.get(r * width + c)][0]))
 
 // A 'capped' verdict means the node budget ran out; it is never read as a
 // verdict on the board.
-export function score (mod, { side, cap, givens }, { nodeCap = 200000 } = {}) {
+export function score (mod, { width, height, cap, givens }, { nodeCap = 200000 } = {}) {
   installGlobals(1, cap)
   const inst = {}
-  mod.setParams(inst, Array.from({ length: side * side }, (_, i) => i), side, side)
+  mod.setParams(inst, Array.from({ length: width * height }, (_, i) => i), width, height)
   const counts = { nodes: 0, passes: 0 }
   const found = []
-  const p = newPuzzle(side, cap, givens)
-  const capped = !search(mod, inst, p, side, counts, found, nodeCap)
+  const p = newPuzzle(width, height, cap, givens)
+  const capped = !search(mod, inst, p, width, height, counts, found, nodeCap)
   return {
     verdict: capped ? 'capped' : ['none', 'unique', 'multiple'][found.length],
     nodes: counts.nodes,
@@ -56,7 +56,7 @@ export function score (mod, { side, cap, givens }, { nodeCap = 200000 } = {}) {
 
 // Returns false only when the node budget ran out. Stops after two solutions:
 // "more than one" is all a uniqueness check asks.
-function search (mod, inst, p, side, counts, found, nodeCap) {
+function search (mod, inst, p, width, height, counts, found, nodeCap) {
   const { passes, dead: isDead } = propagate(mod, inst, p)
   counts.passes += passes
   if (isDead) return true
@@ -66,7 +66,7 @@ function search (mod, inst, p, side, counts, found, nodeCap) {
     if (s.size > 1 && s.size < bestSize) { best = c; bestSize = s.size }
   }
   if (best === -1) {
-    if (mod.validate(inst, p)) found.push(rowsOf(p, side))
+    if (mod.validate(inst, p)) found.push(rowsOf(p, width, height))
     return true
   }
   const snapshot = [...p._cand].map(([c, s]) => [c, [...s]])
@@ -75,15 +75,15 @@ function search (mod, inst, p, side, counts, found, nodeCap) {
     counts.nodes++
     for (const [c, vals] of snapshot) p._cand.set(c, new Set(vals))
     p._cand.set(best, new Set([d]))
-    if (!search(mod, inst, p, side, counts, found, nodeCap)) return false
+    if (!search(mod, inst, p, width, height, counts, found, nodeCap)) return false
     if (found.length >= 2) return true
   }
   return true
 }
 
 export function givensOf (grid, clues) {
-  const side = grid.length
-  return Object.fromEntries(clues.map(([r, c]) => [r * side + c, grid[r][c]]))
+  const width = grid[0].length
+  return Object.fromEntries(clues.map(([r, c]) => [r * width + c, grid[r][c]]))
 }
 
 // Greedy given-removal with the same order semantics app-strip.mjs uses in the
@@ -92,12 +92,12 @@ export function givensOf (grid, clues) {
 // `nodeCap` is lower than a scoring run's: a strip makes ~one trial per cell,
 // and a 'capped' trial keeps its clue, so a low cap can only leave more clues
 // than needed -- never fewer.
-export function stripOffline (mod, { side, cap, grid }, seed, onTrial = () => {}, nodeCap = 20000) {
+export function stripOffline (mod, { width, height, cap, grid }, seed, onTrial = () => {}, nodeCap = 20000) {
   const clues = seededShuffle(grid.flatMap((row, r) => row.map((_, c) => [r, c])), seed)
   let kept = clues
   for (const cell of clues) {
     const rest = kept.filter(p => p !== cell)
-    const s = score(mod, { side, cap, givens: givensOf(grid, rest) }, { nodeCap })
+    const s = score(mod, { width, height, cap, givens: givensOf(grid, rest) }, { nodeCap })
     const ok = s.verdict === 'unique'
     onTrial({ cell, kept: ok, score: s })
     if (ok) kept = rest

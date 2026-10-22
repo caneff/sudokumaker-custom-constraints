@@ -21,9 +21,10 @@ RULE = (
 
 
 def digit_range(spec, n):
+    # No cap means the longer side, as in generate.Board.of; `n` is the width.
     cap = spec.get("cap")
     if cap is None:
-        return 1, n, {}
+        return 1, max(n, len(spec["grid"])), {}
     return 1, cap, {"minDigit": 1, "maxDigit": cap}
 
 

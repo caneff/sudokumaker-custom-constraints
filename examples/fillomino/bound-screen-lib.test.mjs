@@ -18,10 +18,10 @@ const rowsToGivens = rows => Object.fromEntries(rows.flat().map((d, i) => [i, d]
 const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 
 for (const board of [
-  { side: 3, cap: 3, givens: rowsToGivens(GRID3) },
-  { side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } },
-  { side: 3, cap: 3, givens: { 0: 1, 4: 1 } },
-  { side: 2, cap: 2, givens: {} }
+  { width: 3, height: 3, cap: 3, givens: rowsToGivens(GRID3) },
+  { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } },
+  { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1 } },
+  { width: 2, height: 2, cap: 2, givens: {} }
 ]) {
   const want = score(baseline, board)
   const got = score(incremental, board)
@@ -85,7 +85,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   const boards = fixtureBoards(HERE)
   assert.strictEqual(boards.length, 19, 'the frozen fixture set is 19 boards')
   for (const b of boards) {
-    assert.strictEqual(b.side, 9)
+    assert.deepStrictEqual([b.width, b.height], [9, 9])
     assert.ok(Object.keys(b.givens).length >= 28 && Object.keys(b.givens).length <= 35)
   }
 }
@@ -114,7 +114,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // is counted, a run that solved nothing is refused, and agreeing variants
 // count nothing.
 {
-  const tiny = [{ name: 'tiny', side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }]
+  const tiny = [{ name: 'tiny', width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }]
   assert.strictEqual(runScreen(tiny, { baseline, incremental }, 1).bad, 0)
   const wrong = { ...baseline, validate: () => false }
   assert.strictEqual(runScreen(tiny, { baseline, wrong }, 1).bad, 1, 'a variant that disagrees is counted')
