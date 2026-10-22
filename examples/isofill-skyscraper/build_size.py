@@ -1,7 +1,9 @@
 # Build an ISOFILL board inside an interactive Skyscrapers ring.
 #
-# The interior is a 9x9 ISOFILL: nine regions of nine orthogonally connected
-# cells, one digit per region, every digit 1-9 used. Around it, one clue per
+# The interior is an ISOFILL, 9x9 as shipped: nine regions of nine orthogonally
+# connected cells, one digit per region, every digit 1-9 used. Any W x H
+# interior whose cells split evenly among its digits builds the same way
+# (--height and --digits; region size is cells / digits). Around it, one clue per
 # row and column end counts the buildings visible reading inward, ties hidden.
 # The shared frame builder (`_shared/framebuild.py`) does the rest through its
 # interior hook: the solution grid comes from the ISOFILL sampler and every
@@ -10,6 +12,7 @@
 #
 #   uv run examples/isofill-skyscraper/build_size.py 9 3 3 [seed_count]
 #   uv run examples/isofill-skyscraper/build_size.py --rebuild 9
+#   uv run examples/isofill-skyscraper/build_size.py 6 --height 4 --digits 4
 #
 # The box arguments are the builder's grammar only: this board declares no box
 # regions, so 3 3 records a shape nothing reads. Writes PUZZLE_LINK.txt and
@@ -28,11 +31,17 @@ COMPONENTS = ["IsofillComponent.js", "SkyscraperOneSidedComponent.js"]
 MIN_DIGIT = 1
 
 
-def rule_text(n):
+def rule_text(n, height=None, digits=None):
+    """The rules text for an n-wide interior, `height` tall and with `digits`
+    digits (square, with n digits, unless named): one region per digit, each of
+    cells / digits cells."""
+    height = n if height is None else height
+    digits = n if digits is None else digits
+    size = n * height // digits
     return (
-        f"ISOFILL: divide the inner grid into {n} regions, each with {n} "
+        f"ISOFILL: divide the inner grid into {digits} regions, each with {size} "
         "orthogonally connected cells. Every cell in a region holds the same "
-        f"digit, and all of the digits 1-{n} appear in the grid. "
+        f"digit, and all of the digits 1-{digits} appear in the grid. "
         "Skyscrapers (interactive outside clues): each outside cell holds the "
         "number of buildings visible along its row or column, reading inward. "
         "A building is visible when it is strictly taller than every building "
@@ -74,17 +83,20 @@ def add_visible(m, x, cells, kk, n, tag, _box):
     m.Add(1 + sum(seen) == kk)
 
 
-def isofill_grid(rng, n, _bh, _bw):
-    """A random n x n ISOFILL solution, rows of digits MIN_DIGIT..: the
+def isofill_grid(rng, n, _bh, _bw, height=None, digits=None):
+    """A random n x height ISOFILL solution (square unless `height` and
+    `digits` say otherwise), rows of digits MIN_DIGIT..: the
     sampler draws it on the portfolio with a seed taken off `rng`. The
     portfolio's several workers race, so a seed does not reproduce its grid;
     gen.json records the grid, and a rebuild reads it from there."""
-    rows = sample(Board.of(n, MIN_DIGIT), seed=rng.randrange(1, 2**31))
+    rows = sample(
+        Board.of(n, MIN_DIGIT, height, digits), seed=rng.randrange(1, 2**31)
+    )
     return [[int(ch) for ch in row] for row in rows]
 
 
-def isofill_interior(n, _box):
-    return model(Board.of(n, MIN_DIGIT), {})
+def isofill_interior(n, _box, height=None, digits=None):
+    return model(Board.of(n, MIN_DIGIT, height, digits), {})
 
 
 SPEC = Spec(

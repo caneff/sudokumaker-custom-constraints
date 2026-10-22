@@ -16,7 +16,7 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from frame import cosmetics, ring_cell
+from frame import corner_cells, cosmetics, ring_cell
 
 # The board widths every example ships: 4x4, 6x6, 9x9 and 10x10 interiors,
 # each inside a one-cell clue ring, so W = n + 2.
@@ -212,6 +212,37 @@ def test_no_layer_draws_the_same_segment_twice():
             assert drawn == distinct, f"W={W} {layer['name']}: {drawn} for {distinct}"
 
 
+def test_a_rectangular_frame_puts_each_side_on_its_own_edge():
+    # An 11-wide, 8-tall board: a 9x6 interior. The bottom clues sit in row 7,
+    # not row 10, and the right clues in column 10.
+    W, H = 11, 8
+    assert ring_cell("B3", W, H) == (H - 1, 4)
+    assert ring_cell("R2", W, H) == (3, W - 1)
+    assert ring_cell("T3", W, H) == (0, 4) and ring_cell("L2", W, H) == (3, 0)
+    assert set(corner_cells(W, H)) == {(0, 0), (0, W - 1), (H - 1, 0), (H - 1, W - 1)}
+    cells = [{} for _ in range(W * H)]
+    for key in ("B0", "R5", "T8", "L0"):
+        r, c = ring_cell(key, W, H)
+        cells[r * W + c] = {"given": True, "value": 1}
+    layers = cosmetics(W, cells, H)
+    ring = (
+        [(0, c) for c in range(W)]
+        + [(H - 1, c) for c in range(W)]
+        + [(r, 0) for r in range(1, H - 1)]
+        + [(r, W - 1) for r in range(1, H - 1)]
+    )
+    assert _unit_segments(layers[WHITE]["lines"]) == _unit_segments(
+        [_square(c, r, c + 1, r + 1) for r, c in ring]
+    )
+    boxes = [ring_cell(k, W, H) for k in ("B0", "R5", "T8", "L0")]
+    assert _unit_segments(layers[OUTLINES]["lines"]) == _unit_segments(
+        [_square(c, r, c + 1, r + 1) for r, c in boxes]
+    )
+    assert _unit_segments(layers[BORDER]["lines"]) == _unit_segments(
+        [_square(1, 1, W - 1, H - 1)]
+    )
+
+
 if __name__ == "__main__":
     test_white_lines_still_cover_every_ring_cell_border()
     test_white_lines_cost_far_fewer_points_than_a_square_per_cell()
@@ -221,4 +252,5 @@ if __name__ == "__main__":
     test_the_outer_border_is_the_interior_square()
     test_layers_stack_white_then_grey_outlines_then_black_border()
     test_no_layer_draws_the_same_segment_twice()
+    test_a_rectangular_frame_puts_each_side_on_its_own_edge()
     print("frame self-check OK")

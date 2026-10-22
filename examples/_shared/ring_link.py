@@ -17,19 +17,20 @@ def link_board(doc):
     (row, column) inside the grid, and shown ring clues keyed by (side, index),
     both in the shape gen_<n>x<n>.json records. Hidden clue cells are the
     interactive ones and are absent, as they are from the recorded board."""
-    W = doc["width"]
-    n = W - 2
+    W, H = doc["width"], doc["height"]
+    n, rows = W - 2, H - 2
     cells = doc["cells"]
     givens = {}
-    for r in range(n):
+    for r in range(rows):
         for c in range(n):
             cell = cells[interior_index(W, r, c)]
             if cell.get("given"):
                 givens[(r, c)] = cell["value"]
     shown = {}
     for side in "LRTB":
-        for i in range(n):
-            r, c = ring_cell(f"{side}{i}", W)
+        # a left or right clue names a row, a top or bottom clue a column
+        for i in range(rows if side in "LR" else n):
+            r, c = ring_cell(f"{side}{i}", W, H)
             cell = cells[r * W + c]
             if cell.get("given"):
                 shown[(side, i)] = cell["value"]

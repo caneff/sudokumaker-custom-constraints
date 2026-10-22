@@ -74,8 +74,12 @@ component to every clue `gen.json` records.
 (`_shared/frame-lines.js`). It registers one `IsofillComponent` over the
 interior, whose cell list is the left-clue lines in order (each interior row
 read left to right, which is the row-major order the component's index
-arithmetic needs), and one `SkyscraperOneSidedComponent` per ring clue. It
-throws before registering anything on a board whose interior is not square.
+arithmetic needs), and one `SkyscraperOneSidedComponent` per ring clue. The
+interior may be any W x H whose cells split evenly among its digits (region
+size = cells / digits): the component gets the width and the height. A
+rectangle builds with `build_size.py <W> --height H --digits D`
+(`rectangle.test.py` builds and proves a 4x3 and a 3x4); the shipped board
+stays 9x9.
 
 There is no local lane (`example.toml`: `lanes = "global"`).
 

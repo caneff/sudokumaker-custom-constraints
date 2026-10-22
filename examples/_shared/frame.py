@@ -1,6 +1,7 @@
 # Cosmetic layers for the interactive-outside frame, shared by every size.
 #
-# The board is (n+2) wide: an n x n sudoku with a one-cell clue ring around it.
+# The board is (n+2) wide and (h+2) tall: an n x h interior (square unless a
+# caller names the height) with a one-cell clue ring around it.
 # Cell (r, c) covers grid coordinates x in [c, c+1], y in [r, r+1].
 #
 # Three layers, drawn in this order:
@@ -13,20 +14,22 @@ import itertools
 # A ring key names one clue cell of the frame: "T3"/"B3" sit above/below
 # interior column 3, "L2"/"R2" left/right of interior row 2.
 SIDES = {
-    "L": lambda i, W: (i + 1, 0),
-    "R": lambda i, W: (i + 1, W - 1),
-    "T": lambda i, W: (0, i + 1),
-    "B": lambda i, W: (W - 1, i + 1),
+    "L": lambda i, W, H: (i + 1, 0),
+    "R": lambda i, W, H: (i + 1, W - 1),
+    "T": lambda i, W, H: (0, i + 1),
+    "B": lambda i, W, H: (H - 1, i + 1),
 }
 
 
-def ring_cell(key, W):
-    """The frame (row, column) of a ring key's clue cell, on a W-wide board."""
-    return SIDES[key[0]](int(key[1:]), W)
+def ring_cell(key, W, H=None):
+    """The frame (row, column) of a ring key's clue cell, on a W-wide, H-tall
+    board (H defaults to W)."""
+    return SIDES[key[0]](int(key[1:]), W, W if H is None else H)
 
 
-def corner_cells(W):
-    """The four (row, column) corners of a W-wide frame board.
+def corner_cells(W, H=None):
+    """The four (row, column) corners of a W-wide, H-tall frame board (H
+    defaults to W).
 
     A corner sits on two edges of the ring, belongs to no clue line and to no
     region, so it is the one cell of the board no rule reaches. Both the
@@ -38,7 +41,8 @@ def corner_cells(W):
     them from the export) each restate it, as `[0, W - 1, W * (H - 1),
     W * H - 1]` in cell ids. Change one, change all three.
     """
-    return [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]
+    H = W if H is None else H
+    return [(0, 0), (0, W - 1), (H - 1, 0), (H - 1, W - 1)]
 
 
 def rect(x, y):
@@ -162,21 +166,23 @@ def merge(lines):
     ]
 
 
-def cosmetics(W, cells):
-    """The three cosmetic line constraints that dress a WxW frame board: white
+def cosmetics(W, cells, H=None):
+    """The three cosmetic line constraints that dress a W x H frame board (H
+    defaults to W): white
     lines hiding the outside cell borders, outlines around the ring cells that
     hold a given clue, and the border around the inner grid."""
+    H = W if H is None else H
     idx = lambda r, c: r * W + c
     ring_cells = (
         [(0, c) for c in range(W)]
-        + [(W - 1, c) for c in range(W)]
-        + [(r, 0) for r in range(1, W - 1)]
-        + [(r, W - 1) for r in range(1, W - 1)]
+        + [(H - 1, c) for c in range(W)]
+        + [(r, 0) for r in range(1, H - 1)]
+        + [(r, W - 1) for r in range(1, H - 1)]
     )
     white = [rect(c, r) for (r, c) in ring_cells]
     # box a given clue cell, never a corner: a corner sits on both edges and
     # belongs to no line, so a digit there is never a clue
-    corners = set(corner_cells(W))
+    corners = set(corner_cells(W, H))
     outlines = [
         rect(c, r)
         for (r, c) in ring_cells
@@ -184,9 +190,9 @@ def cosmetics(W, cells):
     ]
     border = [
         [{"x": x, "y": 1} for x in range(1, W)]
-        + [{"x": W - 1, "y": y} for y in range(2, W)]
-        + [{"x": x, "y": W - 1} for x in range(W - 2, 0, -1)]
-        + [{"x": 1, "y": y} for y in range(W - 2, 0, -1)]
+        + [{"x": W - 1, "y": y} for y in range(2, H)]
+        + [{"x": x, "y": H - 1} for x in range(W - 2, 0, -1)]
+        + [{"x": 1, "y": y} for y in range(H - 2, 0, -1)]
     ]
     return [
         {
