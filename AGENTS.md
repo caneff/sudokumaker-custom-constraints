@@ -60,9 +60,13 @@ others. If no step is forced from that state, say so.
 
 ## Puzzle links (always on)
 
-- **Never print a puzzle link in chat.** A link is a 10 KB blob. Write it to a
-  file (`PUZZLE_LINK*.txt` in the example, or a temp file) and report the path.
-  The trap that has broken this rule twice is `shot-scraper`: its default `shot`
+- **Hand a link over only as a short link** (`https://sudokumaker.app/p/<id>`),
+  printed bare, in chat, a PR, a ticket or a README. Mint it from a committed
+  file (sudoku-kit#53 adds the command). The full link stays in
+  `PUZZLE_LINK*.txt` as the source of truth and never appears in chat: it is a
+  10 KB blob. (Chris, 2026-10-22.)
+- **A full link must not leak into the transcript.** The trap that has broken
+  this twice is `shot-scraper`: its default `shot`
   subcommand writes `Screenshot of '<url>' written to '<file>'` **to stderr**,
   so the whole link lands in the transcript through a `2>&1` or a bare run.
   Pass `--silent` on every `shot-scraper` shot of a link. `accessibility` and
