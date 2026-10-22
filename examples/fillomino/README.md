@@ -251,7 +251,9 @@ uv run --with lzstring examples/fillomino/build_link.py
 
 `docs/share-checklist.md`, criterion by criterion, against `PUZZLE_LINK.txt`
 as it ships. This is the record the checklist asks for; re-walk it whenever
-the board or the rules text changes.
+the board or the rules text changes. Last walked against the link rebuilt
+with the readable component (#870, 2026-10-22): same board, same 28 givens,
+same rules text, new embedded code.
 
 **Free gate** — `just check-full` green: layout, lint, probe goldens, soundness
 at zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
@@ -259,8 +261,9 @@ CP-SAT proof → the shipped component solving this clue set offline → the lin
 decode, and fails if any two of them disagree.
 
 The three mechanical criteria, checked by `check_layout.py` on every committed
-link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
-`-base` frozen fixtures, the hunt records):
+link in the example (all 53: this board, its annotated twin, the 7 x 5
+`PUZZLE_LINK_15g.txt`, 19 `-rung1` + 19 `-rung25` + 9 `-base` frozen
+fixtures, the three hunt records):
 
 - **Opens clean** ✓ — 53 non-given cells, every one `{}`. `pipeline.test.py`
   asserts it cell by cell as well.
@@ -289,15 +292,20 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
    the app still closes the board — so no given in it is known-droppable by
    that walk. It is a greedy strip, not a CP-SAT minimality proof, and the
    README says so where the board is described.
-4. **Component reads well at its source** ✓ — `FillominoComponent.js` opens
-   with an 81-line `//!` overview (what the rules are, why the growth test
-   ships at frontier-only scope, why merge force is not built) and carries
-   short per-step comments through the scan, the walk, the doors and the bound.
-   **None of it ships** (#385): `minify.py` strips every comment from the copy
-   baked into the link, so a recipient reads the algorithm and nothing about
-   it. Fillomino has no annotated twin (`../../docs/share-checklist.md` § 4
-   says what that leaves a recipient). The criterion is checked against the
-   file in the tree, not against the blob.
+4. **Component reads well at its source** ✓ — rewritten for a setter who
+   reads some JavaScript (#870). `FillominoComponent.js` opens with the rules,
+   defines **island** and **region** once, and lists the six things it tells
+   the solver in puzzle words; each rule's code sits under a numbered comment
+   that repeats that explanation, and the two shared files it includes (the
+   neighbour and bottleneck helpers in `dominator.js`, the visit marks in
+   `stamp.js`) read the same way. The shortcut for rule 4 and the memory rule
+   6 keeps between calls each carry a plain note on why they are safe. The
+   plain link strips every comment (`minify.py`), so the commentary ships in
+   the **annotated twin**, `PUZZLE_LINK_annotated.txt`: the shipped board and
+   givens, the embedded code with its comments kept and no lint directive.
+   `build_link.test.py` holds it to the shipped code (the same code once the
+   comments are stripped) and to no repo words: no file names, tickets,
+   door, starve, seal or stamp.
 
 ## Paste into SudokuMaker
 
