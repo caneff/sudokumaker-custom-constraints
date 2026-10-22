@@ -48,7 +48,7 @@ for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
     iters: FUZZ,
     draw: () => {
       const inst = {}
-      mod.setParams(inst, CELLS)
+      mod.setParams(inst, CELLS, n, n)
       return { truth, seed, parts: [{ mod, inst }] }
     }
   }).failures
@@ -109,7 +109,7 @@ function directedFailures (m) {
   return DIRECTED.filter(([, seed, shows]) => {
     const p = makePuzzle(directed, seed)
     const inst = {}
-    m.setParams(inst, CELLS)
+    m.setParams(inst, CELLS, N, N)
     Array.from(m.update(inst, p))
     return !shows(p)
   }).map(([name]) => name)
@@ -149,7 +149,7 @@ for (const rule of Object.keys(RULES)) {
       iters: RULE_FUZZ,
       draw: () => {
         const inst = {}
-        solo.setParams(inst, RCELLS)
+        solo.setParams(inst, RCELLS, n, n)
         return { truth, seed, parts: [{ mod: solo, inst }] }
       }
     }).failures
@@ -160,7 +160,7 @@ for (const rule of Object.keys(RULES)) {
 function judge (truth) {
   const p = makePuzzle(truth, (c, v) => [v])
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   return mod.validate(inst, p)
 }
 if (!judge(directed)) { console.log('fillomino validate: rejected a real solution'); bad++ }
@@ -169,7 +169,7 @@ if (!judge(directed)) { console.log('fillomino validate: rejected a real solutio
 if (judge({ ...directed, 0: 1 })) { console.log('fillomino validate: accepted a broken grid'); bad++ }
 const partial = makePuzzle(directed, (c, v) => (c === 0 ? ALL : [v]))
 const partialInst = {}
-mod.setParams(partialInst, CELLS)
+mod.setParams(partialInst, CELLS, N, N)
 if (!mod.validate(partialInst, partial)) { console.log('fillomino validate: judged an unfilled grid'); bad++ }
 
 console.log('fillomino soundness-harness:', bad, 'failures')

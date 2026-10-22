@@ -14,4 +14,4 @@ for (let y = 0; y < side; y++) {
     cells.push(id | 0)
   }
 }
-puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
+puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells, side, side))

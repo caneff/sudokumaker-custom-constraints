@@ -25,10 +25,9 @@ function getAffectedCells (cells) {
   return cells
 }
 
-function setParams (instance, cells) {
+function setParams (instance, cells, width, height) {
   instance.cells = cells
-  instance.side = Math.round(Math.sqrt(cells.length))
-  instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
+  instance.nbrs = cells.map((_, i) => neighbours(i, width, height))
   // `mask` is one stamped visit mask shared by the scan, every walk and flood,
   // and the door dedupe, which relies on doorRules running last and scan being
   // eager. It is never cleared: a new stamp does that.

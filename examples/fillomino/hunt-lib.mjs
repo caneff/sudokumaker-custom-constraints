@@ -41,7 +41,7 @@ const rowsOf = (p, side) =>
 export function score (mod, { side, cap, givens }, { nodeCap = 200000 } = {}) {
   installGlobals(1, cap)
   const inst = {}
-  mod.setParams(inst, Array.from({ length: side * side }, (_, i) => i))
+  mod.setParams(inst, Array.from({ length: side * side }, (_, i) => i), side, side)
   const counts = { nodes: 0, passes: 0 }
   const found = []
   const p = newPuzzle(side, cap, givens)

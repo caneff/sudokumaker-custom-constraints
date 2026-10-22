@@ -40,7 +40,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   const build = row => makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => (row[c] ? [row[c]] : ALL))
   const dead = p => [...p._cand.values()].some(s => s.size === 0)
   const once = (mod, inst, row) => { const p = build(row); Array.from(mod.update(inst, p)); return p }
-  const fresh = mod => { const inst = {}; mod.setParams(inst, CELLS); return inst }
+  const fresh = mod => { const inst = {}; mod.setParams(inst, CELLS, 9, 9); return inst }
 
   assert.strictEqual(dead(once(baseline, fresh(baseline), SHORT)), false, 'no other rule reaches this state')
   assert.strictEqual(dead(once(incremental, fresh(incremental), SHORT)), true)
@@ -72,7 +72,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   installGlobals(1, n)
   const CELLS = Array.from({ length: n * n }, (_, i) => i)
   const { rnd } = makeRng(327)
-  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS); fixpoint(mod, inst, p) }
+  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS, 9, 9); fixpoint(mod, inst, p) }
   for (let rep = 0; rep < 150; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, n, truth[c]))
@@ -102,7 +102,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
       iters: 3000,
       draw: () => {
         const inst = {}
-        incremental.setParams(inst, CELLS)
+        incremental.setParams(inst, CELLS, 9, 9)
         return { truth, seed, parts: [{ mod: incremental, inst }] }
       }
     })

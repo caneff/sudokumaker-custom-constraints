@@ -24,7 +24,7 @@ const removalsOf = (mod, snap) => {
   for (const c of snap.keys()) truth[c] = snap.get(c)[0]
   const p = makePuzzle(truth, c => snap.get(c))
   const inst = {}
-  mod.setParams(inst, [...snap.keys()])
+  mod.setParams(inst, [...snap.keys()], 10, 10)
   Array.from(mod.update(inst, p))
   return [...snap.keys()].map(c => [...p._cand.get(c)].sort((a, b) => a - b).join('')).join('|')
 }

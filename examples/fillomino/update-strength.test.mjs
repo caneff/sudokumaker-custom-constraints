@@ -37,7 +37,7 @@ const REPS = 300
 const apply = (mod, p, CELLS) => {
   const inst = { cells: CELLS }
   if (mod.setParams) {
-    mod.setParams(inst, CELLS)
+    mod.setParams(inst, CELLS, n, n)
     fixpoint(mod, inst, p)
     return
   }
@@ -141,12 +141,12 @@ for (const { truth, n } of [shipped, varied]) {
   installGlobals(1, n)
   const CELLS = Array.from({ length: n * n }, (_, i) => i)
   const reused = { cells: CELLS }
-  cur.setParams(reused, CELLS)
+  cur.setParams(reused, CELLS, n, n)
   for (let rep = 0; rep < 200; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, n, truth[c]))
     const fresh = { cells: CELLS }
-    cur.setParams(fresh, CELLS)
+    cur.setParams(fresh, CELLS, n, n)
     assert.deepStrictEqual(settle(reused, start, CELLS), settle(fresh, start, CELLS),
       'a reused instance settled a state somewhere a fresh one does not')
     reuseStates++
