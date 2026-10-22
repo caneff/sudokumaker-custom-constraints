@@ -15,7 +15,7 @@ const rowsToGivens = rows => Object.fromEntries(rows.flat().map((d, i) => [i, d]
 const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 
 {
-  const s = score(mod, { side: 3, cap: 3, givens: rowsToGivens(GRID3) })
+  const s = score(mod, { width: 3, height: 3, cap: 3, givens: rowsToGivens(GRID3) })
   assert.strictEqual(s.verdict, 'unique')
   assert.strictEqual(s.nodes, 0, 'a full board needs no guess')
   assert.ok(s.passes >= 1, 'propagation runs at least one pass')
@@ -23,49 +23,49 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 }
 
 {
-  const unique = score(mod, { side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } })
+  const unique = score(mod, { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } })
   assert.strictEqual(unique.verdict, 'unique')
   assert.deepStrictEqual(unique.grid, GRID3)
   assert.ok(unique.nodes >= 1, 'a clue set the rules do not close needs a guess')
 
-  assert.strictEqual(score(mod, { side: 3, cap: 3, givens: { 0: 1, 4: 1 } }).verdict, 'multiple')
-  assert.strictEqual(score(mod, { side: 3, cap: 3, givens: {} }).verdict, 'multiple')
-  assert.strictEqual(score(mod, { side: 2, cap: 2, givens: {} }).verdict, 'none')
+  assert.strictEqual(score(mod, { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1 } }).verdict, 'multiple')
+  assert.strictEqual(score(mod, { width: 3, height: 3, cap: 3, givens: {} }).verdict, 'multiple')
+  assert.strictEqual(score(mod, { width: 2, height: 2, cap: 2, givens: {} }).verdict, 'none')
 }
 
 {
-  const board = { side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }
+  const board = { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }
   const a = score(mod, board)
   const b = score(mod, board)
   assert.deepStrictEqual([a.verdict, a.nodes, a.passes], [b.verdict, b.nodes, b.passes])
 }
 
 {
-  const s = score(mod, { side: 3, cap: 3, givens: {} }, { nodeCap: 1 })
+  const s = score(mod, { width: 3, height: 3, cap: 3, givens: {} }, { nodeCap: 1 })
   assert.strictEqual(s.verdict, 'capped')
 }
 
 {
-  const board = { side: 3, cap: 3, grid: GRID3 }
+  const board = { width: 3, height: 3, cap: 3, grid: GRID3 }
   const clues = stripOffline(mod, board, 7)
   const all = GRID3.flat().length
   assert.ok(clues.length < all, 'a strip that removes nothing is not a strip')
   assert.ok(clues.every(([r, c]) => r >= 0 && r < 3 && c >= 0 && c < 3))
-  const left = score(mod, { side: 3, cap: 3, givens: givensOf(GRID3, clues) })
+  const left = score(mod, { width: 3, height: 3, cap: 3, givens: givensOf(GRID3, clues) })
   assert.strictEqual(left.verdict, 'unique', 'the stripped board must still close')
   assert.deepStrictEqual(left.grid, GRID3, 'and close on the grid it was cut from')
 
   for (const drop of clues) {
     const rest = clues.filter(p => p !== drop)
     assert.notStrictEqual(
-      score(mod, { side: 3, cap: 3, givens: givensOf(GRID3, rest) }).verdict,
+      score(mod, { width: 3, height: 3, cap: 3, givens: givensOf(GRID3, rest) }).verdict,
       'unique',
       `clue ${drop} was removable and the strip left it in`)
   }
 }
 
 {
-  const board = { side: 3, cap: 3, grid: GRID3 }
+  const board = { width: 3, height: 3, cap: 3, grid: GRID3 }
   assert.deepStrictEqual(stripOffline(mod, board, 7), stripOffline(mod, board, 7))
   const cuts = new Set([1, 2, 3, 4, 5, 6, 7, 8].map(seed => JSON.stringify(stripOffline(mod, board, seed))))
   assert.ok(cuts.size > 1, 'eight seeds all cut the same clue set: the seed is ignored')

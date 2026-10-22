@@ -287,8 +287,9 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
 
 // A mock puzzle over a truth map (cell -> true value). Each cell starts with a
 // candidate set that always contains its true value. `seed(cell, value)` returns
-// the starting candidate array; `houses` is makePuzzleApi's.
-export function makePuzzle (truth, seed, { houses = [] } = {}) {
+// the starting candidate array; `houses` is makePuzzleApi's. `width` names the
+// row length of a board that is not square; without it the cells must form one.
+export function makePuzzle (truth, seed, { houses = [], width } = {}) {
   const cand = new Map()
   for (const [c, v] of Object.entries(truth)) cand.set(+c, new Set(seed(+c, v)))
   const p = {
@@ -299,12 +300,14 @@ export function makePuzzle (truth, seed, { houses = [] } = {}) {
     // time is enough here: every component yields the stop it just built.
     stop: (message = '', cells = []) => { p._stopped = message || 'stopped'; return { message, cells } },
     // The whole-grid calls a region-building component makes. Neighbours come
-    // from the square the cells form, row-major, the way the app numbers a
+    // from the rows the cells form, row-major, the way the app numbers a
     // custom board.
     getCellsOrthogonallyAdjacentToCell: c => {
       const n = cand.size
-      const side = Math.round(Math.sqrt(n))
-      if (side * side !== n) throw new RangeError('orthogonal neighbours need a square board')
+      const side = width ?? Math.round(Math.sqrt(n))
+      if (n % side !== 0 || (width === undefined && side * side !== n)) {
+        throw new RangeError('orthogonal neighbours need a square board or a width')
+      }
       const out = []
       if (c % side > 0) out.push(c - 1)
       if (c % side < side - 1) out.push(c + 1)

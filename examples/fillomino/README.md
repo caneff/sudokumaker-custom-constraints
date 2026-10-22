@@ -301,7 +301,7 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
 
 ## Paste into SudokuMaker
 
-Make a custom board (any square side) with digits 1 through the cap. Add a
+Make a custom board (any width and height) with digits 1 through the cap. Add a
 custom **global** constraint — no group input — and paste `main.js` as the
 main code. Add one component segment named `FillominoComponent` with the
 component file's contents. Enter the givens.
@@ -315,16 +315,18 @@ component file's contents. Enter the givens.
 uv run --with ortools examples/fillomino/generate.py               # self-check
 uv run --with ortools examples/fillomino/generate.py sample 7      # seed 7, 9x9, digits 1-9
 uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # seed 7, side 9, cap 12
+uv run --with ortools examples/fillomino/generate.py sample 7 7 7 5  # seed 7, 7 wide, 5 high, cap 7
 uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
 ```
 
-Every function takes the `Board` it works on — `Board.of(side, cap=None)`,
-where `cap` defaults to `side`. The board is a value, not module state, so a
+Every function takes the `Board` it works on — `Board.of(width, cap=None,
+height=None)`, where `height` defaults to `width` and `cap` to the longer
+side. The board is a value, not module state, so a
 process can check two boards without resetting anything between them.
 
-Knobs on `sample(board, seed, pins=4, max_tries=50)`: a `cap` above `side`
-widens the digit range without changing the board size (one pin is then
-forced above `side` so the wide cap actually gets used). `pins` random cells
+Knobs on `sample(board, seed, pins=4, max_tries=50)`: a `cap` above the longer
+side widens the digit range without changing the board size (one pin is then
+forced above the longer side so the wide cap actually gets used). `pins` random cells
 are seeded with a random digit before each solve — diversity against CP-SAT's
 own `randomize_search`, which alone still hands back dull striped grids on
 some seeds. A pin combination with no solution, or that solves to a striped

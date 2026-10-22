@@ -1,4 +1,5 @@
-# The houseless board isofill and fillomino share: a custom n x n board with no
+# The houseless board isofill and fillomino share: a custom width x height
+# board with no
 # rows, columns or boxes, built from scratch out of a gen JSON (the grid and
 # its clue cells) and the example's main.js and one component. There is no
 # template -- such a board is small enough to write out. What differs between
@@ -21,7 +22,7 @@ from sudoku_kit.link_codec import decode_puzzle, encode_link
 class BareBoard:
     """One example's houseless board.
 
-    `digit_range(spec, n)` returns `(lo, hi, fields)`: the digits the board
+    `digit_range(spec, n)` (n is the longer side) returns `(lo, hi, fields)`: the digits the board
     plays and the range fields the puzzle document ships for them, which may
     be none (the app's default). `rule` is the rules text, formatted with
     `n`, `lo` and `hi`."""
@@ -37,14 +38,15 @@ class BareBoard:
         Returns (link, doc, number of givens)."""
         spec = json.loads(pathlib.Path(puzzle_path).read_text())
         clues = {tuple(p) for p in spec["clues"]}
-        n = len(spec["grid"])
+        height, width = len(spec["grid"]), len(spec["grid"][0])
+        n = max(width, height)
         lo, hi, fields = self.digit_range(spec, n)
         # a cell holds a value only when it is a clue: a non-given value ships
         # as an entered digit and the recipient opens a solved board
         cells = [
             {"value": int(spec["grid"][r][c]), "given": True} if (r, c) in clues else {}
-            for r in range(n)
-            for c in range(n)
+            for r in range(height)
+            for c in range(width)
         ]
         doc = {
             "formatVersion": "1.6.0",
@@ -52,8 +54,8 @@ class BareBoard:
                 "name": self.name,
                 "author": "",
                 "type": "custom",
-                "width": n,
-                "height": n,
+                "width": width,
+                "height": height,
                 **fields,
                 "comment": self.rule.format(n=n, lo=lo, hi=hi),
                 "cells": cells,
@@ -77,11 +79,12 @@ class BareBoard:
         back = decode_puzzle(link)
         assert back == doc, "link does not decode back to the built document"
         p = back["puzzle"]
-        n = p["width"]
-        assert (p["type"], p["height"]) == ("custom", n)
+        width, height = p["width"], p["height"]
+        assert p["type"] == "custom"
+        n = max(width, height)
         lo = p.get("minDigit", 1)
         assert lo + n - 1 <= 9, "n digits must fit the app's 0-9 range"
-        assert len(p["cells"]) == n * n and not any("houses" in k for k in p)
+        assert len(p["cells"]) == width * height and not any("houses" in k for k in p)
         # every non-given cell must be empty, or the board ships entered digits
         assert all(c.get("given") or c == {} for c in p["cells"])
         assert sum(1 for c in p["cells"] if c.get("given")) == n_clues

@@ -6,7 +6,16 @@ import sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from generate import Board, drop, is_striped, model, rows, sample, self_check
+from generate import (
+    Board,
+    drop,
+    is_striped,
+    model,
+    rows,
+    sample,
+    self_check,
+    unique,
+)
 from ortools.sat.python import cp_model
 
 
@@ -40,6 +49,25 @@ def test_model_and_rows_read_the_board_they_are_given():
     grid = rows(wide, s, x_wide)
     assert [len(row) for row in grid] == [3, 3, 3], grid
     assert grid[0][0] == 5, grid
+
+
+def test_rectangular_board_is_proved_and_sampled():
+    # Width and height are independent: a 6-wide, 4-high board has 24 cells in
+    # four rows of six, `of_doc` reads the shape off the grid, and a sampled
+    # grid is unique under all of its givens.
+    board = Board.of(6, height=4)
+    assert (board.width, board.height, board.cap) == (6, 4, 6)
+    assert len(board.cells) == 24 and board.idx((1, 0)) == 6
+    grid = sample(board, seed=2)
+    assert [len(row) for row in grid] == [6] * 4, grid
+    assert unique(board, {p: grid[p[0]][p[1]] for p in board.cells}) is True
+    doc = {"grid": grid, "clues": [[0, 0]]}
+    again = Board.of_doc(doc)
+    assert (again.width, again.height) == (6, 4), again
+    # The same cells give the same verdict whichever way round the board lies.
+    assert unique(
+        Board.of(4, 6, height=6), {(r, c): grid[c][r] for r in range(6) for c in range(4)}
+    ) is True
 
 
 def test_dropped_grid_logs_seed_and_clue_set():
@@ -123,6 +151,8 @@ if __name__ == "__main__":
     print("self-check: ok")
     test_model_and_rows_read_the_board_they_are_given()
     print("model and rows read the board they are given: ok")
+    test_rectangular_board_is_proved_and_sampled()
+    print("rectangular board proved and sampled: ok")
     test_dropped_grid_logs_seed_and_clue_set()
     test_unique_cli_logs_the_clue_set_it_dropped()
     print("dropped grids log seed and clue set: ok")
