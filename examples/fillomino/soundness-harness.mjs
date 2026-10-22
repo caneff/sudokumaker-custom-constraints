@@ -15,26 +15,26 @@ const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const NAMES = ['setParams', 'update', 'validate', 'scan', 'islandRule', 'cutStarveRule', 'doorRules', 'componentBound', 'DEAD']
+const NAMES = ['setParams', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'BROKEN']
 const mod = load('FillominoComponent.js', NAMES)
 
 const RULES = {
-  islandRule: ['seal', 'overflow', 'force'],
-  cutStarveRule: ['cut starve'],
-  doorRules: ['merge overflow'],
-  componentBound: ['growth test']
+  islandRules: ['seal', 'overflow', 'force'],
+  neededCellsRule: ['cut starve'],
+  exitRules: ['merge overflow'],
+  smallPocketsRule: ['growth test']
 }
 // Two checks two rules reach, so removing either owner alone leaves them
 // passing. Starve: a walk under k cells means the island's component of cells
 // allowing k is under k too, so the component bound empties it as well. One
 // door: dropping the only door starves the walk, so cut starve places it too.
 const SHARED = {
-  starve: ['islandRule', 'componentBound'],
-  'one door': ['cutStarveRule', 'doorRules']
+  starve: ['islandRules', 'smallPocketsRule'],
+  'one door': ['neededCellsRule', 'exitRules']
 }
 
 const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.reduce((out, rule) =>
-  patchSource(out, `function * ${rule} (`, `function * ${rule} () { return OPEN }\nfunction * ${rule}Removed (`), src))
+  patchSource(out, `function * ${rule} (`, `function * ${rule} () { return MORE }\nfunction * ${rule}Removed (`), src))
 
 let bad = 0
 
@@ -135,9 +135,9 @@ for (const rule of Object.keys(RULES)) {
   const solo = {
     setParams: mod.setParams,
     * update (inst, p) {
-      if (rule === 'componentBound') { yield * mod.componentBound(inst, p); return }
-      for (const island of mod.scan(inst, p)) {
-        if ((yield * mod[rule](inst, p, island)) === mod.DEAD) return
+      if (rule === 'smallPocketsRule') { yield * mod.smallPocketsRule(inst, p); return }
+      for (const island of mod.findIslands(inst, p)) {
+        if ((yield * mod[rule](inst, p, island)) === mod.BROKEN) return
       }
     }
   }
