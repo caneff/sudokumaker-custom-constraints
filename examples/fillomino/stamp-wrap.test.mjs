@@ -1,6 +1,6 @@
-// `instance.mask` is an Int32Array, so a counter that reached 2^31 would be
-// stored negative and no cell would ever read as visited again. The component
-// must clear the mask and restart the stamp before that, and `update` must
+// `instance.seen` is an Int32Array, so a search number that reached 2^31 would
+// be stored negative and no cell would ever read as visited again. The component
+// must clear the marks and restart the numbers before that, and `update` must
 // deduce exactly what it does from a fresh instance. Same check as the isofill
 // one in pooling.test.mjs, on the fillomino fixture.
 
@@ -19,15 +19,16 @@ const truth = {}
 rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
 installGlobals(1, n)
 
-// `stamp` is where the counter starts. A wrapped run's mask is pre-filled with
-// small stamps, the values the restarted counter walks through: a guard that
-// restarts the counter without clearing the mask reads them as visited.
-// The constructor allocates the mask through newStampMarks (#736): the cap it
-// records is what bumpStamp wraps at, and a bare Int32Array would never wrap.
+// `stamp` is where the search number starts. A wrapped run's marks are
+// pre-filled with small numbers, the values the restarted count walks through:
+// a guard that restarts the count without clearing the marks reads them as
+// visited. The constructor allocates the marks through newVisitMarks (#736):
+// the limit it records is what nextVisit wraps at, and a bare Int32Array would
+// never wrap.
 {
   const inst = {}
   mod.setParams(inst, CELLS, n, n)
-  assert.strictEqual(inst.mask.stampCap, 0x7FFFFFFF, 'the mask was not allocated through newStampMarks')
+  assert.strictEqual(inst.seen.visitLimit, 0x7FFFFFFF, 'the marks were not allocated through newVisitMarks')
 }
 
 const run = (stamp, reps) => {
@@ -38,8 +39,8 @@ const run = (stamp, reps) => {
     const inst = {}
     mod.setParams(inst, CELLS, n, n)
     if (stamp) {
-      inst.stamp = stamp
-      for (let i = 0; i < inst.mask.length; i++) inst.mask[i] = 1 + (i * 7 + rep) % 60
+      inst.visit = stamp
+      for (let i = 0; i < inst.seen.length; i++) inst.seen[i] = 1 + (i * 7 + rep) % 60
     }
     const log = console.log
     console.log = () => {}

@@ -75,7 +75,8 @@ What a reader who wants the commentary gets depends on the example:
   goes through the comment-keeping minify (`--keep-comments`, #433). Hand that
   file to the reader, and check which board it carries: `ls
   examples/*/PUZZLE_LINK*annotated* examples/*/*/PUZZLE_LINK*annotated*` lists
-  `house-gac`, `dutch-flatmates` and `count-digits-gac/sparse`. dutch-flatmates'
+  `house-gac`, `dutch-flatmates`, `fillomino` and `count-digits-gac/sparse`.
+  fillomino's twin is of its shipped `PUZZLE_LINK.txt` (#870). dutch-flatmates'
   twin is of its 0-given timing board `PUZZLE_LINK_0g.txt`, not of the shipped
   `PUZZLE_LINK.txt`, so it is not the board to hand a solver.
 - **No twin exists** — the plain link strips the comments, so the recipient

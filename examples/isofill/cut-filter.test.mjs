@@ -14,7 +14,7 @@ const HERE = import.meta.dirname
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 
-const SKIP = '  if (skip[x]) return false // the filter cleared this cell: no cut\n'
+const SKIP = '  if (notNeeded[x]) return false // the filter cleared this cell: no cut\n'
 const WALKED = '  let cut = reachSize(instance, placed, depth, allowed, size).size < size\n'
 
 function unfiltered (src) {
@@ -22,7 +22,7 @@ function unfiltered (src) {
 }
 
 function counted (src) {
-  src = patchSource(src, SKIP, '  globalThis.__skipped += skip[x] ? 1 : 0\n' + SKIP)
+  src = patchSource(src, SKIP, '  globalThis.__skipped += notNeeded[x] ? 1 : 0\n' + SKIP)
   return patchSource(src, WALKED, '  globalThis.__walked++\n' + WALKED)
 }
 

@@ -33,9 +33,10 @@ class BareBoard:
     rule: str
     digit_range: Callable
 
-    def build(self, component_path, puzzle_path):
+    def build(self, component_path, puzzle_path, keep_comments=False):
         """Build the board in `puzzle_path` with `component_path`'s code.
-        Returns (link, doc, number of givens)."""
+        `keep_comments` builds the annotated twin: the embedded code keeps its
+        comments (minify.py). Returns (link, doc, number of givens)."""
         spec = json.loads(pathlib.Path(puzzle_path).read_text())
         clues = {tuple(p) for p in spec["clues"]}
         height = len(spec["grid"])
@@ -75,8 +76,15 @@ class BareBoard:
                     {"type": 0},
                     code_constraint(
                         self.name,
-                        minify_file(self.dir / "main.js"),
-                        [(self.component, minify_file(pathlib.Path(component_path)))],
+                        minify_file(self.dir / "main.js", keep_comments),
+                        [
+                            (
+                                self.component,
+                                minify_file(
+                                    pathlib.Path(component_path), keep_comments
+                                ),
+                            )
+                        ],
                         named=True,
                     ),
                 ],
@@ -113,11 +121,16 @@ class BareBoard:
         candidate into a committed board (link_swap.swap_main)."""
         p = argparse.ArgumentParser()
         p.add_argument("--puzzle", default=self.dir / "gen.json")
+        p.add_argument(
+            "--keep-comments",
+            action="store_true",
+            help="build the annotated twin: the embedded code keeps its comments",
+        )
 
         def rebuild(args, _parser):
             out = args.out or self.dir / "PUZZLE_LINK.txt"
             link, doc, n_clues = self.build(
-                self.dir / f"{self.component}.js", args.puzzle
+                self.dir / f"{self.component}.js", args.puzzle, args.keep_comments
             )
             self.check(link, doc, n_clues)
             pathlib.Path(out).write_text(link + "\n")
