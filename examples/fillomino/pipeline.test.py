@@ -59,6 +59,10 @@ def run(spec, link_text, tmp):
 
     puzzle = decode_puzzle(link_text.strip())["puzzle"]
     assert (puzzle["width"], puzzle["height"]) == (width, height)
+    # The app offers minDigit..maxDigit (default 1..9): the range the proof ran on.
+    assert (puzzle.get("minDigit", 1), puzzle.get("maxDigit", 9)) == (1, cap), (
+        f"the app offers digits other than the proof's 1-{cap}"
+    )
     assert len(puzzle["cells"]) == width * height
     for i, cell in enumerate(puzzle["cells"]):
         r_, c_ = divmod(i, width)

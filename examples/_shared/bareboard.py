@@ -24,8 +24,8 @@ class BareBoard:
     `digit_range(spec, n)` returns `(lo, hi, fields)`: the digits the board
     plays and the range fields the puzzle document ships for them, which may
     be none (the app's default); `n` is the width. `rule` is the rules text,
-    formatted with `n`, `lo`, `hi`, `width`, `height`, `count` (the digits) and
-    `size` (cells per digit, rounded down)."""
+    formatted with `lo`, `hi`, `count` (the digits) and `size` (cells per
+    digit, rounded down)."""
 
     dir: pathlib.Path
     name: str
@@ -42,6 +42,7 @@ class BareBoard:
         height = len(spec["grid"])
         n = width = len(spec["grid"][0])
         lo, hi, fields = self.digit_range(spec, n)
+        assert 0 <= lo <= hi <= 9, f"digits {lo}-{hi} do not fit the app's 0-9 range"
         count = hi - lo + 1
         # a cell holds a value only when it is a clue: a non-given value ships
         # as an entered digit and the recipient opens a solved board
@@ -60,13 +61,7 @@ class BareBoard:
                 "height": height,
                 **fields,
                 "comment": self.rule.format(
-                    n=n,
-                    lo=lo,
-                    hi=hi,
-                    width=width,
-                    height=height,
-                    count=count,
-                    size=width * height // count,
+                    lo=lo, hi=hi, count=count, size=width * height // count
                 ),
                 "cells": cells,
                 "constraints": [
@@ -98,14 +93,10 @@ class BareBoard:
         p = back["puzzle"]
         width, height = p["width"], p["height"]
         assert p["type"] == "custom"
-        lo = p.get("minDigit", 1)
-        # no maxDigit means the app's 9: one digit per cell of the longer side
-        if "maxDigit" in p:
-            assert lo <= p["maxDigit"] <= 9, "digits must fit the app's 0-9 range"
-        else:
-            assert lo + max(width, height) - 1 <= 9, (
-                "digits must fit the app's 0-9 range"
-            )
+        # The digits the app offers: minDigit..maxDigit, each defaulting to
+        # the app's own 1 and 9. The board's shape does not enter into it.
+        lo, hi = p.get("minDigit", 1), p.get("maxDigit", 9)
+        assert 0 <= lo <= hi <= 9, "digits must fit the app's 0-9 range"
         assert len(p["cells"]) == width * height and not any("houses" in k for k in p)
         # every non-given cell must be empty, or the board ships entered digits
         assert all(c.get("given") or c == {} for c in p["cells"])

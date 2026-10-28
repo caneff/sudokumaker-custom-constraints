@@ -811,7 +811,10 @@ component changed, so `just time` has no candidate to build):
 
 The soundness harness and the update-strength gate also run on a 7 wide, 5 high
 fixture (zero violations, zero weaker cells), and `pipeline.test.py` carries
-the same board as `gen_15g.json` / `PUZZLE_LINK_15g.txt`.
+the same board as `gen_15g.json` / `PUZZLE_LINK_15g.txt`. A board that is not
+square ships `minDigit` and `maxDigit`, so that link offers 1-7 in the app: the
+digits its rules text names and its proof ran on (`pipeline.test.py` asserts
+the three agree).
 
 Tag 03 (CJK, 14 x 15, Logic Masters 00054B) timed out at 1200 s on the repo
 model at digits 1..9 and at 1..15: no verdict for either
