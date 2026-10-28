@@ -65,11 +65,15 @@ class Board:
 
     @classmethod
     def of_doc(cls, doc):
-        """The grid's rows give the height; a gen JSON may name `digits` when
-        it is not the width."""
+        """The grid's rows give the height. A gen JSON names `digits` only
+        when it is not the width, so a missing count is the width, as
+        verify.py writes it and isofill/build_link.py reads it."""
         grid = doc["grid"]
         return cls.of(
-            len(grid[0]), len(grid), lo=doc.get("minDigit", 0), digits=doc.get("digits")
+            len(grid[0]),
+            len(grid),
+            lo=doc.get("minDigit", 0),
+            digits=doc.get("digits", len(grid[0])),
         )
 
     def givens(self, doc):

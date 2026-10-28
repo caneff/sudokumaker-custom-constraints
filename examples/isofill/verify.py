@@ -59,6 +59,15 @@ def unique(board, givens, limit=LIMIT, reproducible=True):
     return is_unique
 
 
+def gen_doc(board, grid, clues):
+    """The gen JSON for `grid` on `board` with `clues` given: `digits` is
+    written only when it is not the width, which `Board.of_doc` reads back."""
+    doc = {"grid": grid, "clues": clues, "minDigit": board.lo}
+    if board.digits != board.width:
+        doc["digits"] = board.digits
+    return doc
+
+
 def self_check(board):
     n = board.width
     assert board.height == board.digits == n, "self_check needs a square board"
@@ -107,10 +116,7 @@ if __name__ == "__main__":
         board = Board.of(width or 10, height, lo=lo or 0, digits=digits)
         grid = sample(board, seed)
         clues = strip(board, grid, seed) if sys.argv[1] == "strip" else board.cells
-        doc = {"grid": grid, "clues": clues, "minDigit": board.lo}
-        if board.digits != board.width:
-            doc["digits"] = board.digits
-        print(json.dumps(doc))
+        print(json.dumps(gen_doc(board, grid, clues)))
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
         board = Board.of_doc(doc)

@@ -1,3 +1,4 @@
+import json
 import pathlib
 import sys
 
@@ -5,6 +6,7 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 import verify
+from sudoku_kit import cpsat
 from verify import Board
 
 
@@ -98,6 +100,30 @@ def test_of_doc_reads_height_from_rows_and_digits_from_the_key():
     assert (board.width, board.height, board.digits, board.size) == (5, 3, 3, 5)
 
 
+def test_a_written_gen_reads_back_when_digits_equal_the_width():
+    # 4 wide, 6 high, 4 digits: the written gen leaves `digits` out, and
+    # reading it back must still give the same board.
+    board = Board.of(4, 6, lo=1, digits=4)
+    grid = ["1122", "1122", "1122", "3344", "3344", "3344"]
+    doc = verify.gen_doc(board, grid, board.cells)
+    assert "digits" not in doc, doc
+    assert Board.of_doc(json.loads(json.dumps(doc))) == board
+
+
+def test_a_region_holds_cells_over_digits_not_the_width():
+    # 4 wide, 6 high, 4 digits: each region holds 6 cells, not 4, so four
+    # 2x3 blocks are a valid grid.
+    board = Board.of(4, 6, lo=1, digits=4)
+    grid = ["1122", "1122", "1122", "3344", "3344", "3344"]
+    m, _ = verify.model(board, board.givens({"grid": grid, "clues": board.cells}))
+    status = cpsat.solver(10).Solve(m)
+    assert status in cpsat.SOLVED, "a grid of four 6-cell regions broke the model"
+    # Two cells of digit 1 left blank: the count of 6 forces them back.
+    open_ = {(0, 0), (0, 1)}
+    givens = {p: int(grid[p[0]][p[1]]) for p in board.cells if p not in open_}
+    assert verify.unique(board, givens) is True
+
+
 def test_sample_reports_a_spent_time_cap_as_a_timeout():
     try:
         verify.sample(Board.of(9, lo=1), seed=1, limit=0.0001)
@@ -120,4 +146,6 @@ if __name__ == "__main__":
     test_a_rectangle_without_a_digit_count_is_refused()
     test_uneven_split_is_refused()
     test_of_doc_reads_height_from_rows_and_digits_from_the_key()
+    test_a_written_gen_reads_back_when_digits_equal_the_width()
+    test_a_region_holds_cells_over_digits_not_the_width()
     print("ok")
