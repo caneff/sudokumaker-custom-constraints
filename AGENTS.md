@@ -60,11 +60,13 @@ others. If no step is forced from that state, say so.
 
 ## Puzzle links (always on)
 
-- **Hand a link over only as a short link** (`https://sudokumaker.app/p/<id>`),
-  printed bare, in chat, a PR, a ticket or a README. Mint it from a committed
-  file (sudoku-kit#53 adds the command). The full link stays in
-  `PUZZLE_LINK*.txt` as the source of truth and never appears in chat: it is a
-  10 KB blob. (Chris, 2026-10-22.)
+- **A link is only ever a short link** (`https://sudokumaker.app/p/<id>`),
+  printed bare, in chat, a PR, a ticket or a README (sudoku-kit#53 adds the
+  minting command). No full link is kept: an example's builder is its source
+  of truth and rebuilds the full link when needed (Chris, 2026-10-23,
+  replacing his 2026-10-22 rule that kept `PUZZLE_LINK*.txt` as full links).
+  Until the builders mint, `PUZZLE_LINK*.txt` files still hold full links; a
+  full link never appears in chat: it is a 10 KB blob.
 - **A full link must not leak into the transcript.** The trap that has broken
   this twice is `shot-scraper`: its default `shot`
   subcommand writes `Screenshot of '<url>' written to '<file>'` **to stderr**,
