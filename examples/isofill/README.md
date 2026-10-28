@@ -1017,6 +1017,29 @@ of the split too: the filter must clear cells, and the re-walk must still run.
 Soundness: 6 x 2,000 tests with 0 violations on `just soundness`, and 6 x
 20,000 on the deep run.
 
+### Neighbour helper takes width and height (#866)
+
+The shared neighbour helper (`_shared/dominator.js`) takes the board's width
+and height; no deduction changed, so the bar is 1.1x or under on both rows.
+The controller's quiet-box re-run, `just time isofill`, 3 reps,
+non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill | 500ms | 400ms | 0.80 | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill after-logical | 0ms | 0ms | — | — |
+
+### Any width and height (#868)
+
+The border walk, `main.js` and the rules text read a width and a height; no
+deduction changed. The controller's quiet-box re-run, `just time isofill`, 3
+reps, non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill | 400ms | 400ms | 1.00 | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill after-logical | 0ms | 0ms | — | — |
+
 ### Shared helpers rewritten for reading (#870)
 
 The two files this component includes, `_shared/dominator.js` and
@@ -1029,6 +1052,8 @@ and their names changed with them: `domFold` → `findBottlenecks`, `subtreeSums
 renames; it adds and removes no deduction, so the bar is 1.1x or under on both
 rows. `just time isofill`, 3 reps, non-deterministic solve off:
 
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-22 | v2026.10.05-a3aef4c | isofill | 400ms | 400ms | 1.00 | FAIL |
 | 2026-10-22 | v2026.10.05-a3aef4c | isofill after-logical | 0ms | 0ms | — | NO TIME |
 

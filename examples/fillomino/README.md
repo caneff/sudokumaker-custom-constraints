@@ -14,113 +14,95 @@ and #309 (**rung 3**, cut starve). The ladder is complete.
 
 ## What the component deduces
 
-The component was rewritten for a setter in #870, with the same deductions
-in the same order and new names. This README, and the history in it, keeps the
-older names; the code uses the new ones:
+One whole-grid `update`. Each call makes one grid scan, `findIslands`, that
+finds the **islands** — a maximal connected set of placed cells of one digit.
+Two adjacent cells holding `k` lie in one region, so an island of digit `k`
+with `p` cells sits wholly inside one region and that region needs `k - p` more
+cells. Rules 1-5 run per island and rule 6 once per digit; the numbers are the
+ones the component's header comment uses. The only thing carried between calls
+is rule 6's memory of the last call (below).
 
-| This README | `FillominoComponent.js` |
-| --- | --- |
-| `scan` | `findIslands` |
-| overflow, seal, starve, force (`islandRule`) | rules 1-3, `islandRules`: too big, finished, room to grow |
-| the walk | `roomToGrow` |
-| cut starve (`cutStarveRule`) | rule 4, `neededCellsRule`: cells the region can't do without |
-| the dominator filter (`cutFilter`) | `cellsRegionCanSkip`, with `dominator.js`'s bottlenecks |
-| doors, merge overflow, merge starve, one door (`doorRules`) | rule 5, `exitRules` |
-| component bound (`componentBound`) | rule 6, `smallPocketsRule`: pockets too small |
-| stamps (`bumpStamp`, `newStampMarks`) | visit marks (`nextVisit`, `newVisitMarks`) |
+Per island, in order (`islandRules`, then `neededCellsRule`, then `exitRules`):
 
-One whole-grid `update`. Each call makes one grid scan that finds the
-**islands** — a maximal connected set of placed cells of one digit. Two
-adjacent cells holding `k` lie in one region, so an island of digit `k` with
-`p` cells sits wholly inside one region and that region needs `k - p` more
-cells. Nothing is carried between calls.
-
-Per island, in order:
-
-- **Overflow** — an island of more than `k` cells holding `k` is a dead branch.
-- **Seal** — an island of exactly `k` cells is a finished region, so every open
-  cell touching it loses `k`.
-- **Walk** — a 0-1 breadth-first search out of the island. A cell already
-  holding `k` costs nothing to enter, an open cell that still allows `k` costs
-  one step, and the budget is the `k - p` open cells the region can still take.
-  The walk is a superset of the region.
-- **Starve** — a walk under `k` cells is a dead branch.
-- **Force** — a walk of exactly `k` cells *is* the region, so every open cell in
-  it holds `k`.
-- **Doors** — a door is an open cell beside the island that still allows `k`.
-  A door that touches islands of `k` adding up past `k` cells cannot hold `k`
-  (*merge overflow*); and when one door is left, the region has to grow through
-  it, so that cell holds `k` (*one door*).
-
-Then the growth test — rung 2, #308 — at the scope the clock allowed. At each
-**door**:
-
-- **Merge** — `M` is the door plus every island of the digit it touches. If the
-  door held `k`, Lemma A puts them all in one region.
-- **Merge overflow** — `|M| > k`, so the door does not hold `k`.
-- **Merge starve** — the 0-1 walk out of `M` with budget `k - |M|` covers the
-  whole region, so a walk under `k` cells means no such region exists and the
-  door does not hold `k`.
+1. **Too big** — an island of more than `k` cells holding `k` is a dead branch.
+2. **Finished** — an island of exactly `k` cells is a finished region, so every
+   empty cell touching it loses `k`.
+3. **Room to grow** (`roomToGrow`) — a 0-1 breadth-first search out of the
+   island. A cell already holding `k` costs nothing to enter, an empty cell
+   that still allows `k` costs one step, and the budget is the `k - p` empty
+   cells the region can still take. The room is a superset of the region. A
+   room under `k` cells is a dead branch; a room of exactly `k` cells *is* the
+   region, so every empty cell in it holds `k`.
+4. **Cells the region can't do without** (`neededCellsRule`) — take an empty
+   cell of the room and search again without it. If that covers fewer than `k`
+   cells the region cannot avoid the cell, since the region would otherwise be a
+   subset of a set under `k` cells. So the cell is in the region and holds `k`.
+   A bottleneck shortcut, `cellsRegionCanSkip`, clears most cells before any
+   second search (below). ISOFILL's *strand* half does not come along: two
+   islands of one digit need not share a region (transfer doc §4).
+5. **Exits** (`exitRules`) — an exit is an empty cell beside the island that
+   still allows `k`. `M` is the exit plus every island of the digit it touches;
+   if the exit held `k`, Lemma A puts them all in one region. So the exit loses
+   `k` when `|M| > k`, or when the 0-1 search out of `M` with budget `k - |M|`
+   covers fewer than `k` cells (no such region exists). And when one exit is
+   left, the region has to grow through it, so that cell holds `k`.
 
 And once per digit, over the whole board:
 
-- **Component bound** — the cells that allow `k` (open cells listing `k`, plus
-  cells holding `k`) split into orthogonally connected components. A `k`-region
-  is connected and lies inside one of them, so every cell of a component under
-  `k` cells loses `k`. This is the only rule that reaches a **silent region** —
-  a region with no placed cell in it — because every other rule starts from an
-  island.
+6. **Pockets too small** (`smallPocketsRule`) — the cells that allow `k` (empty
+   cells listing `k`, plus cells holding `k`) split into orthogonally connected
+   pockets. A `k`-region is connected and lies inside one of them, so every
+   cell of a pocket under `k` cells loses `k`. This is the only rule that
+   reaches a **silent region** — a region with no placed cell in it — because
+   every other rule starts from an island.
 
-And per island again, once the walk is known — rung 3, #309:
+Rule 5's `M` tests are #308's growth test at frontier scope, rule 6 is the
+bound #308 paired it with, and rule 4 is #309's rung 3. The sections below keep
+the rung numbers the timing tables use.
 
-- **Cut starve** — take an open cell of the walk and run the walk again
-  without it. If that covers fewer than `k` cells the region cannot avoid the
-  cell, since the region would otherwise be a subset of a set under `k` cells.
-  So the cell is in the region and holds `k`. A dominator-tree filter clears
-  most cells before any re-walk (below). ISOFILL's *strand* half does not come
-  along: two islands of one digit need not share a region (transfer doc §4).
+### The bottleneck shortcut — rung 3, #309
 
-### The dominator filter — rung 3, #309
-
-`cutFilter` transfers from ISOFILL (`IsofillComponent.js`, #258) unchanged: it
+`cellsRegionCanSkip` (the dominator filter of the rung tables) transfers from
+ISOFILL (`IsofillComponent.js`, #258) unchanged: it
 is a statement about reachability alone and never reads a digit or a region
-count. One breadth-first search from the island plus the dominator tree of the
-shortest-path DAG it builds answers every open cell at once — a cell stays
-reachable at its own distance without `y` whenever `y` does not dominate it, so
-the walk without `y` keeps at least (cells reached) − (cells `y` dominates).
-The bound only ever *clears* a cell; whatever it does not clear pays for a
-re-walk of its own.
+count. One breadth-first search from the island, with each reached cell's
+**bottleneck** (the nearest cell every shortest route to it passes through),
+answers every empty cell at once — a cell stays reachable at its own distance
+without `y` whenever `y` is not on its chain of bottlenecks, so the room
+without `y` keeps at least (cells reached) − (cells behind `y`). The shortcut
+only ever *clears* a cell; whatever it does not clear pays for a second search
+of its own.
 
-One thing had to be said differently here. The filter's BFS is the **unit-step**
-one, not the walk's 0-1 one, because a dominator tree needs layers a step
+One thing had to be said differently here. The shortcut's search is the
+**unit-step** one, not the room's 0-1 one, because bottlenecks need layers a step
 apart. Every path costs at least as much in unit steps as in 0-1 steps, so the
-unit walk is a subset of the 0-1 walk and its count is a lower bound on it —
-which is the direction the filter needs. A looser bound clears fewer cells and
-costs a walk; a bound the wrong way round would clear a cell that cuts.
+unit search is a subset of the 0-1 room and its count is a lower bound on it —
+which is the direction the shortcut needs. A looser bound clears fewer cells and
+costs a search; a bound the wrong way round would clear a cell the region needs.
 
 Every test in the pass reads **one** snapshot — that island's extent, that
-walk, that allowed row — so the cuts are collected and yielded together at the
+room, that allowed row — so the needed cells are collected and yielded together at the
 end, and the island's rules stop there for the call. Yielding inside the loop
-would place a `k` beside the island and leave every later test, and the door
-rules below, reading an island a deduction out of date. That is the same trap
+would place a `k` beside the island and leave every later test, and the exit
+rules, reading an island a deduction out of date. That is the same trap
 the vendored baseline falls into (see *Reading a live island* below).
 
-### The bound made cheap, not smaller — rung 2.5, #312
+### The pocket rule made cheap, not smaller — rung 2.5, #312
 
-The bound is the one rule bounded by the **board** rather than by the digit,
+The pocket rule (rule 6) is the one rule bounded by the **board** rather than by the digit,
 and #308's ablation proved its answers cannot be trimmed: every capped, gated
 and merge-less variant either threw the wins away or changed the fixpoint.
 So #312 left the answers alone and cut the cost, under one bar — the fixpoint
 stays **byte-identical**, asserted both directions against rung 2 as shipped.
 
-What ships is **dirty components**. `code[i]` is cell `i`'s allowed-digit
+What ships is **dirty pockets**. `digitsNow[i]` is cell `i`'s allowed-digit
 bitmask — the digit it holds, or its candidates — read once per cell per pass
-instead of once per `(cell, digit)` pair, and diffed against `prev`, the row
-the last completed pass finished on. A component whose cells and whose
-bordering cells all read the same code as last time *is* last time's component
+instead of once per `(cell, digit)` pair, and diffed against `digitsBefore`,
+the row the last completed pass finished on. A pocket whose cells and whose
+bordering cells all read the same digits as last time *is* last time's pocket
 and last time's verdict already stands, so only the changed cells and their
-neighbours seed a flood. On the first pass `prev` is all `-1` and every cell
-seeds one, exactly as before.
+neighbours seed a flood. On the first pass `digitsBefore` is all `-1`, so
+every cell seeds one.
 
 A **snapshot, never a dirty flag**: the solver gives no backtrack signal, so a
 flag set on our own prunes goes stale the moment the search restores a
@@ -131,13 +113,13 @@ moved. `update-strength.test.mjs` carries the check that hazard needs: one
 instance driven over 400 unrelated states has to settle each exactly where a
 fresh instance does.
 
-Measured as the bound's share on top of the same component with the bound cut
+Measured as the pocket rule's share on top of the same component with it cut
 out: **81% → 20%**, and 0.66× the component's local time. Two other
 optimizations were built to the same bar, proved fixpoint-identical, and
-dropped on the clock — **bound at quiescence** (1.30×: the island rules already
-quiesce in about one pass, so deferring the bound buys no bound passes and pays
+dropped on the clock — **pockets at quiescence** (1.30×: the island rules already
+quiesce in about one pass, so deferring the pocket rule buys no pocket passes and pays
 for a confirming island pass at every quiet point) and **k-bounded floods**
-(1.00×: with dirty components the floods are already small, and stopping early
+(1.00×: with dirty pockets the floods are already small, and stopping early
 moves work rather than removing it). The numbers and the pass counts are in
 `PROGRESS.md`; **bitboards were not built**, and `## Timing` says why.
 
@@ -146,21 +128,21 @@ moves work rather than removing it). The numbers and the pass counts are in
 #308 asks for the growth test per **(open cell, candidate digit)** pair, every
 open cell on the board. That version was built and timed first. Against the
 baseline it wins everywhere; against **rung 1** the clock refused it — 1.00× to
-4.86× on the frozen fixtures, worst on the digits-1-12 boards, where the walk
+4.86× on the frozen fixtures, worst on the digits-1-12 boards, where the room
 budget is widest. #308 names one fallback for exactly that outcome, and this is
-it: frontier-only scope plus the per-digit component bound. It keeps the
-silent-region win — the component bound needs no placed cell — and costs one
-flood per digit instead of one bounded walk per (cell, digit) pair. On this
+it: frontier-only scope plus the per-digit pocket rule. It keeps the
+silent-region win — the pocket rule needs no placed cell — and costs one
+flood per digit instead of one bounded search per (cell, digit) pair. On this
 example's strength fuzz the two scopes prune the same 21084 cells over 600
 states. Both sets of rows are in `## Timing`.
 
 **Merge force is not built, and not deferred — it is unsound.** The transfer
 doc's §6 box ends "if it covers exactly `k` and stopped there naturally, every
-open cell it covers holds `k`". That reading is sound only when the walk starts
-from a *placed* island, which is rung 1's force. Started from an open cell, the
+open cell it covers holds `k`". That reading is sound only when the search starts
+from a *placed* island, which is rule 3's placement. Started from an open cell, the
 budget `k - |M|` already assumes the cell holds `k`, so the conclusion is
 conditional on the very thing under test. Smallest counterexample: `k = 1`,
-where `M` is the cell alone, the walk covers exactly one cell, and the rule
+where `M` is the cell alone, the search covers exactly one cell, and the rule
 would place a 1 in every open cell that still allows one.
 
 `validate` is one flood over a full grid: every same-digit component's cell
@@ -180,32 +162,32 @@ variant removes and rung 1 keeps, at a fixpoint, over 600 fuzzed 6x6 states and
 time over the same grids. The full table is in `PROGRESS.md`. Four findings, and
 they are why the component looks the way it does:
 
-- **The component bound is all of the value.** The frontier growth test on its
+- **The pocket rule is all of the value.** The frontier growth test on its
   own removes exactly rung 1's 7352 candidates against the vendored baseline —
   zero extra, on 1360 states across both board sizes — for 1.79x rung 1's
-  component time. Every extra prune rung 2 makes comes from the bound.
-- **The merge rules still cannot be dropped.** With them removed, the bound
+  component time. Every extra prune rung 2 makes comes from the pocket rule.
+- **Rule 5's merge tests still cannot be dropped.** With them removed, the pocket rule
   alone runs 113 cells **weaker than the vendored baseline** and fails the
-  strength gate's half one. The rule set is not monotone: a bound prune can take
-  the last door out from under rung 1's one-door force, which then never fires.
-  The merge rules make no prune of their own here; they repair the hole the
-  bound opens. (A real fixpoint difference, not the fuzz harness's 20-pass cap —
+  strength gate's half one. The rule set is not monotone: a pocket prune can take
+  the last exit out from under the one-exit rule, which then never fires.
+  The merge tests make no prune of their own here; they repair the hole the
+  pocket rule opens. (A real fixpoint difference, not the fuzz harness's 20-pass cap —
   the same number at 400 passes.)
-- **Capping the bound by digit was rejected.** The guess was that the wins sit
-  in the small digits. The opposite is true: bound prunes by digit on the 9x9
+- **Capping the pocket rule by digit was rejected.** The guess was that the wins sit
+  in the small digits. The opposite is true: pocket prunes by digit on the 9x9
   fuzz run `{1:300, 2:3174, 3:4597, 4:6283, 5:8734, 6:9581, 7:10966, 8:10721,
   9:13425, 10:9626, 11:8501, 12:9283}` — value **rises** with the digit. Capping
   at 6 does shrink the worst losses (2.09x to 1.26x, 1.61x to 1.11x) but it
   throws the wins away: cap9-seed5 goes 0.03x to 0.93x and cap12-seed16 0.41x to
   1.11x, a 2.4x win turned into a loss.
-- **Running the bound only on open-enough boards was rejected.** A gate at 25%
+- **Running the pocket rule only on open-enough boards was rejected.** A gate at 25%
   open cells changes the fixpoint by 228 candidates, at 50% by 4186. A speed
   gate that changes what the component deduces is a different component.
 
-One gate was built and then deleted: cells inside a walk that ended at `k` or
-more cells provably sit in a component of at least `k` cells, so the bound's
+One gate was built and then deleted: cells inside a room that ended at `k` or
+more cells provably sit in a pocket of at least `k` cells, so the pocket rule's
 flood need not be seeded from them. It is sound and was asserted identical at
-the fixpoint, but it skips 9-13% of the bound's *seeds* and none of its
+the fixpoint, but it skips 9-13% of the pocket rule's *seeds* and none of its
 *floods* — a skipped seed almost always sits in a component some other seed
 floods anyway — and it measured 1.03x on the local bench with no separable
 effect in the app. Deleted rather than shipped: a gate that guards nothing is
@@ -213,7 +195,7 @@ code to read at 3am.
 
 What did survive from that pass is one line: `allows` reads
 `puzzle.getCandidatesBitMask`, not `puzzle.getCandidates`, which allocates a
-fresh DigitSet on every read. The bound calls it once per (cell, digit) pair per
+fresh DigitSet on every read. The pocket rule calls it once per (cell, digit) pair per
 update. Cold against rung 1 on the three worst fixtures: 2.13x to 2.09x, 1.89x
 to 1.61x, 1.52x to 1.25x.
 
@@ -223,13 +205,13 @@ to 1.61x, 1.52x to 1.25x.
 deduction may have placed a digit right beside it. Every rule reads the
 island's **live** extent, re-flooded from the scan's seed cell, rather than the
 extent the scan recorded. This is not a nicety: the vendored baseline reads the
-scanned list as fact and, on a stale under-sized island, its seal and its
-one-door force are both unsound. Driven as published it removes a true value on
+scanned list as fact and, on a stale under-sized island, its finished rule and its
+one-exit rule are both unsound. Driven as published it removes a true value on
 about one state in ten of this example's fuzz.
 
 ### Not built yet
 
-Tour, cut strand, perimeter flank, budget covering, and the walk's outside and
+Tour, cut strand, perimeter flank, budget covering, and the room's outside and
 missed-placed readings are dead under fillomino's two-fold indexing and are not
 planned. See #284 for each parked rule and its admission bar.
 
@@ -443,6 +425,14 @@ the *live* strip under the same component — the same neighbourhood, from a
 different grid and a different stripper.
 
 ## Timing
+
+**Timing a frozen fixture now.** The committed `timing-fixture-*.txt` links
+embed the square-only `main.js` from before #867, which hands the component no
+width or height, so `just time fillomino --board <fixture>` refuses them (the
+refusal is quoted under *Readable for sharing* below). To time one, rebuild its
+board and givens in `.scratch/` with today's `main.js` and run `just time-link`
+on the rebuilt links, the frozen component against the candidate, as the #870
+rows below were.
 
 ### Candidate reads on bitmasks (#453)
 
@@ -797,6 +787,18 @@ removes and it keeps. Against rung 2 itself, over the fixpoint floor's 200
 states, cut starve removes 856 candidates rung 2 settles on and gives none
 back.
 
+## Neighbour helper takes width and height (#866)
+
+The shared neighbour helper (`_shared/dominator.js`) takes the board's width
+and height, so the shipped link's embedded code changed with no deduction
+added or removed: the bar is 1.1x or under on both rows. The controller's
+quiet-box re-run, `just time fillomino`, 3 reps, non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | fillomino | 4800ms | 4600ms | 0.96 | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | — |
+
 ## Any width and height (#867)
 
 `main.js` reads the board's width and height, so the shipped link's embedded
@@ -809,7 +811,8 @@ component changed, so `just time` has no candidate to build):
 | 2026-10-22 | v2026.10.05-a3aef4c | fillomino cold | 4500ms | 4400ms | 0.98 | — |
 | 2026-10-22 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | — |
 
-The soundness harness and the update-strength gate also run on a 7 wide, 5 high
+The soundness harness, the update-strength gate and the rung-2 fixpoint floor
+(`ac20771`, handed the board's neighbour lists) also run on a 7 wide, 5 high
 fixture (zero violations, zero weaker cells), and `pipeline.test.py` carries
 the same board as `gen_15g.json` / `PUZZLE_LINK_15g.txt`. A board that is not
 square ships `minDigit` and `maxDigit`, so that link offers 1-7 in the app: the
@@ -825,8 +828,8 @@ model at digits 1..9 and at 1..15: no verdict for either
 The component and the two files it includes (`_shared/dominator.js`,
 `_shared/stamp.js`) were rewritten for a setter who reads some JavaScript: the
 rules in puzzle words, **island** and **region** defined once, each rule's code
-under the comment that explains it, and new names (the map is at the top of
-*What the component deduces*). The deductions did not change.
+under the comment that explains it, and new names (*What the component
+deduces* uses them). The deductions did not change.
 `equivalence.test.mjs` holds the rewrite to a frozen copy of the component as
 it stood before (`.golden/FillominoComponent.95bf886.js`, includes spliced in).
 It runs a search on each of the 19 frozen fixtures and fuzzes states around a
@@ -841,6 +844,8 @@ No deduction was added or removed, so the bar is 1.1x or under on both rows,
 
 `just time fillomino`, the shipped board:
 
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-22 | v2026.10.05-a3aef4c | fillomino | 4300ms | 4500ms | 1.05 | FAIL |
 | 2026-10-22 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
 

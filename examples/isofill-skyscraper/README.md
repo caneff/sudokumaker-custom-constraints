@@ -123,6 +123,17 @@ off, recorded app replay):
 No component changed, so the rows are a baseline with no ratio. After the
 app's logical solver the board is solved by logic alone (0 ms).
 
+### A rectangular interior (#869)
+
+`main-global.js` hands the component the interior's width and height; no
+deduction changed. The controller's quiet-box re-run, `just time
+isofill-skyscraper --ring-clues`, 3 reps, non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper | 200ms | 200ms | 1.00 | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper after-logical | 0ms | 0ms | — | — |
+
 ### Shared helpers rewritten for reading (#870)
 
 `IsofillComponent.js` includes `_shared/dominator.js` and `_shared/stamp.js`,
