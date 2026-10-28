@@ -127,7 +127,9 @@ class NoRing(Lane):
     def drawn(self, board):
         return no_ring_groups(self.spec, board)
 
-    def files(self, n):
+    def files(self, n, height=None):
+        if height is not None:
+            raise ValueError("the no-ring lane builds square boards only")
         return named_files(self.spec, "" if n == 9 else f"{n}x{n}")
 
     def build_doc(self, board):

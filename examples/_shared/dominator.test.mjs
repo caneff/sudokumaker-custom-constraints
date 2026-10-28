@@ -25,6 +25,6 @@ assert.deepStrictEqual(sorted(5, 3, 2), [2, 4])
 assert.deepStrictEqual(sorted(3, 2, 3), [1, 2, 5])
 assert.deepStrictEqual(sorted(4, 2, 3), [2, 5])
 
-// A square gives the same answer as before the change.
+// A square board: width and height both 3.
 assert.deepStrictEqual(sorted(4, 3, 3), [1, 3, 5, 7])
 console.log('dominator.test.mjs: ok')

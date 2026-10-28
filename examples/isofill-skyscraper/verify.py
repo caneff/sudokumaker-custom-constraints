@@ -60,7 +60,7 @@ def house_problems(doc):
 def grid_problems(board):
     grid = board.grid
     m, x = model(
-        IsofillBoard.of(board.n, board.rows, lo=MIN_DIGIT, digits=board.digit_count), {}
+        IsofillBoard.of(board.n, board.height, lo=MIN_DIGIT, digits=board.digits), {}
     )
     for (r, c), v in x.items():
         m.Add(v == grid[r][c])
@@ -93,7 +93,7 @@ def grid_problems(board):
 
 
 def check(board, link_file):
-    n, rows = board.n, board.rows
+    n, rows = board.n, board.height
     givens, active, clue = board.givens, board.active, board.clue
     doc = decode_puzzle(link_file.read_text().strip())["puzzle"]
     assert (doc["width"], doc["height"]) == (n + 2, rows + 2), (

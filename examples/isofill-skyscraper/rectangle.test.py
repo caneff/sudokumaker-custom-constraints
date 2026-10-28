@@ -7,7 +7,9 @@
 #
 #   uv run examples/isofill-skyscraper/rectangle.test.py
 
+import contextlib
 import dataclasses
+import io
 import pathlib
 import sys
 import tempfile
@@ -34,7 +36,7 @@ def _board(width, height):
 def test_a_rectangular_board_builds_and_its_link_is_a_rectangle():
     for width, height in SHAPES:
         board = _board(width, height)
-        assert (board.n, board.rows, board.digit_count) == (width, height, 3)
+        assert (board.n, board.height, board.digits) == (width, height, 3)
         # every line is as long as the dimension it crosses
         for (side, i), cells in board.lines.items():
             assert len(cells) == (width if side in "LR" else height), (side, i)
@@ -64,7 +66,7 @@ def test_the_gen_json_round_trips_a_rectangle():
 def test_a_square_board_records_no_shape():
     with tempfile.TemporaryDirectory() as tmp:
         shipped = load_board(RingGlobal(SPEC).files(9)[1])
-        assert shipped.shape == {} and shipped.height is None
+        assert shipped.shape == {} and shipped.height == shipped.digits == 9
         path = pathlib.Path(tmp) / "gen.json"
         save_board(shipped, path)
         assert "height" not in path.read_text() and "digits" not in path.read_text()
@@ -100,11 +102,63 @@ def test_the_command_line_builds_and_rebuilds_a_rectangle():
             args = ["4", "--height", "3", "--digits", "3", "--seeds", "3"]
             framebuild.main(SPEC, args)
             built = (pathlib.Path(tmp) / "link_4x3.txt").read_text()
-            assert load_board(pathlib.Path(tmp) / "gen_4x3.json").rows == 3
+            assert load_board(pathlib.Path(tmp) / "gen_4x3.json").height == 3
             framebuild.main(SPEC, ["4", "--rebuild", "--height", "3"])
             assert (pathlib.Path(tmp) / "link_4x3.txt").read_text() == built
         finally:
             framebuild.named_files = named
+
+
+def test_generate_refuses_a_rectangle_it_cannot_build():
+    shape = {"height": 3, "digits": 3}
+    # bent paths read square lines; a sudoku interior's hooks take no height
+    for spec, paths in [
+        (SPEC, True),
+        (dataclasses.replace(SPEC, grid_fn=None), False),
+        (dataclasses.replace(SPEC, model_fn=None), False),
+    ]:
+        try:
+            generate(spec, 4, 1, 4, SEEDS, paths=paths, shape=shape)
+        except ValueError as e:
+            assert "grid_fn and model_fn" in str(e), str(e)
+        else:
+            raise AssertionError(f"a rectangle was generated (paths={paths})")
+
+
+def _refusal(argv):
+    """The message `framebuild.main` exits with for `argv`. Its files are named
+    in a temporary directory, so an `argv` it wrongly accepts writes nothing
+    into the example."""
+    err = io.StringIO()
+    named = framebuild.named_files
+    with tempfile.TemporaryDirectory() as tmp:
+        framebuild.named_files = lambda spec, tag: (
+            pathlib.Path(tmp) / f"link_{tag}.txt",
+            pathlib.Path(tmp) / f"gen_{tag}.json",
+        )
+        try:
+            with contextlib.redirect_stderr(err):
+                framebuild.main(SPEC, argv)
+        except SystemExit as e:
+            assert e.code == 2, e.code
+            return err.getvalue()
+        finally:
+            framebuild.named_files = named
+    raise AssertionError(f"{argv} was accepted")
+
+
+def test_main_refuses_a_rectangle_flag_it_would_drop():
+    rect = ["4", "--height", "3", "--digits", "3"]
+    assert "global lane only" in _refusal([*rect, "--local"])
+    assert "--height and --digits together" in _refusal(["4", "--height", "3"])
+    assert "a square takes it positionally" in _refusal(["4", "1", "4", "--seeds", "3"])
+    assert "pass n, the lane and --height only" in _refusal(
+        ["4", "--rebuild", "--height", "3", "--digits", "3"]
+    )
+    assert "pass n, the lane and --height only" in _refusal(
+        ["9", "--rebuild", "--seeds", "3"]
+    )
+    assert "names no box" in _refusal([*rect[:1], "1", "4", *rect[1:]])
 
 
 def test_the_rules_text_names_region_count_and_size():
@@ -120,4 +174,6 @@ if __name__ == "__main__":
     test_verify_accepts_a_rectangle_and_refuses_the_wrong_size()
     test_the_command_line_builds_and_rebuilds_a_rectangle()
     test_the_rules_text_names_region_count_and_size()
+    test_generate_refuses_a_rectangle_it_cannot_build()
+    test_main_refuses_a_rectangle_flag_it_would_drop()
     print("ok")

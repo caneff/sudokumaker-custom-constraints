@@ -17,7 +17,8 @@
 # tree right now).
 #
 #   n box_height box_width [seed_count] [--paths|--local]
-#   --rebuild n [--paths|--local]
+#   n --height H --digits D [--seeds K]
+#   --rebuild n [--paths|--local] [--height H]
 #
 # Writes PUZZLE_LINK*.txt and gen*.json next to the caller's script.
 
@@ -65,8 +66,12 @@ class Spec:
     clue_fn: Callable
     # cp_sat_clue_fn(m, x, cells, kk, n, tag, box): posts the CP-SAT clue
     # constraint. Same `cells` and `box` as clue_fn, so the two say one rule.
+    # `n` is the board's digit count, which is the side on a square board.
     cp_sat_clue_fn: Callable
-    comment_fn: Callable  # comment_fn(n) -> the puzzle's rule text
+    # comment_fn(n, **shape) -> the puzzle's rule text. `n` is the interior's
+    # width; a rectangular board (`Board.shape`) also passes `height` and
+    # `digits`, a square one passes neither.
+    comment_fn: Callable
     extra_cages: Callable | None = (
         None  # extra_cages(interior) -> extra constraints, spliced after {"type": 0}
     )
@@ -107,11 +112,14 @@ class Spec:
     # The interior, for an example whose grid is not a sudoku: grid_fn,
     # model_fn, box_regions and rowcol_houses. Each defaults to the sudoku
     # interior, so an example that sets none of them builds a sudoku board.
-    # grid_fn(rng, n, bh, bw) -> the solved interior, as rows of digits; None
-    # draws `make_grid`'s sudoku.
+    # A rectangular board hands grid_fn and model_fn its `height` and `digits`
+    # as keywords too (`Board.shape`); a square one passes neither, so a hook
+    # for a sudoku interior takes only the arguments below.
+    # grid_fn(rng, n, bh, bw, **shape) -> the solved interior, as rows of
+    # digits, `n` wide; None draws `make_grid`'s sudoku.
     grid_fn: Callable | None = None
-    # model_fn(n, box) -> (m, x): the CP-SAT interior `unique` posts givens and
-    # clues onto, with `x` keyed by (row, column); None builds
+    # model_fn(n, box, **shape) -> (m, x): the CP-SAT interior `unique` posts
+    # givens and clues onto, with `x` keyed by (row, column); None builds
     # `cpsat.sudoku_model`.
     model_fn: Callable | None = None
     # Does the ring board declare the interior's boxes as regions? False
@@ -192,30 +200,20 @@ class Board:
     givens: dict
     active: set
     lines: dict
+    # The interior is `n` wide and `height` tall, with `digits` digits; a
+    # sudoku has both equal to `n`.
+    height: int
+    digits: int
     seed: int | None = None
-    # A rectangular interior names its height and its digit count; both None
-    # is the square board with `n` digits, which every sudoku is. `n` stays
-    # the width.
-    height: int | None = None
-    digits: int | None = None
-
-    @property
-    def rows(self):
-        """The interior's height."""
-        return self.n if self.height is None else self.height
-
-    @property
-    def digit_count(self):
-        return self.n if self.digits is None else self.digits
 
     @property
     def shape(self):
-        """The keywords a rectangular board hands its interior hooks and its
-        `Board` copies; empty for a square one, so a hook that knows no
-        rectangle is called exactly as before."""
-        if self.height is None and self.digits is None:
+        """The keywords a rectangular board hands its interior hooks:
+        `height` and `digits`, or none when both equal `n`, so a hook for a
+        square interior takes no keyword it does not know."""
+        if self.height == self.n and self.digits == self.n:
             return {}
-        return {"height": self.rows, "digits": self.digit_count}
+        return {"height": self.height, "digits": self.digits}
 
     @property
     def box(self):
@@ -354,9 +352,7 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     # and so the CP-SAT search path, the same on every run.
     for k in sorted(board.active):
         cells = board.lines[k]
-        post_clue(
-            m, x, cells, board.clue[k], board.digit_count, _ring_name(k), board.box
-        )
+        post_clue(m, x, cells, board.clue[k], board.digits, _ring_name(k), board.box)
     try:
         first, unique = cpsat.solve_unique(m, x, limit)
     except TimeoutError:
@@ -441,8 +437,9 @@ def _full_ring(spec, grid, lines, n, bh, bw, seed, shape):
         givens={},
         active=set(lines),
         lines=lines,
+        height=shape.get("height", n),
+        digits=shape.get("digits", n),
         seed=seed,
-        **shape,
     )
 
 
@@ -571,9 +568,8 @@ def hide_clues(spec, board):
     return replace(board, active=active)
 
 
-def frame_groups(n, lines, height=None):
-    """The drawn groups for `lines` on an n-wide, `height`-tall interior (square
-    unless `height` says otherwise): each group is the
+def frame_groups(n, lines):
+    """The drawn groups for `lines` on an n x n interior: each group is the
     clue's ring cell, then that line's cells inward, which is the order
     `main.js` reads (docs/example-layout.md).
 
@@ -582,7 +578,6 @@ def frame_groups(n, lines, height=None):
     numbered-rooms/build_original.py and skyscraper/build_original.py.
     """
     W = n + 2
-    H = (n if height is None else height) + 2
 
     def idx(r, c):
         return r * W + c
@@ -590,7 +585,7 @@ def frame_groups(n, lines, height=None):
     return [
         {
             "cells": [
-                idx(*ring_cell(_ring_name(key), W, H)),
+                idx(*ring_cell(_ring_name(key), W)),
                 *(idx(r + 1, c + 1) for r, c in lines[key]),
             ],
             "value": "",
@@ -684,11 +679,10 @@ def puzzle_document(spec, board, width, cells, constraints, comment, height=None
     """The document around one board's cells and constraints: the header
     fields every framebuild link shares, in the order they are encoded. `height`
     is the document's, the frame included; None is as tall as it is wide."""
-    n, rows = board.n, board.rows
     return {
         "formatVersion": "1.6.0",
         "puzzle": {
-            "name": f"{spec.title} {n}x{rows}",
+            "name": f"{spec.title} {board.n}x{board.height}",
             "author": "",
             "comment": comment,
             # minDigit/maxDigit pin the digit range to the digit count; the app
@@ -697,7 +691,7 @@ def puzzle_document(spec, board, width, cells, constraints, comment, height=None
             "width": width,
             "height": width if height is None else height,
             "minDigit": spec.min_digit,
-            "maxDigit": board.digit_count,
+            "maxDigit": board.digits,
             "cells": cells,
             "constraints": constraints,
             "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
@@ -721,9 +715,9 @@ def save_board(board, path):
         "givens": {f"{r},{c}": v for (r, c), v in board.givens.items()},
     }
     if board.shape:
-        doc["height"] = board.rows
-        doc["digits"] = board.digit_count
-    if board.lines != make_lines(board.n, board.rows):
+        doc["height"] = board.height
+        doc["digits"] = board.digits
+    if board.lines != make_lines(board.n, board.height):
         doc["paths"] = {
             _ring_name(k): [list(c) for c in board.lines[k]]
             for k in sorted(board.lines)
@@ -744,11 +738,6 @@ def load_board(path):
     g = json.loads(path.read_text())
     grid = g["grid"]
     n = len(grid[0])
-    shape = (
-        {"height": len(grid), "digits": g.get("digits", n)}
-        if len(grid) != n or "digits" in g
-        else {}
-    )
     bh, bw = g["box"]
     return Board(
         n=n,
@@ -767,14 +756,10 @@ def load_board(path):
             if "paths" in g
             else make_lines(n, len(grid))
         ),
+        height=len(grid),
+        digits=g.get("digits", n),
         seed=g.get("seed"),
-        **shape,
     )
-
-
-def _files_shape(shape):
-    """`Lane.files`'s keyword for a rectangular board's {"height", "digits"}."""
-    return {"height": shape["height"]} if shape else {}
 
 
 def named_files(spec, tag):
@@ -881,7 +866,7 @@ class Lane:
         # way, is invisible to it.
         problems = describe_mismatch(*mismatch(names, backend))
         assert not problems, "; ".join(problems)
-        assert doc["puzzle"]["maxDigit"] == board.digit_count, (
+        assert doc["puzzle"]["maxDigit"] == board.digits, (
             "maxDigit must be the digit count, not the 1..9 default"
         )
         assert doc["puzzle"]["minDigit"] == spec.min_digit
@@ -896,7 +881,7 @@ class Lane:
         doc = self.build_doc(board)
         link = link_codec.encode_link(doc)
         self.check(link, doc, board)
-        link_path, gen_path = self.files(n, **_files_shape(shape))
+        link_path, gen_path = self.files(n, height=shape.get("height"))
         link_path.write_text(link + "\n")
         save_board(board, gen_path)
         print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
@@ -915,9 +900,7 @@ class Lane:
         `height` names a rectangular board's files.
         """
         spec = self.spec
-        link_path, gen_path = pair or self.files(
-            n, **({} if height is None else {"height": height})
-        )
+        link_path, gen_path = pair or self.files(n, height=height)
         assert gen_path.exists(), (
             f"{gen_path.name} does not exist: this example ships no framebuild "
             f"board at n={n} on the {self.name} lane. A link whose board was "
@@ -1003,7 +986,7 @@ class _RingLane(Lane):
         """Assemble the whole SudokuMaker document for `board`."""
         spec = self.spec
         n, bh, bw = board.n, board.bh, board.bw
-        rows = board.rows
+        rows = board.height
         W, H = n + 2, rows + 2
         idx = lambda r, c: r * W + c
         # interior cell (r,c) 0-indexed sits at board (r+1, c+1)
@@ -1133,7 +1116,9 @@ class RingLocal(_RingLane):
     def drawn(self, board):
         return frame_groups(board.n, board.lines)
 
-    def files(self, n):
+    def files(self, n, height=None):
+        if height is not None:
+            raise ValueError("the local lane builds square boards only")
         return named_files(self.spec, "local" if n == 9 else f"{n}x{n}_local")
 
     def _house_gac(self, n):
@@ -1220,19 +1205,26 @@ def main(spec, argv=None):
     kinds = lane_kinds(spec)
     lane = (kinds[-1] if args.local else kinds[0])(spec)
 
-    if (args.height is None) != (args.digits is None) and not args.rebuild:
-        p.error("a rectangle needs --height and --digits together")
     if args.height is not None and args.local:
         p.error("a rectangle is built on the global lane only")
+    if args.rebuild and (args.box_height is not None or args.box_width is not None):
+        p.error("--rebuild re-encodes a committed board: pass n and the lane only")
+    if args.rebuild and (args.digits is not None or args.seeds is not None):
+        p.error(
+            "--rebuild reads the digits off the committed board and draws no "
+            "seeds: pass n, the lane and --height only"
+        )
+    if not args.rebuild and (args.height is None) != (args.digits is None):
+        p.error("a rectangle needs --height and --digits together")
+    if args.seeds is not None and args.digits is None:
+        p.error(
+            "--seeds names a rectangle's seed count: a square takes it positionally"
+        )
     shape = (
         {} if args.digits is None else {"height": args.height, "digits": args.digits}
     )
-    if args.rebuild and (args.box_height is not None or args.box_width is not None):
-        p.error("--rebuild re-encodes a committed board: pass n and the lane only")
     if args.rebuild:
-        link_path, _ = lane.files(
-            args.n, **({} if args.height is None else {"height": args.height})
-        )
+        link_path, _ = lane.files(args.n, height=args.height)
         link = lane.rebuild(args.n, height=args.height)
         link_path.write_text(link + "\n")
         print(

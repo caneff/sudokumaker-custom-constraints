@@ -125,6 +125,8 @@ def _board(n=4, bh=2, bw=2, **fields):
             givens={},
             active=set(lines),
             lines=lines,
+            height=n,
+            digits=n,
         ),
         **fields,
     )
@@ -182,7 +184,9 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
     with _spec(["FooComponent.js"]) as spec:
         link, doc, board = _build(spec)
         try:
-            RingGlobal(spec).check(link, doc, dataclasses.replace(board, n=6))
+            RingGlobal(spec).check(
+                link, doc, dataclasses.replace(board, n=6, height=6, digits=6)
+            )
         except AssertionError as e:
             assert "maxDigit" in str(e), e
         else:
@@ -786,6 +790,8 @@ def test_unique_is_the_cp_sat_double_solve():
         givens={},
         active=set(),
         lines=lines,
+        height=n,
+        digits=n,
     )
     # a bare 4x4 with no givens and no clues has many solutions
     assert unique(_post_first_digit, bare) is False
