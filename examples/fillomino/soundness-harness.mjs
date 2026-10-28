@@ -39,10 +39,10 @@ const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.
 let bad = 0
 
 const FUZZ = Number(process.env.FUZZ) || 20000
-for (const [name, { truth, width, height, n }] of FIXTURES) {
-  installGlobals(1, n)
+for (const [name, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
-  const ALL = Array.from({ length: n }, (_, d) => d + 1)
+  const ALL = Array.from({ length: cap }, (_, d) => d + 1)
   const seed = makeSeeder(rnd, ALL)
   bad += fuzzSoundness(`fillomino ${name} fixture`, {
     iters: FUZZ,
@@ -141,10 +141,10 @@ for (const rule of Object.keys(RULES)) {
       }
     }
   }
-  for (const [name, { truth, width, height, n }] of FIXTURES) {
-    installGlobals(1, n)
+  for (const [name, { truth, width, height, cap }] of FIXTURES) {
+    installGlobals(1, cap)
     const RCELLS = Array.from({ length: width * height }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: n }, (_, d) => d + 1))
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
     bad += fuzzSoundness(`fillomino ${rule} alone, ${name}`, {
       iters: RULE_FUZZ,
       draw: () => {

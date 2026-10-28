@@ -23,8 +23,8 @@ function nextVisit (marks, visit) {
 
 // `length` empty slots of `Type`, which must be Int32Array or Uint32Array:
 // the array records the largest number its slots can hold (2^31 - 1 or
-// 2^32 - 1). Any other type is refused here, when the array is made, where a
-// test sees the error, rather than guessed at.
+// 2^32 - 1). Any other type is refused here, the moment the array is made,
+// so a wrong type fails at once instead of marking cells wrongly later.
 function newVisitMarks (Type, length) {
   const limit = Type === Int32Array ? 0x7FFFFFFF : Type === Uint32Array ? 0xFFFFFFFF : 0
   if (!limit) throw new Error('newVisitMarks: visit marks are kept in an Int32Array or a Uint32Array')

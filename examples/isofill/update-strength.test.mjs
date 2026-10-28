@@ -15,13 +15,42 @@ const { load } = makeIo(HERE)
 // The floor: the component as it stands at the commit that pins this test, a
 // frozen copy in `.golden/` (the Pants sandbox holds no git history). Raising it
 // means replacing the copy, and the commit in its name, in the same commit as
-// the stronger component. The commit must be one whose setParams takes a width
-// and a height: the first copy read the side off the cell count, so it could
-// not be held to a rectangle.
-const REF_COMMIT = 'bb1ade0'
+// the stronger component.
+//
+// The copy reads a side off the cell count and uses it for two things only:
+// its neighbour lists and its border cycle (and the two scratch rows sized
+// from the border). So a board that is not square is handed to it by
+// replacing those, after its own setParams, with the board's real ones; the
+// copy itself stays as it was pinned.
+const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('IsofillComponent.js', NAMES)
-const ref = load(`.golden/IsofillComponent.${REF_COMMIT}.js`, NAMES)
+const golden = load(`.golden/IsofillComponent.${REF_COMMIT}.js`, NAMES)
+const gridNeighbours = (w, h) => Array.from({ length: w * h }, (_, i) => {
+  const x = i % w
+  const y = Math.floor(i / w)
+  return [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]
+    .filter(([a, b]) => a >= 0 && a < w && b >= 0 && b < h)
+    .map(([a, b]) => b * w + a)
+})
+// The border cells clockwise from the top-left corner.
+const borderCycle = (w, h) => [
+  ...Array.from({ length: w }, (_, x) => x),
+  ...Array.from({ length: h - 1 }, (_, k) => (k + 1) * w + w - 1),
+  ...Array.from({ length: w - 1 }, (_, k) => (h - 1) * w + w - 2 - k),
+  ...Array.from({ length: h - 2 }, (_, k) => (h - 2 - k) * w)
+]
+const ref = {
+  ...golden,
+  setParams (inst, cells, w, h) {
+    golden.setParams(inst, cells)
+    if (w === h) return
+    inst.nbrs = gridNeighbours(w, h)
+    inst.border = borderCycle(w, h)
+    inst.at = new Int16Array(inst.border.length)
+    inst.dig = new Int8Array(inst.border.length)
+  }
+}
 
 const { rnd } = makeRng(9001)
 const REPS = 500

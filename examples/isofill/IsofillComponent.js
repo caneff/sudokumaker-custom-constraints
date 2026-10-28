@@ -86,19 +86,23 @@ function perimeter (width, height) {
 
 // #include ../_shared/stamp.js
 
+// The visit marks: `instance.mask` holds them for every walk, and
+// `instance.stamp` is the current walk's visit number; `instance.targets` and
+// `instance.targetStamp` are a second set that marks a walk's target cells.
 function nextStamp (instance) {
   return (instance.stamp = nextVisit(instance.mask, instance.stamp))
 }
 
-// A stale target stamp reads as "no targets" and reports a cut that is not
-// there.
+// A stale target visit number reads as "no targets" and reports a cut that is
+// not there.
 function nextTargetStamp (instance) {
   return (instance.targetStamp = nextVisit(instance.targets, instance.targetStamp))
 }
 
 // The cells reachable from `starts` in at most `depth` steps through
 // `allowed`, stopping once it holds `limit` cells. Returns { size, stamp }:
-// `instance.mask[i] === stamp` marks a visited cell until the next walk.
+// `instance.mask[i] === stamp` is the visit mark of a cell this walk reached,
+// until the next walk.
 function reachSize (instance, starts, depth, allowed, limit = Infinity) {
   const { nbrs, mask } = instance
   const stamp = nextStamp(instance)
@@ -125,7 +129,7 @@ function reachSize (instance, starts, depth, allowed, limit = Infinity) {
 }
 
 // Does a walk from `start`, at most `depth` steps through `allowed`, reach all
-// `want` cells of the stamped target set `instance.targets`?
+// `want` cells marked in the target set `instance.targets`?
 function reachesAll (instance, start, depth, allowed, want) {
   const { nbrs, mask, targets, targetStamp } = instance
   const stamp = nextStamp(instance)
@@ -203,8 +207,9 @@ function distances (instance, start, allowed, dist) {
 // BFS from `starts` through `allowed`, no further than `maxDist` steps, and
 // the dominator tree of the shortest-path DAG it builds. Fills `dist` (-1
 // where unreached), `order` (the cells in BFS order), `bottleneck` (the
-// dominator, -1 for a cell no other cell dominates) and `bottleneckDepth` (its depth in
-// that tree); returns how many cells the walk reached.
+// nearest cell every shortest route to the cell passes through, -1 for none)
+// and `bottleneckDepth` (its depth in that tree); returns how many cells the
+// walk reached.
 function domTree (instance, starts, maxDist, allowed, dist) {
   const { nbrs, order } = instance
   dist.fill(-1)

@@ -68,14 +68,14 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // guard on the shared rules; the soundness fuzz below is what witnesses an
 // unsound check.
 {
-  const { truth, n } = shipped
-  installGlobals(1, n)
-  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+  const { truth, width, height, cap } = shipped
+  installGlobals(1, cap)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const { rnd } = makeRng(327)
-  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS, 9, 9); fixpoint(mod, inst, p) }
+  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS, width, height); fixpoint(mod, inst, p) }
   for (let rep = 0; rep < 150; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, n, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, cap, truth[c]))
     assert.deepStrictEqual(compareStrength(incremental, baseline, apply, start), [])
     assert.deepStrictEqual(compareStrength(baseline, incremental, apply, start), [])
   }
@@ -94,15 +94,15 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // candidate a real solution needs.
 {
   const { rnd } = makeRng(328)
-  for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
-    installGlobals(1, n)
-    const CELLS = Array.from({ length: n * n }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: n }, (_, d) => d + 1))
+  for (const [name, { truth, width, height, cap }] of [['shipped', shipped], ['varied', varied]]) {
+    installGlobals(1, cap)
+    const CELLS = Array.from({ length: width * height }, (_, i) => i)
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
     const { failures } = fuzzSoundness(`open count incremental, ${name}`, {
       iters: 3000,
       draw: () => {
         const inst = {}
-        incremental.setParams(inst, CELLS, n, n)
+        incremental.setParams(inst, CELLS, width, height)
         return { truth, seed, parts: [{ mod: incremental, inst }] }
       }
     })

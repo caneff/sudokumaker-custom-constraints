@@ -63,15 +63,15 @@ const quiet = fn => {
 let states = 0
 let weaker = 0
 let stronger = 0
-for (const [name, { truth, width, height, n: N }] of FIXTURES) {
-  installGlobals(1, N)
+for (const [name, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const applyN = (mod, p) => apply(mod, p, CELLS, width, height)
   let fixtureWeaker = 0
   let fixtureStronger = 0
   for (let rep = 0; rep < REPS; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, cap, truth[c]))
     const w = quiet(() => compareStrength(cur, ref, applyN, start, { width }))
     if (w === null) continue
     const st = quiet(() => compareStrength(ref, cur, applyN, start, { width }))
@@ -96,22 +96,37 @@ assert.ok(stronger > 0, 'the component must remove a candidate the baseline keep
 // copy in `.golden/` (the Pants sandbox holds no git history); raising it means
 // replacing the copy in the same commit as the stronger component. The component
 // must never prune one candidate less than it, and must reach something it
-// does not -- the cut-starve demo at the end of this file. The copy reads its
-// side off a square cell count and cannot be handed a width, so the floor runs
-// on the square fixtures; the non-square one is held by the baseline gate above.
-const SQUARE = FIXTURES.filter(([, f]) => f.width === f.height)
+// does not -- the cut-starve demo at the end of this file. The copy reads a
+// side off the cell count, and uses it for one thing only: its neighbour
+// lists. So a board that is not square is handed to it by replacing those
+// lists, after its own setParams, with the board's real ones; the copy itself
+// stays as it shipped.
 const SHIPPED = 'ac20771'
-const shippedRung2 = io.load(`.golden/FillominoComponent.${SHIPPED}.js`, ['setParams', 'update'])
+const golden = io.load(`.golden/FillominoComponent.${SHIPPED}.js`, ['setParams', 'update'])
+const gridNeighbours = (width, height) => Array.from({ length: width * height }, (_, i) => {
+  const x = i % width
+  const y = Math.floor(i / width)
+  return [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]
+    .filter(([a, b]) => a >= 0 && a < width && b >= 0 && b < height)
+    .map(([a, b]) => b * width + a)
+})
+const shippedRung2 = {
+  ...golden,
+  setParams (inst, cells, width, height) {
+    golden.setParams(inst, cells)
+    if (width !== height) inst.nbrs = gridNeighbours(width, height)
+  }
+}
 const { rnd: frnd } = makeRng(4242)
 let floorStates = 0
 let pastRung2 = 0
-for (const [, { truth, width, height, n }] of SQUARE) {
-  installGlobals(1, n)
+for (const [, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const applyN = (mod, p) => apply(mod, p, CELLS, width, height)
   for (let rep = 0; rep < 100; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, n, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, cap, truth[c]))
     const lost = quiet(() => compareStrength(cur, shippedRung2, applyN, start, { width }))
     if (lost === null) continue
     floorStates++
@@ -119,7 +134,7 @@ for (const [, { truth, width, height, n }] of SQUARE) {
     pastRung2 += quiet(() => compareStrength(shippedRung2, cur, applyN, start, { width })).length
   }
 }
-assert.strictEqual(floorStates, SQUARE.length * 100, 'a state built around a solution must never die')
+assert.strictEqual(floorStates, FIXTURES.length * 100, 'a state built around a solution must never die')
 assert.ok(pastRung2 > 0, `rung 3 must remove a candidate rung 2 (${SHIPPED}) keeps`)
 console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', SHIPPED + ',', pastRung2, 'stronger')
 
@@ -140,14 +155,14 @@ const settle = (inst, start, CELLS, width) => {
   return CELLS.map(c => [...p._cand.get(c)].sort((a, b) => a - b).join(''))
 }
 let reuseStates = 0
-for (const [, { truth, width, height, n }] of FIXTURES) {
-  installGlobals(1, n)
+for (const [, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const reused = { cells: CELLS }
   cur.setParams(reused, CELLS, width, height)
   for (let rep = 0; rep < 200; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, n, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, cap, truth[c]))
     const fresh = { cells: CELLS }
     cur.setParams(fresh, CELLS, width, height)
     assert.deepStrictEqual(settle(reused, start, CELLS, width), settle(fresh, start, CELLS, width),

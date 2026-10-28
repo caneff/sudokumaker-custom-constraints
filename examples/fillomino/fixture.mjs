@@ -1,13 +1,13 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 
-// `n` is the digit cap, the longer side: a board's digits run 1..n.
+// `cap` is the top digit, the longer side: a board's digits run 1..cap.
 export const gridOf = rows => {
   const height = rows.length
   const width = rows[0].length
   const truth = {}
   rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * width + x] = Number(ch) }))
-  return { truth, width, height, n: Math.max(width, height) }
+  return { truth, width, height, cap: Math.max(width, height) }
 }
 
 export const shipped = gridOf(JSON.parse(readFileSync(join(import.meta.dirname, 'gen.json'), 'utf8')).grid)

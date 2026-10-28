@@ -31,9 +31,6 @@ const ref = io.load(`.golden/FillominoComponent.${FROZEN}.js`, NAMES)
 const cur = io.load('FillominoComponent.js', NAMES)
 
 const REMOVERS = ['removeCandidateFromCell', 'removeCandidatesFromCell', 'removeCandidateFromCells', 'removeCandidatesFromCells']
-// A digit set or a raw mask; a DigitSet reads as its mask.
-const maskOf = v => Number(v)
-
 // One `update` call on `p`, returning its removals as [cell, digit mask]
 // pairs in the order they were made. `deferred` holds them until the call is
 // over, then applies them.
@@ -45,7 +42,7 @@ function oneCall (mod, inst, p, deferred) {
     const single = name.startsWith('removeCandidateFrom')
     const many = name.endsWith('Cells')
     view[name] = (what, where) => {
-      const mask = single ? 1 << what : maskOf(what)
+      const mask = single ? 1 << what : Number(what)
       for (const c of many ? where : [where]) log.push([c, mask])
       if (deferred) held.push(() => p[name](what, where)); else p[name](what, where)
     }
@@ -130,8 +127,8 @@ for (const board of fixtureBoards(HERE)) {
 // kept, many states are contradictions and the dead-branch paths run too.
 const { rnd } = makeRng(870)
 let fuzzed = 0
-for (const [name, { truth, width, height, n }] of FIXTURES) {
-  installGlobals(1, n)
+for (const [name, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
   const cells = Array.from({ length: width * height }, (_, i) => i)
   for (const deferred of [false, true]) {
     for (const keepTruth of [true, false]) {
@@ -140,7 +137,7 @@ for (const [name, { truth, width, height, n }] of FIXTURES) {
       ref.setParams(a, cells, width, height)
       cur.setParams(b, cells, width, height)
       for (let rep = 0; rep < 300; rep++) {
-        const seed = c => randomCandidates(rnd, 1, n, keepTruth ? truth[c] : null)
+        const seed = c => randomCandidates(rnd, 1, cap, keepTruth ? truth[c] : null)
         const start = new Map(cells.map(c => [c, seed(c)]))
         const pa = makePuzzle(truth, c => start.get(c))
         const pb = makePuzzle(truth, c => start.get(c))
