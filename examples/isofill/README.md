@@ -47,7 +47,7 @@ exists to teach.
   patches the source by anchor line, the way `cut-profile.mjs` does.
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution. Every function takes the `Board` it works on
-  (`Board.of(n, lo=0)`, `Board.of_doc(gen_json)`), so a process can check
+  (`Board.of(width, height=None, *, lo=0, digits=None)`, `Board.of_doc(gen_json)`), so a process can check
   several boards without resetting anything between them. The full-board
   proofs are slow (CP-SAT), so they are not part of `just check` or CI — run
   them by hand with `just verify-isofill` after a puzzle change.

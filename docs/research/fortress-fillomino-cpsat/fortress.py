@@ -182,7 +182,7 @@ def check(phases=("sets", "clues")):
     for side, cap in ((2, 2), (3, 3), (3, 5), (4, 4), (4, 6), (5, 5)):
         if "sets" not in phases:
             break
-        board = Board.of(side, cap)
+        board = Board.of(side, cap=cap)
         t = time.time()
         want = sorted(brute(board, {}))
         tb = time.time() - t
@@ -197,7 +197,7 @@ def check(phases=("sets", "clues")):
         )
     rng = random.Random(851)
     for side, cap, trials, kmin in ((4, 4, 40, 1), (5, 5, 40, 1), (5, 7, 20, 8)):
-        board = Board.of(side, cap)
+        board = Board.of(side, cap=cap)
         if f"clues{side}{cap}" not in phases and "clues" not in phases:
             continue
         verdicts = {"unique": 0, "multi": 0, "none": 0}
@@ -244,7 +244,7 @@ def timed_unique(board, givens, limit, implied=True):
 
 
 def sweep_one(cap, seed, strip_limit=60, limit=generate.LIMIT):
-    board = Board.of(9, cap)
+    board = Board.of(9, cap=cap)
     t = time.time()
     with fortress():
         grid = generate.sample(board, seed)

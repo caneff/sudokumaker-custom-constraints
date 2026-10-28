@@ -53,7 +53,7 @@ class Board:
     uedges: list
 
     @classmethod
-    def of(cls, width, cap=None, height=None):
+    def of(cls, width, height=None, *, cap=None):
         """A `width` x `height` board; `height` defaults to `width` (a square)
         and `cap` to the longer side."""
         height = width if height is None else height
@@ -70,7 +70,7 @@ class Board:
 
     @classmethod
     def of_doc(cls, doc):
-        return cls.of(len(doc["grid"][0]), doc.get("cap"), height=len(doc["grid"]))
+        return cls.of(len(doc["grid"][0]), len(doc["grid"]), cap=doc.get("cap"))
 
     def givens(self, doc):
         return {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
@@ -263,7 +263,7 @@ def _rows_from_dict(board, g):
 
 def self_check():
     for w, h in ((2, 2), (3, 3), (3, 2), (2, 3), (4, 2)):
-        board = Board.of(w, height=h)
+        board = Board.of(w, h)
         want = sorted(brute(board, {}))
         got = sorted(solutions(board, {}, most=len(want) + 5))
         assert got == want, f"{w}x{h}: model {len(got)} grids, brute {len(want)}"
@@ -291,9 +291,10 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check()
     elif sys.argv[1] == "sample":
-        seed, *shape = (int(a) for a in sys.argv[2:])
         # sample <seed> [width [cap [height]]]
-        board = Board.of(*shape) if shape else Board.of(9)
+        given = [int(a) for a in sys.argv[2:]]
+        seed, width, cap, height = given + [None] * (4 - len(given))
+        board = Board.of(width or 9, height, cap=cap)
         grid = sample(board, seed)
         print(json.dumps({"grid": grid, "clues": board.cells}))
     elif sys.argv[1] == "unique":

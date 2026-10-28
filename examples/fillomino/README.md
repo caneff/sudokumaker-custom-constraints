@@ -342,8 +342,8 @@ uv run --with ortools examples/fillomino/generate.py sample 7 7 7 5  # seed 7, 7
 uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
 ```
 
-Every function takes the `Board` it works on — `Board.of(width, cap=None,
-height=None)`, where `height` defaults to `width` and `cap` to the longer
+Every function takes the `Board` it works on — `Board.of(width,
+height=None, *, cap=None)`, where `height` defaults to `width` and `cap` to the longer
 side. The board is a value, not module state, so a
 process can check two boards without resetting anything between them.
 

@@ -13,7 +13,7 @@ def test_self_check():
 
 
 def test_min_digit_offsets_the_whole_digit_range():
-    board = Board.of(4, 1)
+    board = Board.of(4, lo=1)
     givens = {(r, c): r + 1 for r in range(1, board.height) for c in range(board.width)}
     assert verify.unique(board, givens) is True
 
@@ -44,7 +44,7 @@ def rows_given(board, rows):
 
 def test_a_wide_board_proves_one_row_per_digit():
     # 6 wide, 4 high, 4 digits: regions of 6, so each row is a region.
-    board = Board.of(6, 1, height=4, digits=4)
+    board = Board.of(6, 4, lo=1, digits=4)
     assert (board.size, board.digits) == (6, 4)
     assert verify.unique(board, rows_given(board, range(1, 4))) is True
     assert verify.unique(board, rows_given(board, range(2, 4))) is False
@@ -52,14 +52,14 @@ def test_a_wide_board_proves_one_row_per_digit():
 
 def test_a_tall_board_proves_with_more_digits_than_width():
     # 3 wide, 5 high, 5 digits: regions of 3.
-    board = Board.of(3, 0, height=5, digits=5)
+    board = Board.of(3, 5, digits=5)
     assert (board.size, board.digits) == (3, 5)
     assert verify.unique(board, rows_given(board, range(1, 5))) is True
 
 
 def test_digits_name_a_count_other_than_the_width():
     # 4 wide, 3 high, 2 digits: regions of 6 split many ways.
-    board = Board.of(4, 1, height=3, digits=2)
+    board = Board.of(4, 3, lo=1, digits=2)
     assert board.size == 6
     assert verify.unique(board, {}) is False
     _, x = verify.model(board, {})
@@ -67,7 +67,7 @@ def test_digits_name_a_count_other_than_the_width():
 
 
 def test_sample_fills_a_rectangle():
-    board = Board.of(5, 1, height=3, digits=3)
+    board = Board.of(5, 3, lo=1, digits=3)
     grid = verify.sample(board, seed=1)
     assert [len(r) for r in grid] == [5, 5, 5]
     assert sorted(set("".join(grid))) == ["1", "2", "3"]
@@ -76,7 +76,7 @@ def test_sample_fills_a_rectangle():
 
 def test_a_rectangle_without_a_digit_count_is_refused():
     try:
-        Board.of(4, 0, height=3)
+        Board.of(4, 3)
     except ValueError as e:
         assert "digit count" in str(e), e
     else:
@@ -85,7 +85,7 @@ def test_a_rectangle_without_a_digit_count_is_refused():
 
 def test_uneven_split_is_refused():
     try:
-        Board.of(5, 0, height=3, digits=4)
+        Board.of(5, 3, digits=4)
     except ValueError as e:
         assert "15 cells" in str(e), e
     else:
@@ -100,7 +100,7 @@ def test_of_doc_reads_height_from_rows_and_digits_from_the_key():
 
 def test_sample_reports_a_spent_time_cap_as_a_timeout():
     try:
-        verify.sample(Board.of(9, 1), seed=1, limit=0.0001)
+        verify.sample(Board.of(9, lo=1), seed=1, limit=0.0001)
     except TimeoutError as e:
         assert "seed 1" in str(e), e
     else:

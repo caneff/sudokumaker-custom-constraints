@@ -102,8 +102,9 @@ if __name__ == "__main__":
         # verify.py strip <seed> [width] [minDigit] [height] [digits]: the same grid stripped to a
         # minimal unique clue set with CP-SAT (slower than the app strip; fine
         # for a 9x9).
-        seed, *shape = (int(a) for a in sys.argv[2:])
-        board = Board.of(*shape) if shape else Board.of(10)
+        given = [int(a) for a in sys.argv[2:]]
+        seed, width, lo, height, digits = given + [None] * (5 - len(given))
+        board = Board.of(width or 10, height, lo=lo or 0, digits=digits)
         grid = sample(board, seed)
         clues = strip(board, grid, seed) if sys.argv[1] == "strip" else board.cells
         doc = {"grid": grid, "clues": clues, "minDigit": board.lo}

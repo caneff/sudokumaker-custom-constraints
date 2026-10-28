@@ -89,12 +89,14 @@ def isofill_grid(rng, n, _bh, _bw, height=None, digits=None):
     sampler draws it on the portfolio with a seed taken off `rng`. The
     portfolio's several workers race, so a seed does not reproduce its grid;
     gen.json records the grid, and a rebuild reads it from there."""
-    rows = sample(Board.of(n, MIN_DIGIT, height, digits), seed=rng.randrange(1, 2**31))
+    rows = sample(
+        Board.of(n, height, lo=MIN_DIGIT, digits=digits), seed=rng.randrange(1, 2**31)
+    )
     return [[int(ch) for ch in row] for row in rows]
 
 
 def isofill_interior(n, _box, height=None, digits=None):
-    return model(Board.of(n, MIN_DIGIT, height, digits), {})
+    return model(Board.of(n, height, lo=MIN_DIGIT, digits=digits), {})
 
 
 SPEC = Spec(

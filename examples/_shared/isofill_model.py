@@ -40,7 +40,7 @@ class Board:
     edges: list
 
     @classmethod
-    def of(cls, width, lo=0, height=None, digits=None):
+    def of(cls, width, height=None, *, lo=0, digits=None):
         """A square board has one digit per side cell unless `digits` says
         otherwise; a rectangle must name `digits`. Raises ValueError when the
         cells do not split evenly among the digits, as the component stops the
@@ -69,7 +69,7 @@ class Board:
         it is not the width."""
         grid = doc["grid"]
         return cls.of(
-            len(grid[0]), doc.get("minDigit", 0), len(grid), doc.get("digits")
+            len(grid[0]), len(grid), lo=doc.get("minDigit", 0), digits=doc.get("digits")
         )
 
     def givens(self, doc):

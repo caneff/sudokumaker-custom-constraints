@@ -29,7 +29,7 @@ def test_cap_wider_than_side():
     # above the cap. One pin per draw on a 5x5 with digits 1-6: without the
     # forced pin, about two draws in three still reach a 6 by chance, so thirty
     # seeds all reaching one by chance is a few-in-a-million event.
-    board = Board.of(5, 6)
+    board = Board.of(5, cap=6)
     for seed in range(1, 31):
         grid = sample(board, seed=seed, pins=1)
         digits = {d for row in grid for d in row}
@@ -40,7 +40,7 @@ def test_cap_wider_than_side():
 
 
 def test_model_and_rows_read_the_board_they_are_given():
-    wide, plain = Board.of(3, 5), Board.of(3)
+    wide, plain = Board.of(3, cap=5), Board.of(3)
     m_wide, x_wide = model(wide, {(0, 0): 5})
     m_plain, _ = model(plain, {(0, 0): 5})
     s = cp_model.CpSolver()
@@ -55,7 +55,7 @@ def test_rectangular_board_is_proved_and_sampled():
     # Width and height are independent: a 6-wide, 4-high board has 24 cells in
     # four rows of six, `of_doc` reads the shape off the grid, and a sampled
     # grid is unique under all of its givens.
-    board = Board.of(6, height=4)
+    board = Board.of(6, 4)
     assert (board.width, board.height, board.cap) == (6, 4, 6)
     assert len(board.cells) == 24 and board.idx((1, 0)) == 6
     grid = sample(board, seed=2)
@@ -67,7 +67,7 @@ def test_rectangular_board_is_proved_and_sampled():
     # The same cells give the same verdict whichever way round the board lies.
     assert (
         unique(
-            Board.of(4, 6, height=6),
+            Board.of(4, 6),
             {(r, c): grid[c][r] for r in range(6) for c in range(4)},
         )
         is True

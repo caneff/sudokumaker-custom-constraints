@@ -31,7 +31,7 @@ def run(spec, link_text, tmp):
     height, width = len(spec["grid"]), len(spec["grid"][0])
     cap = spec.get("cap", max(width, height))
     clues = [tuple(p) for p in spec["clues"]]
-    board = generate.Board.of(width, cap, height=height)
+    board = generate.Board.of(width, height, cap=cap)
 
     assert generate.unique(board, board.givens(spec)) is True
 

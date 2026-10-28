@@ -59,7 +59,9 @@ def house_problems(doc):
 
 def grid_problems(board):
     grid = board.grid
-    m, x = model(IsofillBoard.of(board.n, MIN_DIGIT, board.rows, board.digit_count), {})
+    m, x = model(
+        IsofillBoard.of(board.n, board.rows, lo=MIN_DIGIT, digits=board.digit_count), {}
+    )
     for (r, c), v in x.items():
         m.Add(v == grid[r][c])
     status = cpsat.solver(GATE_LIMIT).Solve(m)
