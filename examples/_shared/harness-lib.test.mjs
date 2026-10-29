@@ -203,6 +203,13 @@ const { rnd } = makeRng()
   assert.deepStrictEqual(p.getCellsOrthogonallyAdjacentToCell(0).sort(), [1, 3])
   assert.deepStrictEqual(p.getCellsOrthogonallyAdjacentToCell(8).sort(), [5, 7])
 
+  // A board that is not square names its row length; without it the mock
+  // refuses rather than guess.
+  const six = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }, () => [1], { width: 3 })
+  assert.deepStrictEqual(six.getCellsOrthogonallyAdjacentToCell(4).sort(), [1, 3, 5])
+  assert.deepStrictEqual(six.getCellsOrthogonallyAdjacentToCell(2).sort(), [1, 5])
+  assert.throws(() => makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }, () => [1]).getCellsOrthogonallyAdjacentToCell(0), /square board/)
+
   p.removeCandidateFromCells(2, [0, 1])
   assert.deepStrictEqual([...p.getCandidates(0)].sort(), [1, 3])
   assert.deepStrictEqual([...p.getCandidates(2)].sort(), [1, 2, 3])

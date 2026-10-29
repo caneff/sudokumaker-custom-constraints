@@ -64,6 +64,7 @@ for file in [
     "frame-rowcol.test.mjs",
     "grid-rowcol.test.mjs",
     "grid_to_link.test.py",
+    "dominator.test.mjs",
     "house-gac.test.mjs",
     "line-kind.test.mjs",
     "stamp.test.mjs",
@@ -86,6 +87,7 @@ for file in [
     "global-backends.test.mjs",
     "size_builders.test.py",
     "spec_855_closing.test.py",
+    "spec_865_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 

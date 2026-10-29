@@ -9,46 +9,46 @@
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
-import { gridOf, shipped, varied } from './fixture.mjs'
+import { gridOf, FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const NAMES = ['setParams', 'update', 'validate', 'scan', 'islandRule', 'cutStarveRule', 'doorRules', 'componentBound', 'DEAD']
+const NAMES = ['setParams', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'BROKEN']
 const mod = load('FillominoComponent.js', NAMES)
 
 const RULES = {
-  islandRule: ['seal', 'overflow', 'force'],
-  cutStarveRule: ['cut starve'],
-  doorRules: ['merge overflow'],
-  componentBound: ['growth test']
+  islandRules: ['seal', 'overflow', 'force'],
+  neededCellsRule: ['cut starve'],
+  exitRules: ['merge overflow'],
+  smallPocketsRule: ['growth test']
 }
 // Two checks two rules reach, so removing either owner alone leaves them
 // passing. Starve: a walk under k cells means the island's component of cells
 // allowing k is under k too, so the component bound empties it as well. One
 // door: dropping the only door starves the walk, so cut starve places it too.
 const SHARED = {
-  starve: ['islandRule', 'componentBound'],
-  'one door': ['cutStarveRule', 'doorRules']
+  starve: ['islandRules', 'smallPocketsRule'],
+  'one door': ['neededCellsRule', 'exitRules']
 }
 
 const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.reduce((out, rule) =>
-  patchSource(out, `function * ${rule} (`, `function * ${rule} () { return OPEN }\nfunction * ${rule}Removed (`), src))
+  patchSource(out, `function * ${rule} (`, `function * ${rule} () { return MORE }\nfunction * ${rule}Removed (`), src))
 
 let bad = 0
 
 const FUZZ = Number(process.env.FUZZ) || 20000
-for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
-  installGlobals(1, n)
-  const CELLS = Array.from({ length: n * n }, (_, i) => i)
-  const ALL = Array.from({ length: n }, (_, d) => d + 1)
+for (const [name, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
+  const ALL = Array.from({ length: cap }, (_, d) => d + 1)
   const seed = makeSeeder(rnd, ALL)
   bad += fuzzSoundness(`fillomino ${name} fixture`, {
     iters: FUZZ,
     draw: () => {
       const inst = {}
-      mod.setParams(inst, CELLS)
+      mod.setParams(inst, CELLS, width, height)
       return { truth, seed, parts: [{ mod, inst }] }
     }
   }).failures
@@ -109,7 +109,7 @@ function directedFailures (m) {
   return DIRECTED.filter(([, seed, shows]) => {
     const p = makePuzzle(directed, seed)
     const inst = {}
-    m.setParams(inst, CELLS)
+    m.setParams(inst, CELLS, N, N)
     Array.from(m.update(inst, p))
     return !shows(p)
   }).map(([name]) => name)
@@ -135,21 +135,21 @@ for (const rule of Object.keys(RULES)) {
   const solo = {
     setParams: mod.setParams,
     * update (inst, p) {
-      if (rule === 'componentBound') { yield * mod.componentBound(inst, p); return }
-      for (const island of mod.scan(inst, p)) {
-        if ((yield * mod[rule](inst, p, island)) === mod.DEAD) return
+      if (rule === 'smallPocketsRule') { yield * mod.smallPocketsRule(inst, p); return }
+      for (const island of mod.findIslands(inst, p)) {
+        if ((yield * mod[rule](inst, p, island)) === mod.BROKEN) return
       }
     }
   }
-  for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
-    installGlobals(1, n)
-    const RCELLS = Array.from({ length: n * n }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: n }, (_, d) => d + 1))
+  for (const [name, { truth, width, height, cap }] of FIXTURES) {
+    installGlobals(1, cap)
+    const RCELLS = Array.from({ length: width * height }, (_, i) => i)
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
     bad += fuzzSoundness(`fillomino ${rule} alone, ${name}`, {
       iters: RULE_FUZZ,
       draw: () => {
         const inst = {}
-        solo.setParams(inst, RCELLS)
+        solo.setParams(inst, RCELLS, width, height)
         return { truth, seed, parts: [{ mod: solo, inst }] }
       }
     }).failures
@@ -160,7 +160,7 @@ for (const rule of Object.keys(RULES)) {
 function judge (truth) {
   const p = makePuzzle(truth, (c, v) => [v])
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   return mod.validate(inst, p)
 }
 if (!judge(directed)) { console.log('fillomino validate: rejected a real solution'); bad++ }
@@ -169,7 +169,7 @@ if (!judge(directed)) { console.log('fillomino validate: rejected a real solutio
 if (judge({ ...directed, 0: 1 })) { console.log('fillomino validate: accepted a broken grid'); bad++ }
 const partial = makePuzzle(directed, (c, v) => (c === 0 ? ALL : [v]))
 const partialInst = {}
-mod.setParams(partialInst, CELLS)
+mod.setParams(partialInst, CELLS, N, N)
 if (!mod.validate(partialInst, partial)) { console.log('fillomino validate: judged an unfilled grid'); bad++ }
 
 console.log('fillomino soundness-harness:', bad, 'failures')

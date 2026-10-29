@@ -5,7 +5,7 @@
 //   node examples/fillomino/hunt.mjs score <link.txt|board.json>...
 //       Hardness for each board: verdict, search nodes, propagation passes.
 //       A link is read back through hunt_link.py; a JSON board is either
-//       {"side","cap","givens"} or the {"grid","clues","cap"} shape
+//       {"width","height","cap","givens"} or the {"grid","clues","cap"} shape
 //       generate.py and app-strip.mjs pass around.
 //
 //   node examples/fillomino/hunt.mjs board <link.txt> <out.json>
@@ -42,8 +42,9 @@ function readBoard (path) {
   if (path.endsWith('.txt')) return py('hunt_link.py', [path])
   const doc = JSON.parse(readFileSync(path, 'utf8'))
   if (doc.givens) return doc
-  const side = doc.grid.length
-  return { side, cap: doc.cap ?? side, givens: givensOf(doc.grid, doc.clues), grid: doc.grid, clues: doc.clues }
+  const height = doc.grid.length
+  const width = doc.grid[0].length
+  return { width, height, cap: doc.cap ?? Math.max(width, height), givens: givensOf(doc.grid, doc.clues), grid: doc.grid, clues: doc.clues }
 }
 
 let nodeCap = 200000
@@ -51,7 +52,7 @@ const scoreOf = b => score(mod, b, { nodeCap })
 
 // build_link.py reads `cap` to ship an explicit min/maxDigit.
 const boardJson = (grid, clues, cap) =>
-  cap && cap !== grid.length
+  cap && cap !== Math.max(grid.length, grid[0].length)
     ? JSON.stringify({ ...JSON.parse(outputJson(grid, clues)), cap }) + '\n'
     : outputJson(grid, clues)
 const row = (name, s) => `${name}\t${s.verdict}\t${s.nodes}\t${s.passes}`
@@ -72,18 +73,17 @@ function cmdStrip (argv) {
     if (s.verdict !== 'unique') throw new Error(`${inPath} scores ${s.verdict}; nothing to strip from`)
     b.grid = s.grid
   }
-  const clues = stripOffline(mod, { side: b.side, cap: b.cap, grid: b.grid }, Number(seed),
+  const clues = stripOffline(mod, { width: b.width, height: b.height, cap: b.cap, grid: b.grid }, Number(seed),
     ({ cell, kept }) => process.stderr.write(`${kept ? 'cut ' : 'keep'} ${cell}\n`))
   writeFileSync(outPath, boardJson(b.grid, clues, b.cap))
-  console.log(row(outPath, scoreOf({ side: b.side, cap: b.cap, givens: givensOf(b.grid, clues) })))
+  console.log(row(outPath, scoreOf({ width: b.width, height: b.height, cap: b.cap, givens: givensOf(b.grid, clues) })))
 }
 
 function cmdBoard ([inPath, outPath]) {
   const b = readBoard(inPath)
   const s = scoreOf(b)
   if (s.verdict !== 'unique') throw new Error(`${inPath} scores ${s.verdict}; it has no one grid`)
-  const side = b.side
-  const clues = Object.keys(b.givens).map(Number).map(i => [Math.floor(i / side), i % side])
+  const clues = Object.keys(b.givens).map(Number).map(i => [Math.floor(i / b.width), i % b.width])
   writeFileSync(outPath, boardJson(s.grid, clues, b.cap))
   console.log(row(outPath, s))
 }

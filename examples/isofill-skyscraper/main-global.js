@@ -13,12 +13,10 @@
 
 const nw = puzzle.spec.size.width - 2
 const nh = puzzle.spec.size.height - 2
-// Thrown before anything registers, so a bad board never half-registers.
-if (nw !== nh) throw new Error(`ISOFILL: needs a square interior, got ${nw} x ${nh}`)
 
 const lines = frameLines(puzzle)
 const interior = lines.filter(g => g.side === 'L').flatMap(g => g.line)
-puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', interior))
+puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', interior, nw, nh))
 
 for (const { clue, line } of lines) {
   const name = `the skyscraper clue at ${helpers.naming.getCellName(clue)}`

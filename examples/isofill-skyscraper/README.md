@@ -74,8 +74,12 @@ component to every clue `gen.json` records.
 (`_shared/frame-lines.js`). It registers one `IsofillComponent` over the
 interior, whose cell list is the left-clue lines in order (each interior row
 read left to right, which is the row-major order the component's index
-arithmetic needs), and one `SkyscraperOneSidedComponent` per ring clue. It
-throws before registering anything on a board whose interior is not square.
+arithmetic needs), and one `SkyscraperOneSidedComponent` per ring clue. The
+interior may be any W x H whose cells split evenly among its digits (region
+size = cells / digits): the component gets the width and the height. A
+rectangle builds with `build_size.py <W> --height H --digits D`
+(`rectangle.test.py` builds and proves a 4x3 and a 3x4); the shipped board
+stays 9x9.
 
 There is no local lane (`example.toml`: `lanes = "global"`).
 
@@ -118,3 +122,31 @@ off, recorded app replay):
 
 No component changed, so the rows are a baseline with no ratio. After the
 app's logical solver the board is solved by logic alone (0 ms).
+
+### A rectangular interior (#869)
+
+`main-global.js` hands the component the interior's width and height; no
+deduction changed. The controller's quiet-box re-run, `just time
+isofill-skyscraper --ring-clues`, 3 reps, non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper | 200ms | 200ms | 1.00 | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper after-logical | 0ms | 0ms | — | — |
+
+### Shared helpers rewritten for reading (#870)
+
+`IsofillComponent.js` includes `_shared/dominator.js` and `_shared/stamp.js`,
+which #870 rewrote and renamed for fillomino's annotated link (the renames are
+listed in `../isofill/README.md`). No deduction changed, so the bar is 1.1x or
+under on both rows. `just time isofill-skyscraper --ring-clues`, 3 reps,
+non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper | 200ms | 200ms | 1.00 | FAIL |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+
+`FAIL` reads the 0.9x deduction rule; the gate-change bar holds. The link was
+rebuilt from the committed one and decodes identical to it apart from that
+component's code.

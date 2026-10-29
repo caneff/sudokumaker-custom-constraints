@@ -46,7 +46,7 @@ export function GRIDS (here) {
 function propagate (mod, fx, cand) {
   const p = makePuzzle(fx.truth, c => cand.get(c))
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   Array.from(mod.update(inst, p))
   const next = new Map()
   for (const c of CELLS) {
@@ -101,7 +101,7 @@ export function timeUpdate (mod, snaps, reps = 3) {
   // first call with the component's lazy scratch allocation, which lands
   // inside `update` and outside the cut loop.
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   for (let r = 0; r < reps + 1; r++) {
     const warm = r === 0
     for (const snap of snaps) {

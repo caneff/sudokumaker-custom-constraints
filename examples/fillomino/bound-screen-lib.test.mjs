@@ -18,10 +18,10 @@ const rowsToGivens = rows => Object.fromEntries(rows.flat().map((d, i) => [i, d]
 const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 
 for (const board of [
-  { side: 3, cap: 3, givens: rowsToGivens(GRID3) },
-  { side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } },
-  { side: 3, cap: 3, givens: { 0: 1, 4: 1 } },
-  { side: 2, cap: 2, givens: {} }
+  { width: 3, height: 3, cap: 3, givens: rowsToGivens(GRID3) },
+  { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } },
+  { width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1 } },
+  { width: 2, height: 2, cap: 2, givens: {} }
 ]) {
   const want = score(baseline, board)
   const got = score(incremental, board)
@@ -40,7 +40,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   const build = row => makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => (row[c] ? [row[c]] : ALL))
   const dead = p => [...p._cand.values()].some(s => s.size === 0)
   const once = (mod, inst, row) => { const p = build(row); Array.from(mod.update(inst, p)); return p }
-  const fresh = mod => { const inst = {}; mod.setParams(inst, CELLS); return inst }
+  const fresh = mod => { const inst = {}; mod.setParams(inst, CELLS, 9, 9); return inst }
 
   assert.strictEqual(dead(once(baseline, fresh(baseline), SHORT)), false, 'no other rule reaches this state')
   assert.strictEqual(dead(once(incremental, fresh(incremental), SHORT)), true)
@@ -68,14 +68,14 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // guard on the shared rules; the soundness fuzz below is what witnesses an
 // unsound check.
 {
-  const { truth, n } = shipped
-  installGlobals(1, n)
-  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+  const { truth, width, height, cap } = shipped
+  installGlobals(1, cap)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const { rnd } = makeRng(327)
-  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS); fixpoint(mod, inst, p) }
+  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS, width, height); fixpoint(mod, inst, p) }
   for (let rep = 0; rep < 150; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, n, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, cap, truth[c]))
     assert.deepStrictEqual(compareStrength(incremental, baseline, apply, start), [])
     assert.deepStrictEqual(compareStrength(baseline, incremental, apply, start), [])
   }
@@ -85,7 +85,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   const boards = fixtureBoards(HERE)
   assert.strictEqual(boards.length, 19, 'the frozen fixture set is 19 boards')
   for (const b of boards) {
-    assert.strictEqual(b.side, 9)
+    assert.deepStrictEqual([b.width, b.height], [9, 9])
     assert.ok(Object.keys(b.givens).length >= 28 && Object.keys(b.givens).length <= 35)
   }
 }
@@ -94,15 +94,15 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // candidate a real solution needs.
 {
   const { rnd } = makeRng(328)
-  for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
-    installGlobals(1, n)
-    const CELLS = Array.from({ length: n * n }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: n }, (_, d) => d + 1))
+  for (const [name, { truth, width, height, cap }] of [['shipped', shipped], ['varied', varied]]) {
+    installGlobals(1, cap)
+    const CELLS = Array.from({ length: width * height }, (_, i) => i)
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
     const { failures } = fuzzSoundness(`open count incremental, ${name}`, {
       iters: 3000,
       draw: () => {
         const inst = {}
-        incremental.setParams(inst, CELLS)
+        incremental.setParams(inst, CELLS, width, height)
         return { truth, seed, parts: [{ mod: incremental, inst }] }
       }
     })
@@ -114,7 +114,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // is counted, a run that solved nothing is refused, and agreeing variants
 // count nothing.
 {
-  const tiny = [{ name: 'tiny', side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }]
+  const tiny = [{ name: 'tiny', width: 3, height: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }]
   assert.strictEqual(runScreen(tiny, { baseline, incremental }, 1).bad, 0)
   const wrong = { ...baseline, validate: () => false }
   assert.strictEqual(runScreen(tiny, { baseline, wrong }, 1).bad, 1, 'a variant that disagrees is counted')

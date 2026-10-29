@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
-//! ISOFILL. Divide the grid into N regions of N orthogonally connected cells;
-//! every cell in a region holds the same digit; all N digits appear. So each
-//! digit fills exactly N cells. N is the digit count, which must equal the
-//! board side: a 10x10 with digits 0-9, or a 9x9 with digits 1-9.
+//! ISOFILL. Divide the grid into one orthogonally connected region per digit;
+//! every cell in a region holds the same digit; all the digits appear. So each
+//! digit fills exactly N cells, N = cells / digit count. The board is any
+//! width x height whose cells split evenly (a 10x10 with digits 0-9, a 9x9
+//! with digits 1-9, a 6x4 with digits 1-4); an uneven split stops the branch.
 //!
 //! One whole-grid component, six deductions per digit and two across digits:
 //!   Cap:   a digit already in N cells leaves every other cell.
@@ -42,12 +43,11 @@ function getAffectedCells (cells) {
   return cells
 }
 
-function setParams (instance, cells) {
+function setParams (instance, cells, width, height) {
   instance.cells = cells
-  instance.side = Math.round(Math.sqrt(cells.length))
-  instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
-  instance.mask = newStampMarks(Uint32Array, cells.length)
-  instance.targets = newStampMarks(Uint32Array, cells.length)
+  instance.nbrs = cells.map((_, i) => neighbours(i, width, height))
+  instance.mask = newVisitMarks(Uint32Array, cells.length)
+  instance.targets = newVisitMarks(Uint32Array, cells.length)
   instance.stamp = 0
   instance.targetStamp = 0
   instance.holds = new Uint8Array(cells.length)
@@ -62,23 +62,23 @@ function setParams (instance, cells) {
   instance.allMask = 0
   instance.distStarve = new Int16Array(cells.length)
   instance.distStrand = new Int16Array(cells.length)
-  instance.domOrder = new Int16Array(cells.length)
-  instance.idom = new Int16Array(cells.length)
-  instance.ddep = new Int16Array(cells.length)
-  instance.domCount = new Int16Array(cells.length)
-  instance.skip = new Uint8Array(cells.length)
-  instance.border = perimeter(instance.side)
+  instance.order = new Int16Array(cells.length)
+  instance.bottleneck = new Int16Array(cells.length)
+  instance.bottleneckDepth = new Int16Array(cells.length)
+  instance.behind = new Int16Array(cells.length)
+  instance.notNeeded = new Uint8Array(cells.length)
+  instance.border = perimeter(width, height)
   instance.value = new Int8Array(cells.length)
   instance.at = new Int16Array(instance.border.length)
   instance.dig = new Int8Array(instance.border.length)
 }
 
-function perimeter (side) {
+function perimeter (width, height) {
   const out = []
-  for (let x = 0; x < side; x++) out.push(x)
-  for (let y = 1; y < side; y++) out.push(y * side + side - 1)
-  for (let x = side - 2; x >= 0; x--) out.push((side - 1) * side + x)
-  for (let y = side - 2; y >= 1; y--) out.push(y * side)
+  for (let x = 0; x < width; x++) out.push(x)
+  for (let y = 1; y < height; y++) out.push(y * width + width - 1)
+  for (let x = width - 2; x >= 0; x--) out.push((height - 1) * width + x)
+  for (let y = height - 2; y >= 1; y--) out.push(y * width)
   return out
 }
 
@@ -86,19 +86,23 @@ function perimeter (side) {
 
 // #include ../_shared/stamp.js
 
+// The visit marks: `instance.mask` holds them for every walk, and
+// `instance.stamp` is the current walk's visit number; `instance.targets` and
+// `instance.targetStamp` are a second set that marks a walk's target cells.
 function nextStamp (instance) {
-  return (instance.stamp = bumpStamp(instance.mask, instance.stamp))
+  return (instance.stamp = nextVisit(instance.mask, instance.stamp))
 }
 
-// A stale target stamp reads as "no targets" and reports a cut that is not
-// there.
+// A stale target visit number reads as "no targets" and reports a cut that is
+// not there.
 function nextTargetStamp (instance) {
-  return (instance.targetStamp = bumpStamp(instance.targets, instance.targetStamp))
+  return (instance.targetStamp = nextVisit(instance.targets, instance.targetStamp))
 }
 
 // The cells reachable from `starts` in at most `depth` steps through
 // `allowed`, stopping once it holds `limit` cells. Returns { size, stamp }:
-// `instance.mask[i] === stamp` marks a visited cell until the next walk.
+// `instance.mask[i] === stamp` is the visit mark of a cell this walk reached,
+// until the next walk.
 function reachSize (instance, starts, depth, allowed, limit = Infinity) {
   const { nbrs, mask } = instance
   const stamp = nextStamp(instance)
@@ -125,7 +129,7 @@ function reachSize (instance, starts, depth, allowed, limit = Infinity) {
 }
 
 // Does a walk from `start`, at most `depth` steps through `allowed`, reach all
-// `want` cells of the stamped target set `instance.targets`?
+// `want` cells marked in the target set `instance.targets`?
 function reachesAll (instance, start, depth, allowed, want) {
   const { nbrs, mask, targets, targetStamp } = instance
   const stamp = nextStamp(instance)
@@ -202,20 +206,21 @@ function distances (instance, start, allowed, dist) {
 
 // BFS from `starts` through `allowed`, no further than `maxDist` steps, and
 // the dominator tree of the shortest-path DAG it builds. Fills `dist` (-1
-// where unreached), `domOrder` (the cells in BFS order), `idom` (the
-// dominator, -1 for a cell no other cell dominates) and `ddep` (its depth in
-// that tree); returns how many cells the walk reached.
+// where unreached), `order` (the cells in BFS order), `bottleneck` (the
+// nearest cell every shortest route to the cell passes through, -1 for none)
+// and `bottleneckDepth` (its depth in that tree); returns how many cells the
+// walk reached.
 function domTree (instance, starts, maxDist, allowed, dist) {
-  const { nbrs, domOrder } = instance
+  const { nbrs, order } = instance
   dist.fill(-1)
   let len = 0
-  for (const s of starts) if (dist[s] < 0) { dist[s] = 0; domOrder[len++] = s }
+  for (const s of starts) if (dist[s] < 0) { dist[s] = 0; order[len++] = s }
   for (let head = 0; head < len; head++) {
-    const u = domOrder[head]
+    const u = order[head]
     if (dist[u] >= maxDist) continue
-    for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; domOrder[len++] = n }
+    for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; order[len++] = n }
   }
-  domFold(instance, len, dist)
+  findBottlenecks(instance, len, dist)
   return len
 }
 
@@ -236,22 +241,22 @@ function domTree (instance, starts, maxDist, allowed, dist) {
 // clears a cell, and every cell it does not clear falls through to the exact
 // re-walks. Returns the per-cell verdict, 1 where cut is proved false.
 function cutFilter (instance, placed, open, allowed, size, depth) {
-  const { skip, domCount, distStrand, distStarve } = instance
+  const { notNeeded, behind, distStrand, distStarve } = instance
   // Read the starve verdict before the strand walk below overwrites the tree.
   const reached = domTree(instance, placed, depth, allowed, distStarve)
-  starveVerdict(instance, reached, distStarve, open, size)
-  if (placed.length < 2) return skip
+  markCellsNotNeeded(instance, reached, distStarve, open, size)
+  if (placed.length < 2) return notNeeded
   // A placed cell the seed does not reach inside the budget already fails the
   // strand test with nothing removed, so the filter clears no cell there.
   const seen = domTree(instance, [placed[0]], size - 1, allowed, distStrand)
-  domCount.fill(0)
+  behind.fill(0)
   for (const i of placed) {
-    if (distStrand[i] < 0) { skip.fill(0); return skip }
-    domCount[i] = 1
+    if (distStrand[i] < 0) { notNeeded.fill(0); return notNeeded }
+    behind[i] = 1
   }
-  subtreeSums(instance, seen)
-  for (const x of open) if (domCount[x] > 0) skip[x] = 0
-  return skip
+  countCellsBehind(instance, seen)
+  for (const x of open) if (behind[x] > 0) notNeeded[x] = 0
+  return notNeeded
 }
 
 // Every digit sees this snapshot, not the removals earlier digits yield in the
@@ -326,12 +331,12 @@ function tourBoundIsDead (instance, placed, open, allowed, near, size) {
   return near.size < size
 }
 
-function cutsRegion (instance, x, placed, allowed, near, size, depth, skip) {
+function cutsRegion (instance, x, placed, allowed, near, size, depth, notNeeded) {
   let ways = 0
   for (const n of instance.nbrs[x]) if (allowed[n]) ways++
   // A dead end: removing it removes only itself.
   if (ways <= 1) return near.size - 1 < size
-  if (skip[x]) return false // the filter cleared this cell: no cut
+  if (notNeeded[x]) return false // the filter cleared this cell: no cut
   allowed[x] = 0
   let cut = reachSize(instance, placed, depth, allowed, size).size < size
   if (!cut && placed.length > 1) cut = !reachesAll(instance, placed[0], size - 1, allowed, placed.length)
@@ -346,11 +351,11 @@ function * cutRule (instance, puzzle, state, d, size, near) {
   const depth = size - placed.length
   const targetStamp = nextTargetStamp(instance)
   for (const i of placed) instance.targets[i] = targetStamp
-  const skip = cutFilter(instance, placed, open, allowed, size, depth)
+  const notNeeded = cutFilter(instance, placed, open, allowed, size, depth)
   const held = []
   for (const x of open) {
     if (!near.mask[x]) continue
-    if (cutsRegion(instance, x, placed, allowed, near, size, depth, skip)) held.push(cells[x])
+    if (cutsRegion(instance, x, placed, allowed, near, size, depth, notNeeded)) held.push(cells[x])
   }
   if (held.length) yield puzzle.removeCandidatesFromCells(others, held)
 }
@@ -508,7 +513,7 @@ function budget (instance, state, near, lo, hi, size) {
     taken: new Int16Array(D * size), // digit d -> cells matched to it, taken[d * size ...]
     takenLen: new Uint8Array(D),
     matched: new Int8Array(n),
-    seen: newStampMarks(Uint32Array, D),
+    seen: newVisitMarks(Uint32Array, D),
     seenStamp: 0,
     adjStart: new Int32Array(n + D + 1),
     adjFill: new Int32Array(n + D),
@@ -547,7 +552,7 @@ function budget (instance, state, near, lo, hi, size) {
   for (let x = 0; x < n; x++) {
     if (!b.isOpen[x]) continue
     open++
-    b.seenStamp = bumpStamp(b.seen, b.seenStamp)
+    b.seenStamp = nextVisit(b.seen, b.seenStamp)
     if (!augment(b, x)) { b.dead = x; return b }
   }
   if (open !== slots) return b // an emptied cell: not perfect, prune unsound

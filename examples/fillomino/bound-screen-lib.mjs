@@ -25,7 +25,7 @@ import { score } from './hunt-lib.mjs'
 
 const NAMES = ['setParams', 'update', 'validate']
 
-const SETUP_ANCHOR = '  instance.others = null\n}'
+const SETUP_ANCHOR = '  instance.othersThan = null\n}'
 const UPDATE_ANCHOR = 'function * update (instance, puzzle) {\n'
 
 // One loop over the cells diffs each cell's placed digit against the row the
@@ -36,7 +36,7 @@ const UPDATE_ANCHOR = 'function * update (instance, puzzle) {\n'
 const INCREMENTAL_SETUP = `  instance.rowSeen = new Int16Array(cells.length)
   instance.placedBy = new Int16Array(cells.length + 1)
   instance.openLeft = cells.length
-  instance.others = null
+  instance.othersThan = null
 }`
 const INCREMENTAL_CHECK = `function * update (instance, puzzle) {
   {

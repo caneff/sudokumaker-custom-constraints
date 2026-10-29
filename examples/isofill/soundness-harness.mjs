@@ -43,7 +43,7 @@ const seeder = makeSeeder(rnd, ALL)
 function run (truth, seed) {
   const p = makePuzzle(truth, seed)
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   return { p, v: violates(mod, inst, p, truth) }
 }
 
@@ -61,7 +61,7 @@ grid('gen_35g_silent.json').forEach((row, r) => [...row].forEach((ch, x) => { si
 function once (truth, seed) {
   const p = makePuzzle(truth, seed)
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   Array.from(mod.update(inst, p))
   return p
 }
@@ -75,7 +75,7 @@ for (const [name, truth, seed] of [['rows', rows, seeder], ['bent', bent, seeder
     iters: FUZZ,
     draw: () => {
       const inst = {}
-      mod.setParams(inst, CELLS)
+      mod.setParams(inst, CELLS, N, N)
       return { truth, seed, parts: [{ mod, inst }] }
     }
   }).failures
@@ -231,14 +231,14 @@ const readsPerCell = new Map()
 const getMask = onePass.getCandidatesBitMask.bind(onePass)
 onePass.getCandidatesBitMask = c => { readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
 const onePassInst = {}
-mod.setParams(onePassInst, CELLS)
+mod.setParams(onePassInst, CELLS, N, N)
 Array.from(mod.update(onePassInst, onePass))
 const reads = [...readsPerCell.values()].reduce((a, b) => a + b, 0)
 const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
 // Validate: full valid grid passes; swap two cells across regions (still ten each) fails
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
-mod.setParams(inst, CELLS)
+mod.setParams(inst, CELLS, N, N)
 const swapped = { ...bent, 0: bent[99], 99: bent[0] }
 const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
@@ -254,15 +254,77 @@ const bad9 = fuzzSoundness('isofill 9x9 fixture', {
   iters: FUZZ,
   draw: () => {
     const inst = {}
-    mod.setParams(inst, CELLS9)
+    mod.setParams(inst, CELLS9, N9, N9)
     return { truth: rows9, seed: seeder9, parts: [{ mod, inst }] }
   }
 }).failures
 const cap9 = makePuzzle(rows9, (c, v) => (v === 1 ? [v] : ALL9))
 const cap9Inst = {}
-mod.setParams(cap9Inst, CELLS9)
+mod.setParams(cap9Inst, CELLS9, N9, N9)
 Array.from(mod.update(cap9Inst, cap9))
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
+
+// Rectangles. The same ten digits on boards that are not square, so the
+// region size is cells / digits (6 here) and the border walk has a width and a
+// height of its own. Truths: one row per digit (6 wide, 10 high), one column
+// per digit (10 wide, 6 high), and columns paired into bent regions.
+installGlobals(0, 9)
+const ALL10 = Array.from({ length: 10 }, (_, d) => d)
+const seeder10 = makeSeeder(rnd, ALL10)
+const shapeCells = (w, h) => Array.from({ length: w * h }, (_, i) => i)
+const tall = { w: 6, h: 10, cells: shapeCells(6, 10) }
+const wide = { w: 10, h: 6, cells: shapeCells(10, 6) }
+const truthOf = (shape, at) => Object.fromEntries(shape.cells.map(c => [c, at(c % shape.w, Math.floor(c / shape.w))]))
+const rowsTall = truthOf(tall, (x, y) => y)
+const colsWide = truthOf(wide, x => x)
+// Column pair 2k, 2k+1: digit 2k takes rows 0-3 of the first and 0-1 of the
+// second; digit 2k+1 the rest. Six cells each, both connected.
+const bentWide = truthOf(wide, (x, y) => {
+  const first = x % 2 === 0
+  return (first ? y <= 3 : y <= 1) ? x - (x % 2) : x - (x % 2) + 1
+})
+let badRect = 0
+for (const [name, shape, truth] of [['rows 6x10', tall, rowsTall], ['cols 10x6', wide, colsWide], ['bent 10x6', wide, bentWide]]) {
+  badRect += fuzzSoundness(`isofill ${name} fixture`, {
+    iters: FUZZ,
+    draw: () => {
+      const inst = {}
+      mod.setParams(inst, shape.cells, shape.w, shape.h)
+      return { truth, seed: seeder10, parts: [{ mod, inst }] }
+    }
+  }).failures
+}
+const rectOnce = (shape, truth, seed) => {
+  const p = makePuzzle(truth, seed)
+  const inst = {}
+  mod.setParams(inst, shape.cells, shape.w, shape.h)
+  Array.from(mod.update(inst, p))
+  return p
+}
+// Cap: column 0 holds six 0s, so no other cell of the 10x6 may be 0.
+const rectCap = rectOnce(wide, colsWide, (c, v) => (v === 0 ? [v] : ALL10))
+const rectCapOk = wide.cells.every(c => c % wide.w === 0 || !rectCap.getCandidates(c).has(0))
+// Perimeter arc, on an edge only a rectangle has. These boards hold regions of
+// fifteen cells, so the walks have slack to spare and the border rule alone
+// sees the interleave, as it does on the square. Along the bottom row of a
+// 15x10, digit 0 sits at cells 141 and 143 and digit 1 at 142 and 145, read
+// 0, 1, 0, 1 round the border. A border walk that took the board for a
+// square would not have that row on the border.
+const wide2 = { w: 15, h: 10, cells: shapeCells(15, 10) }
+const tall2 = { w: 10, h: 15, cells: shapeCells(10, 15) }
+const zeros = shape => Object.fromEntries(shape.cells.map(c => [c, 0]))
+const rectArcBottom = rectOnce(wide2, zeros(wide2), c => (c === 141 || c === 143 ? [0] : c === 142 || c === 145 ? [1] : ALL10))
+const rectArcBottomOk = wide2.cells.some(c => rectArcBottom.getCandidates(c).size === 0)
+// The same along the left column of a 10x15: cells 110 and 130 are 0, 120 and 140 are 1.
+const rectArcLeft = rectOnce(tall2, zeros(tall2), c => (c === 110 || c === 130 ? [0] : c === 120 || c === 140 ? [1] : ALL10))
+const rectArcLeftOk = tall2.cells.some(c => rectArcLeft.getCandidates(c).size === 0)
+// An uneven split stops the branch: seven cells do not divide among ten digits.
+const sevenCells = shapeCells(7, 1)
+const uneven = makePuzzle(Object.fromEntries(sevenCells.map(c => [c, 0])), () => ALL10)
+const unevenInst = {}
+mod.setParams(unevenInst, sevenCells, 7, 1)
+Array.from(mod.update(unevenInst, uneven))
+const unevenOk = uneven._stopped !== null && uneven._stopped.includes('do not split evenly')
 const CHECKS = {
   'cap fired': capOk,
   'force fired': forceOk,
@@ -285,9 +347,13 @@ const CHECKS = {
   '9x9 cap fired': cap9Ok,
   'perimeter arc fired': arcOk,
   'perimeter flank fired': flankOk,
+  'rect cap fired': rectCapOk,
+  'rect bottom-row arc fired': rectArcBottomOk,
+  'rect left-column arc fired': rectArcLeftOk,
+  'uneven split stops': unevenOk,
   validate: validateOk
 }
 console.log(Object.entries(CHECKS).map(([name, pass]) => `${name}: ${pass}`).join(' | '), `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && Object.values(CHECKS).every(Boolean)
+const ok = bad === 0 && bad9 === 0 && badRect === 0 && Object.values(CHECKS).every(Boolean)
 finishHarness(ok)

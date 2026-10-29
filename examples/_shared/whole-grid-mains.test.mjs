@@ -34,8 +34,15 @@ for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'Fill
   runBackend(src, boardFor(4, 4, registered))
   assert.deepStrictEqual(registered.map(c => c.ctor), [ctor], `${name}: a square board registers one ${ctor}`)
 
-  assert.throws(() => runBackend(src, boardFor(4, 3)), /square/, `${name}: a board with height under width throws`)
-  assert.throws(() => runBackend(src, boardFor(3, 4)), /square/, `${name}: a board with width under height throws`)
+  // Any rectangle: the component gets the row-major cells, then width and height.
+  for (const [W, H] of [[4, 3], [3, 4]]) {
+    const rect = []
+    runBackend(src, boardFor(W, H, rect))
+    assert.strictEqual(rect.length, 1, `${name}: a ${W}x${H} board registers one component`)
+    const [, cells, ...size] = rect[0].args
+    assert.deepStrictEqual(cells, Array.from({ length: W * H }, (_, i) => i), `${name} ${W}x${H}: cells`)
+    assert.deepStrictEqual(size, [W, H], `${name} ${W}x${H}: width then height`)
+  }
 
   // A miss on a square board (the helper failing) must not become cell 0.
   const missing = boardFor(4, 4)

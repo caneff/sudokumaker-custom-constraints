@@ -22,7 +22,7 @@
 import { join } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength, total } from '../_shared/harness-lib.mjs'
-import { shipped, varied } from './fixture.mjs'
+import { FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const BASELINE = join(HERE, 'original')
@@ -34,10 +34,10 @@ const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'updat
 const { rnd } = makeRng(9001)
 const REPS = 300
 
-const apply = (mod, p, CELLS) => {
+const apply = (mod, p, CELLS, width, height) => {
   const inst = { cells: CELLS }
   if (mod.setParams) {
-    mod.setParams(inst, CELLS)
+    mod.setParams(inst, CELLS, width, height)
     fixpoint(mod, inst, p)
     return
   }
@@ -63,18 +63,18 @@ const quiet = fn => {
 let states = 0
 let weaker = 0
 let stronger = 0
-for (const [name, { truth, n: N }] of [['shipped', shipped], ['varied', varied]]) {
-  installGlobals(1, N)
-  const CELLS = Array.from({ length: N * N }, (_, i) => i)
-  const applyN = (mod, p) => apply(mod, p, CELLS)
+for (const [name, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
+  const applyN = (mod, p) => apply(mod, p, CELLS, width, height)
   let fixtureWeaker = 0
   let fixtureStronger = 0
   for (let rep = 0; rep < REPS; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, truth[c]))
-    const w = quiet(() => compareStrength(cur, ref, applyN, start))
+    for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, cap, truth[c]))
+    const w = quiet(() => compareStrength(cur, ref, applyN, start, { width }))
     if (w === null) continue
-    const st = quiet(() => compareStrength(ref, cur, applyN, start))
+    const st = quiet(() => compareStrength(ref, cur, applyN, start, { width }))
     states++
     fixtureWeaker += w.length
     fixtureStronger += st.length
@@ -85,7 +85,7 @@ for (const [name, { truth, n: N }] of [['shipped', shipped], ['varied', varied]]
   stronger += fixtureStronger
 }
 console.log('fillomino strength gate:', states, 'states,', weaker, 'weaker cells,', stronger, 'stronger cells')
-assert.strictEqual(states, 2 * REPS, 'a state built around a solution must never die')
+assert.strictEqual(states, FIXTURES.length * REPS, 'a state built around a solution must never die')
 assert.strictEqual(weaker, 0)
 // Half two. The count alone does not show the growth test earns its place:
 // the per-island rules already remove candidates the baseline keeps. The
@@ -96,27 +96,45 @@ assert.ok(stronger > 0, 'the component must remove a candidate the baseline keep
 // copy in `.golden/` (the Pants sandbox holds no git history); raising it means
 // replacing the copy in the same commit as the stronger component. The component
 // must never prune one candidate less than it, and must reach something it
-// does not -- the cut-starve demo at the end of this file.
+// does not -- the cut-starve demo at the end of this file. The copy reads a
+// side off the cell count, and uses it for one thing only: its neighbour
+// lists. So a board that is not square is handed to it by replacing those
+// lists, after its own setParams, with the board's real ones; the copy itself
+// stays as it shipped.
 const SHIPPED = 'ac20771'
-const shippedRung2 = io.load(`.golden/FillominoComponent.${SHIPPED}.js`, ['setParams', 'update'])
+const golden = io.load(`.golden/FillominoComponent.${SHIPPED}.js`, ['setParams', 'update'])
+const gridNeighbours = (width, height) => Array.from({ length: width * height }, (_, i) => {
+  const x = i % width
+  const y = Math.floor(i / width)
+  return [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]
+    .filter(([a, b]) => a >= 0 && a < width && b >= 0 && b < height)
+    .map(([a, b]) => b * width + a)
+})
+const shippedRung2 = {
+  ...golden,
+  setParams (inst, cells, width, height) {
+    golden.setParams(inst, cells)
+    if (width !== height) inst.nbrs = gridNeighbours(width, height)
+  }
+}
 const { rnd: frnd } = makeRng(4242)
 let floorStates = 0
 let pastRung2 = 0
-for (const { truth, n } of [shipped, varied]) {
-  installGlobals(1, n)
-  const CELLS = Array.from({ length: n * n }, (_, i) => i)
-  const applyN = (mod, p) => apply(mod, p, CELLS)
+for (const [, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
+  const applyN = (mod, p) => apply(mod, p, CELLS, width, height)
   for (let rep = 0; rep < 100; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, n, truth[c]))
-    const lost = quiet(() => compareStrength(cur, shippedRung2, applyN, start))
+    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, cap, truth[c]))
+    const lost = quiet(() => compareStrength(cur, shippedRung2, applyN, start, { width }))
     if (lost === null) continue
     floorStates++
     assert.deepStrictEqual(lost, [], `the component prunes less than rung 2 as shipped (${SHIPPED})`)
-    pastRung2 += quiet(() => compareStrength(shippedRung2, cur, applyN, start)).length
+    pastRung2 += quiet(() => compareStrength(shippedRung2, cur, applyN, start, { width })).length
   }
 }
-assert.strictEqual(floorStates, 200, 'a state built around a solution must never die')
+assert.strictEqual(floorStates, FIXTURES.length * 100, 'a state built around a solution must never die')
 assert.ok(pastRung2 > 0, `rung 3 must remove a candidate rung 2 (${SHIPPED}) keeps`)
 console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', SHIPPED + ',', pastRung2, 'stronger')
 
@@ -130,24 +148,24 @@ console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', S
 // between differently-sized boards the way the earlier checks jump between
 // fixtures.
 const { rnd: brnd } = makeRng(31337)
-const settle = (inst, start, CELLS) => {
+const settle = (inst, start, CELLS, width) => {
   const cells = {}; for (const c of CELLS) cells[c] = 0
-  const p = makePuzzle(cells, c => start.get(c))
+  const p = makePuzzle(cells, c => start.get(c), { width })
   quiet(() => fixpoint(cur, inst, p))
   return CELLS.map(c => [...p._cand.get(c)].sort((a, b) => a - b).join(''))
 }
 let reuseStates = 0
-for (const { truth, n } of [shipped, varied]) {
-  installGlobals(1, n)
-  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+for (const [, { truth, width, height, cap }] of FIXTURES) {
+  installGlobals(1, cap)
+  const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const reused = { cells: CELLS }
-  cur.setParams(reused, CELLS)
+  cur.setParams(reused, CELLS, width, height)
   for (let rep = 0; rep < 200; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, n, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, cap, truth[c]))
     const fresh = { cells: CELLS }
-    cur.setParams(fresh, CELLS)
-    assert.deepStrictEqual(settle(reused, start, CELLS), settle(fresh, start, CELLS),
+    cur.setParams(fresh, CELLS, width, height)
+    assert.deepStrictEqual(settle(reused, start, CELLS, width), settle(fresh, start, CELLS, width),
       'a reused instance settled a state somewhere a fresh one does not')
     reuseStates++
   }
@@ -158,7 +176,7 @@ console.log('fillomino reused instance:', reuseStates, 'states, same fixpoint as
 // 6x6 board, unrelated to gen.json's shape.
 installGlobals(1, 6)
 const CELLS6 = Array.from({ length: 36 }, (_, i) => i)
-const applyOn6 = (mod, p) => apply(mod, p, CELLS6)
+const applyOn6 = (mod, p) => apply(mod, p, CELLS6, 6, 6)
 
 // The silent-region win, directed. No cell is placed, so every baseline rule
 // is idle -- they all start from a placed island. r0c0's two neighbours drop

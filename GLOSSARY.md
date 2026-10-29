@@ -178,6 +178,29 @@ vocabulary. Where a term belongs to only one of them, the entry says so.
   nothing may be stranded.
 - **door** — an open cell next to an island that still allows the digit. One
   door is the cheap case of cut.
+- **room** (fillomino) — the cells an island's region could still spread
+  into: fillomino's **walk**, under the name its component and annotated link
+  use (`roomToGrow`). A room smaller than the digit breaks the board; a room
+  exactly the digit's size is the region.
+- **exit** (fillomino) — an empty cell beside an island that could still hold
+  the island's digit: fillomino's name for a **door**. When only one is left,
+  the region must grow through it.
+- **needed cell** (fillomino) — a cell of the room the region cannot do
+  without, because the room without it is too small: fillomino's name for a
+  cell **cut**'s starve test places.
+- **pocket** (fillomino) — one connected patch of the cells that hold or could
+  hold a digit. A region of that digit fits inside one pocket, so a pocket
+  smaller than the digit holds none of it. The rule is the **component bound**
+  of the older notes and rung tables.
+- **bottleneck** — the nearest cell that every shortest route from the island
+  to a given cell passes through (its dominator). Blocking a cell cuts off
+  exactly the cells it is the bottleneck of, directly or through a chain, so
+  one search answers "is this cell needed" for every cell at once. The shared
+  helper is `_shared/dominator.js`.
+- **visit marks** — how a search remembers which cells it has reached without
+  clearing anything first: each search gets a new number and marks a cell by
+  writing that number into its slot (`_shared/stamp.js`, which older notes call
+  **stamps**).
 - **seed** (ISOFILL) — the digit's lowest-index placed cell, where its walk
   starts.
 - **silent digit** (ISOFILL) — a digit with no placed cell. Gets no walk;
@@ -225,12 +248,13 @@ These shape every constraint; breaking one costs an afternoon. Detail in
   the rule goes dead. `replaceComponent` itself accepts any target. (gotcha 1)
 - **The whole puzzle is in the URL.** Long component code can truncate the
   puzzle — silent data loss. Keep component code lean. (gotcha 7)
-- **The app supports rectangular boards; this suite ships only square ones.**
-  `spec.size.width` and `spec.size.height` are independent numbers the app uses
-  independently (`docs/puzzle-api.md`), so a global backend reads the width
-  where it means width and the height where it means height. Every example
-  board here happens to be square, which hides a swapped reading — the shared
-  backends test builds a rectangular mock board so it cannot.
+- **The app supports rectangular boards, and so do fillomino, isofill and
+  isofill-skyscraper.** `spec.size.width` and `spec.size.height` are
+  independent numbers the app uses independently (`docs/puzzle-api.md`), so a
+  global backend reads the width where it means width and the height where it
+  means height. Most example boards are square, which hides a swapped reading
+  — the shared backends test builds a rectangular mock board so it cannot, and
+  fillomino ships a 7 x 5 board (`PUZZLE_LINK_15g.txt`).
 - **Frame key order is not a contract.** `frameGeometry`
   (`examples/_shared/frame-geometry.mjs`) groups its keys by side, but a frame
   is compared as a *set* of lines, never as a sequence

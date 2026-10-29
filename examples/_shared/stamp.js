@@ -1,32 +1,34 @@
 /* eslint-disable no-unused-vars -- read by the components that include this file, not from here */
-// The visit-stamp wrap guard ISOFILL and FILLOMINO share. A walk marks a cell
-// visited by writing the walk's stamp into a typed array, so a counter that
-// outgrew the array's element would store something else and every cell would
-// read as unvisited. One copy of the wrap guard, spliced into each component by
-// `// #include ../_shared/stamp.js` (examples/_shared/minify.py). Not a
-// module: the app runs the assembled component as a bare script.
+// Marking the cells a search has visited, without clearing anything before
+// each search.
+//
+// Every search gets its own number. A search marks a cell by writing its
+// number into that cell's slot, so "visited by this search" means "holds this
+// search's number", and the next search, with the next number, starts with
+// nothing marked. The slots are a typed array, which cannot hold numbers past
+// a limit, so when the next number would not fit, every slot is cleared and
+// the numbers start again at 1.
 
-// The stamp after `stamp`, for the array `marks` it is written into: clear the
-// array and restart at 1 when the next one would not fit the element type. The
-// cap is the one `newStampMarks` recorded on the array, so there is no type
-// test on this path (it runs inside `update`, where a throw is invisible).
-// `marks` must come from `newStampMarks`: an array without the recorded cap
-// never wraps, and nothing here reports it.
-function bumpStamp (marks, stamp) {
-  if (stamp >= marks.stampCap) { marks.fill(0); return 1 }
-  return stamp + 1
+// The number for the search after `visit`, for the slots `marks`. This runs
+// inside the solver, where an error would go unseen, so it never checks the
+// array's type: `marks` must come from `newVisitMarks`, which records the
+// limit.
+function nextVisit (marks, visit) {
+  if (visit >= marks.visitLimit) {
+    marks.fill(0)
+    return 1
+  }
+  return visit + 1
 }
 
-// The marks array a component allocates before its first bump: a `Type` array
-// of `length` zeros that records its element type's cap (2^31 - 1 for
-// Int32Array, 2^32 - 1 for Uint32Array). Any other type throws here, at
-// allocation, where the Node harness hits it before any link ships: a guess at
-// its cap would wrap silently. Most callers allocate in `setParams`; isofill's
-// matcher allocates on its first `update`, with a literal type that cannot fail.
-function newStampMarks (Type, length) {
-  const cap = Type === Int32Array ? 0x7FFFFFFF : Type === Uint32Array ? 0xFFFFFFFF : 0
-  if (!cap) throw new Error('newStampMarks: stamps are kept in an Int32Array or a Uint32Array')
+// `length` empty slots of `Type`, which must be Int32Array or Uint32Array:
+// the array records the largest number its slots can hold (2^31 - 1 or
+// 2^32 - 1). Any other type is refused here, the moment the array is made,
+// so a wrong type fails at once instead of marking cells wrongly later.
+function newVisitMarks (Type, length) {
+  const limit = Type === Int32Array ? 0x7FFFFFFF : Type === Uint32Array ? 0xFFFFFFFF : 0
+  if (!limit) throw new Error('newVisitMarks: visit marks are kept in an Int32Array or a Uint32Array')
   const marks = new Type(length)
-  marks.stampCap = cap
+  marks.visitLimit = limit
   return marks
 }

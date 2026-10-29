@@ -5,20 +5,22 @@ stripping, in the app.
     uv run --with ortools examples/fillomino/generate.py               # self-check
     uv run --with ortools examples/fillomino/generate.py sample 7      # a full grid
     uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # side 9, cap 12
+    uv run --with ortools examples/fillomino/generate.py sample 7 6 9 4 # 6 wide, 4 high, cap 9
     uv run --with ortools examples/fillomino/generate.py unique gen.json
     uv run --with ortools examples/fillomino/generate.py unique gen.json 30  # 30s cap
 
-gen.json: {"grid": [N rows of digits], "clues": [[r, c], ...], "cap": N}. Each
+gen.json: {"grid": [H rows of W digits], "clues": [[r, c], ...], "cap": N}. Each
 row is a list of ints -- a joined char string is ambiguous once a digit can
 run two digits wide (cap > 9), so rows are never joined into one string. The
 clues name the given cells; their digits come from the grid. `cap` defaults
-to the board side (digits 1..side) when absent.
+to the longer side of the board (digits 1..max(W, H)) when absent.
 
-Rule. Partition a `side` x `side` board into orthogonally connected regions;
+Rule. Partition a `width` x `height` board into orthogonally connected regions;
 every cell of a region of k cells holds the digit k; two distinct regions of
 the same size may not touch orthogonally. No houses, no row/column/box.
-Digits run 1..cap, so a region never exceeds `cap` cells -- `cap` and `side`
-are independent: a 9x9 board can carry a digit above 9 if `cap` says so.
+Digits run 1..cap, so a region never exceeds `cap` cells -- `cap` and the
+board's size are independent: a 9x9 board can carry a digit above 9 if `cap`
+says so, and a 14x15 board can stop at 9.
 
 The separation rule is what makes the model small: with it, a region *is* an
 orthogonally connected component of equal digits, so the model needs no
@@ -43,44 +45,49 @@ LIMIT = 600
 
 @dataclass(frozen=True)
 class Board:
-    side: int
+    width: int
+    height: int
     cap: int
     cells: list
     edges: list
     uedges: list
 
     @classmethod
-    def of(cls, side, cap=None):
-        cells = [(r, c) for r in range(side) for c in range(side)]
+    def of(cls, width, height=None, *, cap=None):
+        """A `width` x `height` board; `height` defaults to `width` (a square)
+        and `cap` to the longer side."""
+        height = width if height is None else height
+        cells = [(r, c) for r in range(height) for c in range(width)]
         edges = [
             ((r, c), (r + dr, c + dc))
             for (r, c) in cells
             for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
-            if 0 <= r + dr < side and 0 <= c + dc < side
+            if 0 <= r + dr < height and 0 <= c + dc < width
         ]
         uedges = [(p, q) for p, q in edges if p < q]
-        return cls(side, side if cap is None else cap, cells, edges, uedges)
+        cap = max(width, height) if cap is None else cap
+        return cls(width, height, cap, cells, edges, uedges)
 
     @classmethod
     def of_doc(cls, doc):
-        return cls.of(len(doc["grid"]), doc.get("cap"))
+        return cls.of(len(doc["grid"][0]), len(doc["grid"]), cap=doc.get("cap"))
 
     def givens(self, doc):
         return {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
 
     def idx(self, p):
-        return p[0] * self.side + p[1]
+        return p[0] * self.width + p[1]
 
 
 def model(board, givens):
-    side, cap, cells = board.side, board.cap, board.cells
+    cap, cells = board.cap, board.cells
     m = cp_model.CpModel()
     x = {p: m.NewIntVar(1, cap, f"x{p}") for p in cells}
     for p, v in givens.items():
         m.Add(x[p] == v)
 
     # A region id per cell, forced to be the region's lowest cell index.
-    rid = {p: m.NewIntVar(0, side * side - 1, f"g{p}") for p in cells}
+    rid = {p: m.NewIntVar(0, len(cells) - 1, f"g{p}") for p in cells}
     root = {p: m.NewBoolVar(f"r{p}") for p in cells}
     for p in cells:
         m.Add(rid[p] <= board.idx(p))
@@ -112,7 +119,7 @@ def model(board, givens):
 
 
 def rows(board, s, x):
-    return [[s.Value(x[r, c]) for c in range(board.side)] for r in range(board.side)]
+    return [[s.Value(x[r, c]) for c in range(board.width)] for r in range(board.height)]
 
 
 def is_striped(grid):
@@ -130,7 +137,7 @@ def drop(board, why, seed, givens, sub=None):
     print(
         f"drop ({why}): seed={seed}"
         + (f" sub={sub}" if sub is not None else "")
-        + f" side={board.side} cap={board.cap}"
+        + f" size={board.width}x{board.height} cap={board.cap}"
         + f" clues={json.dumps(clues, sort_keys=True)}",
         file=sys.stderr,
     )
@@ -143,16 +150,17 @@ def sample(board, seed, pins=4, max_tries=50):
     diversity (`randomize_search` alone still hands back dull striped grids
     on some seeds -- docs/research/fillomino-cpsat.md). A pin combination
     that has no solution, or that solves to a striped grid, is dropped and
-    retried with a fresh sub-seed. When `cap` exceeds `side`, one pin is
-    forced above `side` so a wide cap actually gets used.
+    retried with a fresh sub-seed. When `cap` exceeds the longer side, one pin is
+    forced above the longer side so a wide cap actually gets used.
     """
     rng = random.Random(seed)
     for _ in range(max_tries):
         chosen = rng.sample(board.cells, min(pins, len(board.cells)))
         givens = {}
-        if board.cap > board.side and chosen:
+        longer = max(board.width, board.height)
+        if board.cap > longer and chosen:
             high, *chosen = chosen
-            givens[high] = rng.randint(board.side + 1, board.cap)
+            givens[high] = rng.randint(longer + 1, board.cap)
         givens.update({p: rng.randint(1, board.cap) for p in chosen})
         m, x = model(board, givens)
         sub = rng.randint(0, 2**31 - 1)
@@ -211,7 +219,7 @@ def brute(board, givens):
 
     The independent reading of the rule that the CP-SAT model is checked
     against: it flood-fills the finished grid and compares each region's cell
-    count with its digit. Only usable for side <= 3.
+    count with its digit. Only usable for boards of up to nine cells.
     """
     cells = board.cells
 
@@ -250,16 +258,16 @@ def brute(board, givens):
 
 
 def _rows_from_dict(board, g):
-    return [[g[r, c] for c in range(board.side)] for r in range(board.side)]
+    return [[g[r, c] for c in range(board.width)] for r in range(board.height)]
 
 
 def self_check():
-    for n in (2, 3):
-        board = Board.of(n)
+    for w, h in ((2, 2), (3, 3), (3, 2), (2, 3), (4, 2)):
+        board = Board.of(w, h)
         want = sorted(brute(board, {}))
         got = sorted(solutions(board, {}, most=len(want) + 5))
-        assert got == want, f"{n}x{n}: model {len(got)} grids, brute {len(want)}"
-        print(f"{n}x{n}: {len(want)} grids, model agrees with brute force")
+        assert got == want, f"{w}x{h}: model {len(got)} grids, brute {len(want)}"
+        print(f"{w}x{h}: {len(want)} grids, model agrees with brute force")
 
     board = Board.of(3)
     for clues in ({(0, 0): 1}, {(1, 1): 3}, {(0, 0): 3, (2, 2): 3}):
@@ -283,8 +291,10 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check()
     elif sys.argv[1] == "sample":
-        seed, *shape = (int(a) for a in sys.argv[2:])
-        board = Board.of(*shape) if shape else Board.of(9)
+        # sample <seed> [width [cap [height]]]
+        given = [int(a) for a in sys.argv[2:]]
+        seed, width, cap, height = given + [None] * (4 - len(given))
+        board = Board.of(width or 9, height, cap=cap)
         grid = sample(board, seed)
         print(json.dumps({"grid": grid, "clues": board.cells}))
     elif sys.argv[1] == "unique":
@@ -301,5 +311,5 @@ if __name__ == "__main__":
         sys.exit(0 if ok else 1)
     else:
         sys.exit(
-            f"usage: {sys.argv[0]} [sample <seed> [side] [cap] | unique <gen.json> [limit]]"
+            f"usage: {sys.argv[0]} [sample <seed> [width] [cap] [height] | unique <gen.json> [limit]]"
         )

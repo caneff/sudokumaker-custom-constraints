@@ -5,8 +5,10 @@
 
 gen.json: {"grid": [N strings of digits], "clues": [[r, c], ...],
 "minDigit": 0}. The clues name the given cells; their digits come from the
-grid. The board is N x N with N digits from minDigit (default 0): 10x10 with
-0-9, or 9x9 with 1-9.
+grid. The board is W x H (the grid's rows and their width) with D digits from
+minDigit (default 0), D defaulting to the width: 10x10 with 0-9, a 9x9 with
+1-9, or a rectangle whose "digits" key says how many regions the cells split
+into. Each region holds cells / D cells.
 
 The rule and its CP-SAT model live in examples/_shared/isofill_model.py,
 shared with the ring board in examples/isofill-skyscraper.
@@ -57,8 +59,18 @@ def unique(board, givens, limit=LIMIT, reproducible=True):
     return is_unique
 
 
+def gen_doc(board, grid, clues):
+    """The gen JSON for `grid` on `board` with `clues` given: `digits` is
+    written only when it is not the width, which `Board.of_doc` reads back."""
+    doc = {"grid": grid, "clues": clues, "minDigit": board.lo}
+    if board.digits != board.width:
+        doc["digits"] = board.digits
+    return doc
+
+
 def self_check(board):
-    n = board.n
+    n = board.width
+    assert board.height == board.digits == n, "self_check needs a square board"
     banded = ["".join(str(r) for _ in range(n)) for r in range(n)]
 
     def given(*rs):
@@ -94,16 +106,17 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check(Board.of(10))
     elif sys.argv[1] in ("sample", "strip"):
-        # verify.py sample <seed> [side] [minDigit]: a full grid as gen.json
+        # verify.py sample <seed> [width] [minDigit] [height] [digits]: a full grid as gen.json
         # with every cell given, ready for app-strip.mjs --grid.
-        # verify.py strip <seed> [side] [minDigit]: the same grid stripped to a
+        # verify.py strip <seed> [width] [minDigit] [height] [digits]: the same grid stripped to a
         # minimal unique clue set with CP-SAT (slower than the app strip; fine
         # for a 9x9).
-        seed, *shape = (int(a) for a in sys.argv[2:])
-        board = Board.of(*shape) if shape else Board.of(10)
+        given = [int(a) for a in sys.argv[2:]]
+        seed, width, lo, height, digits = given + [None] * (5 - len(given))
+        board = Board.of(width or 10, height, lo=lo or 0, digits=digits)
         grid = sample(board, seed)
         clues = strip(board, grid, seed) if sys.argv[1] == "strip" else board.cells
-        print(json.dumps({"grid": grid, "clues": clues, "minDigit": board.lo}))
+        print(json.dumps(gen_doc(board, grid, clues)))
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
         board = Board.of_doc(doc)
