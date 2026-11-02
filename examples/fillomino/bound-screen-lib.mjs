@@ -63,9 +63,12 @@ const INCREMENTAL_CHECK = `function * update (instance, puzzle) {
 export function loadVariants (here) {
   const { load } = makeIo(here)
   const file = 'FillominoComponent.js'
+  // Rule 7 is this idea made stronger, so #327's comparison runs on the
+  // component without it.
+  const withoutCount = src => patchSource(src, 'function * cellCountRule (', 'function * cellCountRule () { return MORE }\nfunction * cellCountRuleRemoved (')
   return {
-    baseline: load(file, NAMES),
-    incremental: load(file, NAMES, src => patchSource(patchSource(src, SETUP_ANCHOR, INCREMENTAL_SETUP), UPDATE_ANCHOR, INCREMENTAL_CHECK))
+    baseline: load(file, NAMES, withoutCount),
+    incremental: load(file, NAMES, src => patchSource(patchSource(withoutCount(src), SETUP_ANCHOR, INCREMENTAL_SETUP), UPDATE_ANCHOR, INCREMENTAL_CHECK))
   }
 }
 

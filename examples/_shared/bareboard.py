@@ -16,6 +16,10 @@ from minify import minify_file
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
+# The highest digit the app's solver can run. It accepts 30, then crashes on it
+# (docs/puzzle-api.md, helpers.digits).
+MAX_DIGIT = 29
+
 
 @dataclasses.dataclass(frozen=True)
 class BareBoard:
@@ -42,7 +46,7 @@ class BareBoard:
         height = len(spec["grid"])
         n = width = len(spec["grid"][0])
         lo, hi, fields = self.digit_range(spec, n)
-        assert 0 <= lo <= hi <= 9, f"digits {lo}-{hi} do not fit the app's 0-9 range"
+        assert 0 <= lo <= hi <= MAX_DIGIT, f"digits {lo}-{hi} go past {MAX_DIGIT}"
         count = hi - lo + 1
         # a cell holds a value only when it is a clue: a non-given value ships
         # as an entered digit and the recipient opens a solved board
@@ -96,7 +100,7 @@ class BareBoard:
         # The digits the app offers: minDigit..maxDigit, each defaulting to
         # the app's own 1 and 9. The board's shape does not enter into it.
         lo, hi = p.get("minDigit", 1), p.get("maxDigit", 9)
-        assert 0 <= lo <= hi <= 9, "digits must fit the app's 0-9 range"
+        assert 0 <= lo <= hi <= MAX_DIGIT, f"digits {lo}-{hi} go past {MAX_DIGIT}"
         assert len(p["cells"]) == width * height and not any("houses" in k for k in p)
         # every non-given cell must be empty, or the board ships entered digits
         assert all(c.get("given") or c == {} for c in p["cells"])

@@ -40,6 +40,13 @@
 //      pocket of fewer than N cells holds no N at all. This is the only rule
 //      that finds a region with no digit placed in it yet.
 //
+// And once over the whole board, before any of those:
+//
+//   7. Counting empty cells. Regions share no cells, so the empty cells that
+//      the placed digits' regions still need add up. More than there are: the
+//      board is broken. And a digit with nothing placed needs N empty cells on
+//      top of those, so if they are not there, no empty cell can be N.
+//
 // The other rule of fillomino, that regions of the same size may not touch,
 // needs no check of its own: two such regions touching would be one island
 // of 2N cells, and rule 1 and the final check both turn that down.
@@ -74,6 +81,9 @@ function setParams (instance, cells, width, height) {
   instance.digitsNow = new Int32Array(cells.length)
   instance.digitsBefore = new Int32Array(cells.length).fill(-1)
   instance.changed = new Int16Array(cells.length)
+  // Rule 7's count of placed cells per digit. A digit is a bit in the app's
+  // 32-bit candidate record, so none reaches this length.
+  instance.placedOf = new Int16Array(32)
   instance.othersThan = null
 }
 
@@ -235,6 +245,7 @@ const MORE = 2 // the next rule may still find something
 // The rules each check for themselves that they apply: none of them counts on
 // another having run first.
 function * update (instance, puzzle) {
+  if ((yield * cellCountRule(instance, puzzle)) === BROKEN) return
   for (const island of findIslands(instance, puzzle)) {
     const result = yield * islandRules(instance, puzzle, island)
     if (result === BROKEN) return
@@ -477,6 +488,47 @@ function * smallPocketsRule (instance, puzzle) {
     }
   }
   digitsBefore.set(digitsNow)
+}
+
+// 7. Counting empty cells. P placed N's lie in at least P / N regions, rounded
+// up, of N cells each, so they still need that many cells less the P placed.
+function * cellCountRule (instance, puzzle) {
+  const { cells, placedOf } = instance
+  const { minDigit, maxDigit } = helpers.digits
+  placedOf.fill(0)
+  let empty = 0
+  let lastPlaced = -1
+  for (let i = 0; i < cells.length; i++) {
+    if (puzzle.hasValue(cells[i])) {
+      placedOf[puzzle.getValue(cells[i])]++
+      lastPlaced = i
+    } else {
+      empty++
+    }
+  }
+  let needed = 0
+  for (let digit = minDigit; digit <= maxDigit; digit++) {
+    const placed = placedOf[digit]
+    if (placed > 0) needed += digit * Math.ceil(placed / digit) - placed
+  }
+  // More needed than there are, and any placed cell losing its digit is how
+  // the solver learns the board is broken.
+  if (needed > empty) {
+    const cell = cells[lastPlaced]
+    yield puzzle.removeCandidateFromCell(puzzle.getValue(cell), cell)
+    return BROKEN
+  }
+  let tooBig = 0
+  for (let digit = minDigit; digit <= maxDigit; digit++) {
+    if (placedOf[digit] === 0 && needed + digit > empty) tooBig |= 1 << digit
+  }
+  if (tooBig === 0) return MORE
+  for (const cell of cells) {
+    if (!puzzle.hasValue(cell) && (puzzle.getCandidatesBitMask(cell) & tooBig) !== 0) {
+      yield puzzle.removeCandidatesFromCell(tooBig, cell)
+    }
+  }
+  return MORE
 }
 
 // The final check on a filled grid: every island is exactly its digit's size.
