@@ -157,9 +157,9 @@ for (const rule of Object.keys(RULES)) {
     }
   }
   // The shipped board offers more digits than its side, and the cell count reads
-// the whole range.
-const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
-for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
+  // the whole range.
+  const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
+  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
     installGlobals(1, cap)
     const RCELLS = Array.from({ length: width * height }, (_, i) => i)
     const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))

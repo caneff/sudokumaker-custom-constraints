@@ -287,7 +287,7 @@ fixtures, the three hunt records):
    exact `gen.json`, 5.4 s, no timeout; the run is recorded under *The board*
    above. Since this ticket it is not only a recorded run: `pipeline.test.py`
    re-proves it on every `just check-full`, so the board cannot outlive its proof.
-2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-9 in every
+2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-29 in every
    cell. Orthogonally connected cells with the same digit are regions; the
    number of cells in a region has to equal its digit. Two regions of the same
    size may not touch orthogonally." Three sentences, no repo jargon, no
@@ -464,6 +464,8 @@ One rep each, `app-solve.mjs`, the same clues at other ranges:
 | 1-12 | 6400ms | 3500ms |
 | 1-16 | 8400ms | 3900ms |
 | 1-29 | 10800ms | 4300ms |
+
+The 7x5 board (`PUZZLE_LINK_15g.txt`) reads 0ms on both sides of `just time-link`, cold and after logical, the measurement floor.
 
 The app's own solver in Node shows no such gain: 11.0 s to 11.9 s at 1-29, one
 rep (`bundle-solve.mjs` with its single-digit guard taken out, in `.scratch/`).
