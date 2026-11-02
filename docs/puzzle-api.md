@@ -61,7 +61,7 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 
 | Member | Meaning |
 |-|-|
-| `minDigit` / `maxDigit` | Lowest / highest digit in the puzzle (1 / 9 for classic). **[verified]** |
+| `minDigit` / `maxDigit` | Lowest / highest digit in the puzzle (1 / 9 for classic). The app's `updatePuzzleDigitRange` allows `minDigit` 0 or 1 and `maxDigit` up to 30, on custom puzzles only (app v2026.10.05-a3aef4c). In the recorded app, the shipped fillomino clues solved at 1-16; 1-30 and 1-31 timed out with no verdict on one rep each, so whether a link loads at 31 is not settled. **[verified]** |
 | `allDigitsMask` | Bitmask of available digits. **[docs]** |
 | `createFullDigitSet()` | DigitSet of all digits. **[verified]** (bundle) |
 | `createOddsDigitSet()` / `createEvensDigitSet()` | Odd / even DigitSet, masked to `minDigit..maxDigit`. **[verified]** (bundle) |
