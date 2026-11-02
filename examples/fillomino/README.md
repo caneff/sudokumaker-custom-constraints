@@ -247,7 +247,7 @@ uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/g
 unique
 ```
 
-(5.4s.) `update-strength.test.mjs` reads this same `gen.json` for its
+(2.7s.) `update-strength.test.mjs` reads this same `gen.json` for its
 `shipped`-grid check, so that test's own fuzz now runs against the shipped
 instance's grid too.
 
@@ -284,7 +284,7 @@ fixtures, the three hunt records):
   rules text does *not* open with the sudoku sentence.
 
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
-   exact `gen.json`, 5.4 s, no timeout; the run is recorded under *The board*
+   exact `gen.json`, 2.7 s, no timeout; the run is recorded under *The board*
    above. Since this ticket it is not only a recorded run: `pipeline.test.py`
    re-proves it on every `just check-full`, so the board cannot outlive its proof.
 2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-29 in every

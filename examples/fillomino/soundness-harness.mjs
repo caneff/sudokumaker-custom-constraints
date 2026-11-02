@@ -114,9 +114,15 @@ const DIRECTED = [
   // needs six, though the pocket of twelve would hold it.
   ['digit too big', c => (TWELVE_OPEN.has(c) ? ALL : [directed[c]]), p => [...TWELVE_OPEN].every(c => !p.getCandidates(c).has(6))],
   // Too few empty cells: the same, with r0c2 and r2c3 holding 6. Ten cells are
-  // left and the 6's alone need ten, with the 5's and 4's on top. Every island
-  // has room to grow, so only the count finds that they cannot all fit.
-  ['too few empty cells', c => (c === 2 || c === 15 ? [6] : TWELVE_OPEN.has(c) ? ALL : [directed[c]]), p => empty(p)]
+  // left. The two 6's may share a region and need four, the 5's four and the
+  // 4's three: eleven. Every island has room to grow, so only the count finds
+  // that they cannot all fit.
+  ['too few empty cells', c => (c === 2 || c === 15 ? [6] : TWELVE_OPEN.has(c) ? ALL : [directed[c]]), p => empty(p)],
+  // Just fits: r1c5 opens too, a thirteenth cell the placed digits do not need.
+  // Seven are needed, which leaves exactly the six a 6 takes, so it stays. No
+  // rule owns this: it holds with every rule removed, and a count one too
+  // strict is what fails it.
+  ['digit that just fits', c => (c === 11 || TWELVE_OPEN.has(c) ? ALL : [directed[c]]), p => [...TWELVE_OPEN, 11].every(c => p.getCandidates(c).has(6))]
 ]
 const pinned = (p, c, d) => p.getCandidates(c).size === 1 && p.getCandidates(c).has(d)
 

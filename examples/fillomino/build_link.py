@@ -23,9 +23,9 @@ RULE = (
 def digit_range(spec, n):
     """No cap means the longer side, as in generate.Board.of; `n` is the width.
     A board that is not square ships its range, so the app offers the digits
-    the rules text names and the proof ran on. A square board with no cap
-    ships none and the app offers its default 1-9, which is the shipped 9x9's
-    range."""
+    the rules text names and the proof ran on, and so does a board with a
+    cap. A square board with no cap ships none and the app offers its default
+    1-9."""
     cap = spec.get("cap")
     height = len(spec["grid"])
     if cap is None and n == height:

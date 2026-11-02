@@ -12,6 +12,7 @@ from bareboard import MAX_DIGIT
 from build_link import CONSTRAINT_NAME, RULE, TIMED_COMPONENT, build, check
 from minify import minify_js
 from sm_document import find_constraint
+from sudoku_kit.link_codec import encode_link
 
 if __name__ == "__main__":
     assert not RULE.startswith("Normal sudoku rules apply"), (
@@ -37,6 +38,13 @@ if __name__ == "__main__":
             pass
         else:
             raise SystemExit("a digit range past the app's solver must be refused")
+    over_doc = {**doc, "puzzle": {**doc["puzzle"], "maxDigit": MAX_DIGIT + 1}}
+    try:
+        check(encode_link(over_doc), over_doc, n_clues)
+    except AssertionError as refused:
+        assert "go past" in str(refused), refused
+    else:
+        raise SystemExit("check must refuse a digit range past the app's solver")
 
     rect, rect_doc, rect_clues = build(
         HERE / f"{TIMED_COMPONENT}.js", HERE / "gen_15g.json"
