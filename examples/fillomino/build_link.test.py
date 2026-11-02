@@ -1,11 +1,14 @@
+import json
 import pathlib
 import re
 import sys
+import tempfile
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from bareboard import MAX_DIGIT
 from build_link import CONSTRAINT_NAME, RULE, TIMED_COMPONENT, build, check
 from minify import minify_js
 from sm_document import find_constraint
@@ -20,6 +23,20 @@ if __name__ == "__main__":
     assert link == (HERE / "PUZZLE_LINK.txt").read_text().strip(), (
         "the committed component must reproduce PUZZLE_LINK.txt exactly"
     )
+
+    # The shipped board runs past single digits, up to the highest the app's
+    # solver can run; one digit more is refused rather than built.
+    assert doc["puzzle"]["maxDigit"] == MAX_DIGIT, "the shipped board's digit range"
+    with tempfile.TemporaryDirectory() as tmp:
+        over = pathlib.Path(tmp) / "gen.json"
+        spec = json.loads((HERE / "gen.json").read_text())
+        over.write_text(json.dumps({**spec, "cap": MAX_DIGIT + 1}))
+        try:
+            build(HERE / f"{TIMED_COMPONENT}.js", over)
+        except AssertionError:
+            pass
+        else:
+            raise SystemExit("a digit range past the app's solver must be refused")
 
     rect, rect_doc, rect_clues = build(
         HERE / f"{TIMED_COMPONENT}.js", HERE / "gen_15g.json"

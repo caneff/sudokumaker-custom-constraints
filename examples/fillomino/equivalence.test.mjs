@@ -19,7 +19,7 @@
 // ends, so the comparison does not hang on when the solver applies a change.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, total } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates, total } from '../_shared/harness-lib.mjs'
 import { fixtureBoards } from './bound-screen-lib.mjs'
 import { FIXTURES } from './fixture.mjs'
 
@@ -28,7 +28,9 @@ const FROZEN = '95bf886'
 const io = makeIo(HERE)
 const NAMES = ['setParams', 'update']
 const ref = io.load(`.golden/FillominoComponent.${FROZEN}.js`, NAMES)
-const cur = io.load('FillominoComponent.js', NAMES)
+// The cell count came after the rewrite, so it stays out of the comparison.
+const cur = io.load('FillominoComponent.js', NAMES, src =>
+  patchSource(src, 'function * cellCountRule (', 'function * cellCountRule () { return MORE }\nfunction * cellCountRuleRemoved ('))
 
 const REMOVERS = ['removeCandidateFromCell', 'removeCandidatesFromCell', 'removeCandidateFromCells', 'removeCandidatesFromCells']
 // One `update` call on `p`, returning its removals as [cell, digit mask]

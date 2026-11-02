@@ -2,27 +2,29 @@
 // gen.json: they hardcode cell indices and a 1-6 digit range tied to that
 // grid's region layout.
 //
-// `update` is a dispatcher over four named rule generators (RULES below).
+// `update` is a dispatcher over five named rule generators (RULES below).
 // Each directed check is owned by the rule that reaches it, or by the two that
 // both do (SHARED), and the deletion test stubs rules out: exactly the owned
 // checks must fail, so a rule that quietly stops deducing, or starts reaching
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
-import { gridOf, FIXTURES } from './fixture.mjs'
+import { gridOf, shipped, FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
+const SHIPPED_CAP = 29
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const NAMES = ['setParams', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'BROKEN']
+const NAMES = ['setParams', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
 const mod = load('FillominoComponent.js', NAMES)
 
 const RULES = {
   islandRules: ['seal', 'overflow', 'force'],
   neededCellsRule: ['cut starve'],
   exitRules: ['merge overflow'],
-  smallPocketsRule: ['growth test']
+  smallPocketsRule: ['growth test'],
+  cellCountRule: ['digit too big', 'too few empty cells']
 }
 // Two checks two rules reach, so removing either owner alone leaves them
 // passing. Starve: a walk under k cells means the island's component of cells
@@ -39,7 +41,10 @@ const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.
 let bad = 0
 
 const FUZZ = Number(process.env.FUZZ) || 20000
-for (const [name, { truth, width, height, cap }] of FIXTURES) {
+// The shipped board offers more digits than its side, and the cell count reads
+// the whole range.
+const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
+for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
   installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const ALL = Array.from({ length: cap }, (_, d) => d + 1)
@@ -64,6 +69,7 @@ const empty = p => CELLS.some(c => p.getCandidates(c).size === 0)
 const NO_SIX = ALL.filter(d => d !== 6)
 const NO_FIVE = ALL.filter(d => d !== 5)
 const CORRIDOR = new Set([1, 6, 7, 13, 19])
+const TWELVE_OPEN = new Set([1, 2, 3, 4, 7, 8, 9, 10, 13, 14, 15, 16])
 const DIRECTED = [
   // Seal: r5c0 holds 1, an island of one cell, so it is a finished region.
   // Both its orthogonal neighbours lose the candidate 1.
@@ -101,7 +107,16 @@ const DIRECTED = [
   // starves at three cells, drop r2c1 and it starves at four: neither can be
   // outside the region, so both hold 5. No other rule here reaches either
   // cell.
-  ['cut starve', c => (c === 0 ? [5] : CORRIDOR.has(c) ? ALL : NO_FIVE), p => [7, 13].every(c => pinned(p, c, 5))]
+  ['cut starve', c => (c === 0 ? [5] : CORRIDOR.has(c) ? ALL : NO_FIVE), p => [7, 13].every(c => pinned(p, c, 5))],
+  // Digit too big: twelve cells open, r0c1-r2c4, the rest placed as in the
+  // grid. Six placed 5's are at least two regions and need four more cells,
+  // five placed 4's need three, which leaves five. A 6, with nothing placed,
+  // needs six, though the pocket of twelve would hold it.
+  ['digit too big', c => (TWELVE_OPEN.has(c) ? ALL : [directed[c]]), p => [...TWELVE_OPEN].every(c => !p.getCandidates(c).has(6))],
+  // Too few empty cells: the same, with r0c2 and r2c3 holding 6. Ten cells are
+  // left and the 6's alone need ten, with the 5's and 4's on top. Every island
+  // has room to grow, so only the count finds that they cannot all fit.
+  ['too few empty cells', c => (c === 2 || c === 15 ? [6] : TWELVE_OPEN.has(c) ? ALL : [directed[c]]), p => empty(p)]
 ]
 const pinned = (p, c, d) => p.getCandidates(c).size === 1 && p.getCandidates(c).has(d)
 
@@ -141,7 +156,10 @@ for (const rule of Object.keys(RULES)) {
       }
     }
   }
-  for (const [name, { truth, width, height, cap }] of FIXTURES) {
+  // The shipped board offers more digits than its side, and the cell count reads
+// the whole range.
+const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
+for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
     installGlobals(1, cap)
     const RCELLS = Array.from({ length: width * height }, (_, i) => i)
     const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))

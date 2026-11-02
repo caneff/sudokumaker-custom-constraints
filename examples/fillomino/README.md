@@ -22,6 +22,16 @@ cells. Rules 1-5 run per island and rule 6 once per digit; the numbers are the
 ones the component's header comment uses. The only thing carried between calls
 is rule 6's memory of the last call (below).
 
+Once per call, before any of those (`cellCountRule`):
+
+7. **Counting empty cells** — `p` placed `k`'s lie in at least `p / k` regions,
+   rounded up, of `k` cells each, and regions share no cells, so what the placed
+   digits still need adds up over the digits. More than the empty cells left is
+   a dead branch. A digit with nothing placed needs `k` empty cells on top, so
+   when they are not there no empty cell can be `k`. This is what keeps a wide
+   digit range cheap: a high digit fills a lot of cells, and two high digits
+   soon cannot both fit.
+
 Per island, in order (`islandRules`, then `neededCellsRule`, then `exitRules`):
 
 1. **Too big** — an island of more than `k` cells holding `k` is a dead branch.
@@ -217,8 +227,11 @@ planned. See #284 for each parked rule and its admission bar.
 
 ## The board
 
-`gen.json` holds the shipped instance (#310): a 9x9, digits 1-9 board, 28
-givens. Sampled by `generate.py sample 3`, stripped in the live app under the
+`gen.json` holds the shipped instance (#310): a 9x9, digits 1-29 board, 28
+givens. It ships as high as the app's solver can run, the closest a board can
+get to fillomino with no cap on a region: the app accepts 30, then crashes on it
+(`docs/puzzle-api.md`, `helpers.digits`). The clues were hunted at 1-9, and no
+region in the solution is bigger than 8. Sampled by `generate.py sample 3`, stripped in the live app under the
 **shipped** component (`app-strip.mjs`), and picked as the slowest board the
 app still closes out of a hunt that ran a blind 18-seed live batch, a 300-board
 offline hunt (#317's scorer) across both digit ranges, and an offline
@@ -425,6 +438,41 @@ the *live* strip under the same component — the same neighbourhood, from a
 different grid and a different stripper.
 
 ## Timing
+
+### The cell count and digits 1-29
+
+Rule 7 against the committed link, the shipped board at digits 1-9 (`just
+time fillomino`, 3 reps, a deduction added):
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-02 | v2026.10.05-a3aef4c | fillomino | 5000ms | 3200ms | 0.64 | PASS |
+| 2026-11-02 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+
+`two-row rule: SHIP`. Then the shipped 1-29 link against the 1-9 link it
+replaces (`just time-link`, interleaved, 3 reps):
+
+| date | app version | fixture | 1-9, no rule 7 | 1-29, rule 7 | ratio |
+| --- | --- | --- | --- | --- | --- |
+| 2026-11-02 | v2026.10.05-a3aef4c | shipped board, cold | 4900ms | 5000ms | 1.02 |
+| 2026-11-02 | v2026.10.05-a3aef4c | shipped board, after-logical | 0ms | 0ms | — |
+
+One rep each, `app-solve.mjs`, the same clues at other ranges:
+
+| digits | without rule 7 | with rule 7 |
+| --- | --- | --- |
+| 1-12 | 6400ms | 3500ms |
+| 1-16 | 8400ms | 3900ms |
+| 1-29 | 10800ms | 4300ms |
+
+The app's own solver in Node shows no such gain: 11.0 s to 11.9 s at 1-29, one
+rep (`bundle-solve.mjs` with its single-digit guard taken out, in `.scratch/`).
+Why the browser and Node differ here is not settled. The browser is the number
+on record (`docs/research/429-headless-solver-calibration.md`).
+
+The digit pad reaches 29 on its fourth screen, and a 29 entered there fits its
+cell (recorded app, 2026-11-02). `generate.py unique` proves the clues unique at
+1-29.
 
 **Timing a frozen fixture now.** The committed `timing-fixture-*.txt` links
 embed the square-only `main.js` from before #867, which hands the component no
