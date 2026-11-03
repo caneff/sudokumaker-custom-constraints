@@ -476,6 +476,36 @@ The digit pad reaches 29 on its fourth screen, and a 29 entered there fits its
 cell (recorded app, 2026-11-02). `generate.py unique` proves the clues unique at
 1-29.
 
+**The logical solver stalls at wide digit ranges, and the component is not why.**
+The AutoStep button on the shipped clues, recorded app, 2026-11-03, one rep unless
+noted:
+
+| digits | default settings | "Unorthodox naked pairs/triples/etc." off |
+| --- | --- | --- |
+| 1-9 | 0.5s | |
+| 1-16 | 0.7s | |
+| 1-20 | 2.5s | |
+| 1-24 | 8.0s, then unfinished at 90s | 1.2s |
+| 1-25 | 16.3s | |
+| 1-26 | unfinished at 90s | |
+| 1-29 | unfinished at 300s | 1.0-1.4s, 4 reps |
+
+Without rule 7, 1-29 is also unfinished at 300s. At 1-24, timers inside `update`
+read about 290 ms of the first 5.2 s, over 4,312 calls. The cost is
+`UnorthodoxNakedSetLogicStep` (`bundle.claude.js:2634`): for each set size from 2 to
+half the digit count it walks every combination of the open cells with that few
+candidates, and only then asks whether they see each other. `Solver.step` (`bundle.claude.js:8398`) returns after each
+change and starts the list again, so the walk repeats before every by-contradiction
+removal. The timings vary because the app's logical solver runs with randomness on.
+The step is on by default, and the setting belongs to the viewer: the link cannot
+carry it, and a component cannot reach it.
+
+The after-logical rows at 1-29 under *The cell count and digits 1-29* are suspect.
+`solveLogically` (`examples/_shared/app-dom.mjs`) calls the pass settled when the
+board stops changing for three samples 500 ms apart, and in this stall the board
+went quiet for 56 s or more with the solver still running. So those 0 ms rows may
+have started mid-pass. Not re-measured.
+
 **Timing a frozen fixture now.** The committed `timing-fixture-*.txt` links
 embed the square-only `main.js` from before #867, which hands the component no
 width or height, so `just time fillomino --board <fixture>` refuses them (the

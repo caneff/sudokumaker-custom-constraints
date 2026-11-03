@@ -240,3 +240,12 @@ being present.
 **Consequence for judging strength:** a propagation-only harness at a fixpoint
 can rate two components equal when they are far apart in the real app. Judge on
 real-app timing and on the app's step log. **[verified]** (live probe 2026-09-10)
+
+## A wide digit range can stall the app's logical solver
+
+The default "Unorthodox naked pairs/triples/etc." step
+walks combinations of open cells for every set size up to half the digit count
+before it checks that they see each other, and it repeats on every restart of the
+step list. Fillomino at 1-29 does not finish in 300 s with it on and takes about
+1 s with it off; the setting is the viewer's and a link cannot carry it. See
+`examples/fillomino/README.md`. **[verified]** (recorded app, 2026-11-03)
