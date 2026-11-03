@@ -7,6 +7,7 @@ unit(
         "stamp-wrap.test.mjs",
         "equivalence.test.mjs",
         "update-strength.test.mjs",
+        "setup-pass.test.mjs",
         "soundness-harness.mjs",
         # The heavy tests keep their groups in tests/all.sh; the sandbox
         # changes only where they run.

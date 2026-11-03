@@ -16,7 +16,7 @@ const SHIPPED_CAP = 29
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const NAMES = ['setParams', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
+const NAMES = ['setParams', 'initialize', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
 const mod = load('FillominoComponent.js', NAMES)
 
 const RULES = {
@@ -180,6 +180,42 @@ for (const rule of Object.keys(RULES)) {
   }
   installGlobals(1, N)
 }
+
+// The setup pass, then `update` on the same instance as the app runs them. A pass
+// is many `update` calls, so it draws fewer states. Each state keeps the true
+// solution, so a test of a true digit must never read as broken, and a cut-short
+// test must never read as one either: the call limit is the second run, set low
+// enough to land inside tests.
+const SETUP_FUZZ = Math.ceil(FUZZ / 100)
+const LOW_CALL_LIMIT = 25
+const lowLimit = load('FillominoComponent.js', NAMES, src => patchSource(src, 'const SETUP_CALL_LIMIT = 40000', `const SETUP_CALL_LIMIT = ${LOW_CALL_LIMIT}`))
+for (const [passName, passMod] of [['setup pass', mod], [`setup pass limited to ${LOW_CALL_LIMIT} calls`, lowLimit]]) {
+  const withPass = {
+    setParams: passMod.setParams,
+    validate: passMod.validate,
+    * update (inst, p) {
+      if (!inst.passDone) {
+        inst.passDone = true
+        yield * passMod.initialize(inst, p)
+      }
+      yield * passMod.update(inst, p)
+    }
+  }
+  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
+    installGlobals(1, cap)
+    const PCELLS = Array.from({ length: width * height }, (_, i) => i)
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
+    bad += fuzzSoundness(`fillomino ${passName}, ${name}`, {
+      iters: SETUP_FUZZ,
+      draw: () => {
+        const inst = {}
+        withPass.setParams(inst, PCELLS, width, height)
+        return { truth, seed, parts: [{ mod: withPass, inst }] }
+      }
+    }).failures
+  }
+}
+installGlobals(1, N)
 
 function judge (truth) {
   const p = makePuzzle(truth, (c, v) => [v])
