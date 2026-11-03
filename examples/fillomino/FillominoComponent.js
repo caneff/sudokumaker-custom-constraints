@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/initialize/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Fillomino: divide the grid into regions of orthogonally connected cells.
 // Every cell of a region of N cells holds the digit N, and two regions of the
 // same size may not touch along an edge.
@@ -46,6 +46,12 @@
 //      the placed digits' regions still need add up. More than there are: the
 //      board is broken. And a digit with nothing placed needs N empty cells on
 //      top of those, so if they are not there, no empty cell can be N.
+//
+// And once before the solver starts, using all of those:
+//
+//   8. Trying each digit. On a private copy of the board, place a digit in a
+//      cell and run the rules until they stop. If the board breaks, the cell
+//      cannot be that digit. See `initialize`.
 //
 // The other rule of fillomino, that regions of the same size may not touch,
 // needs no check of its own: two such regions touching would be one island
@@ -529,6 +535,130 @@ function * cellCountRule (instance, puzzle) {
     }
   }
   return MORE
+}
+
+// 8. Trying each digit, once before the solver starts. A removal made here holds
+// for the whole solve, where the same removal made under one of the solver's
+// guesses is undone when the guess is. On the boards this has run on, that saves
+// far more `update` calls than the pass spends.
+//
+// Besides a board that breaks, three things end the pass: a sweep over the board
+// that removes nothing, this many tests in a row that remove nothing, or this many
+// `update` calls. They keep a board with nothing to find cheap. The tests limit
+// comes from 9x9 boards, the longest such run on any of them that finished being 74
+// tests, so a much bigger board may stop before it has found all it could.
+const SETUP_DRY_LIMIT = 100
+const SETUP_CALL_LIMIT = 40000
+
+// What running the rules on the copy came to.
+const COPY_SETTLED = 0 // the rules have nothing more to say
+const COPY_BROKEN = 1 // a cell has no digit left
+const COPY_OUT_OF_CALLS = 2 // stopped part-way, which proves nothing
+
+// Every test reads and writes this copy, and the app's board stays as it was
+// until the pass is over and the removals are yielded. Where the app builds a
+// change for the solver to apply, the copy applies it at once.
+function scratchBoard (instance, puzzle) {
+  const { cells } = instance
+  const size = Math.max(...cells) + 1
+  const board = {
+    candidates: new Int32Array(size),
+    values: new Int32Array(size).fill(-1),
+    savedCandidates: new Int32Array(size),
+    savedValues: new Int32Array(size),
+    changed: false,
+    broken: false,
+    calls: 0,
+    hasValue: cell => board.values[cell] !== -1,
+    getValue: cell => board.values[cell],
+    getCandidatesBitMask: cell => board.candidates[cell],
+    removeCandidateFromCell: (digit, cell) => board.removeCandidatesFromCell(1 << digit, cell),
+    removeCandidatesFromCell (digits, cell) {
+      const left = board.candidates[cell] & ~digits
+      if (left === board.candidates[cell]) return
+      board.candidates[cell] = left
+      board.changed = true
+      if (left === 0) board.broken = true
+    }
+  }
+  for (const cell of cells) {
+    board.candidates[cell] = puzzle.getCandidatesBitMask(cell)
+    if (puzzle.hasValue(cell)) board.values[cell] = puzzle.getValue(cell)
+  }
+  return board
+}
+
+// A cell with one candidate left holds it.
+function placeSingles (instance, board) {
+  for (const cell of instance.cells) {
+    const digits = board.candidates[cell]
+    if (board.hasValue(cell) || digits === 0 || (digits & (digits - 1)) !== 0) continue
+    board.values[cell] = 31 - Math.clz32(digits)
+  }
+}
+
+// Run the rules on the copy until they stop changing it.
+function settle (instance, board) {
+  while (true) {
+    placeSingles(instance, board)
+    if (board.calls >= SETUP_CALL_LIMIT) return COPY_OUT_OF_CALLS
+    board.calls++
+    board.changed = false
+    for (const change of update(instance, board)) {
+      if (board.broken) return COPY_BROKEN
+    }
+    if (!board.changed) return COPY_SETTLED
+  }
+}
+
+// What the rules make of `digit` in cell `cell`, the copy left as it was found.
+function testDigit (instance, board, cell, digit) {
+  board.savedCandidates.set(board.candidates)
+  board.savedValues.set(board.values)
+  board.candidates[cell] = 1 << digit
+  const result = settle(instance, board)
+  board.candidates.set(board.savedCandidates)
+  board.values.set(board.savedValues)
+  board.broken = false
+  return result
+}
+
+// Sweep the board until one of the limits above ends the pass, or the board
+// itself breaks: every removal made follows from the board as it was, so the
+// board has no answer. Largest digit first is a choice: smallest first measures
+// about the same.
+function sweepDigits (instance, board) {
+  const { minDigit, maxDigit } = helpers.digits
+  let dry = 0
+  let removedAny = true
+  while (removedAny) {
+    removedAny = false
+    for (const cell of instance.cells) {
+      for (let digit = maxDigit; digit >= minDigit; digit--) {
+        if (board.hasValue(cell) || !allows(board.candidates[cell], digit)) continue
+        const result = testDigit(instance, board, cell, digit)
+        if (result === COPY_OUT_OF_CALLS) return
+        if (result === COPY_SETTLED) {
+          if (++dry >= SETUP_DRY_LIMIT) return
+          continue
+        }
+        dry = 0
+        removedAny = true
+        board.removeCandidateFromCell(digit, cell)
+        if (settle(instance, board) !== COPY_SETTLED) return
+      }
+    }
+  }
+}
+
+// The app runs this once, after the givens are placed, and calls `update` next.
+function * initialize (instance, puzzle) {
+  const board = scratchBoard(instance, puzzle)
+  if (settle(instance, board) === COPY_SETTLED) sweepDigits(instance, board)
+  for (const cell of instance.cells) {
+    const removed = puzzle.getCandidatesBitMask(cell) & ~board.candidates[cell]
+    if (removed !== 0) yield puzzle.removeCandidatesFromCell(removed, cell)
+  }
 }
 
 // The final check on a filled grid: every island is exactly its digit's size.

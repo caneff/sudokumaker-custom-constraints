@@ -16,7 +16,7 @@ const SHIPPED_CAP = 29
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const NAMES = ['setParams', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
+const NAMES = ['setParams', 'initialize', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
 const mod = load('FillominoComponent.js', NAMES)
 
 const RULES = {
@@ -44,20 +44,28 @@ const FUZZ = Number(process.env.FUZZ) || 20000
 // The shipped board offers more digits than its side, and the cell count reads
 // the whole range.
 const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
-for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
-  installGlobals(1, cap)
-  const CELLS = Array.from({ length: width * height }, (_, i) => i)
-  const ALL = Array.from({ length: cap }, (_, d) => d + 1)
-  const seed = makeSeeder(rnd, ALL)
-  bad += fuzzSoundness(`fillomino ${name} fixture`, {
-    iters: FUZZ,
-    draw: () => {
-      const inst = {}
-      mod.setParams(inst, CELLS, width, height)
-      return { truth, seed, parts: [{ mod, inst }] }
-    }
-  }).failures
+
+// Fuzz one component on every fixture, a fresh instance per state. Returns the
+// failures.
+function fuzzFixtures (labelOf, iters, part) {
+  let failures = 0
+  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
+    installGlobals(1, cap)
+    const cells = Array.from({ length: width * height }, (_, i) => i)
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
+    failures += fuzzSoundness(labelOf(name), {
+      iters,
+      draw: () => {
+        const inst = {}
+        part.setParams(inst, cells, width, height)
+        return { truth, seed, parts: [{ mod: part, inst }] }
+      }
+    }).failures
+  }
+  return failures
 }
+
+bad += fuzzFixtures(name => `fillomino ${name} fixture`, FUZZ, mod)
 
 const N = 6
 installGlobals(1, N)
@@ -162,24 +170,33 @@ for (const rule of Object.keys(RULES)) {
       }
     }
   }
-  // The shipped board offers more digits than its side, and the cell count reads
-  // the whole range.
-  const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
-  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
-    installGlobals(1, cap)
-    const RCELLS = Array.from({ length: width * height }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
-    bad += fuzzSoundness(`fillomino ${rule} alone, ${name}`, {
-      iters: RULE_FUZZ,
-      draw: () => {
-        const inst = {}
-        solo.setParams(inst, RCELLS, width, height)
-        return { truth, seed, parts: [{ mod: solo, inst }] }
-      }
-    }).failures
-  }
+  bad += fuzzFixtures(name => `fillomino ${rule} alone, ${name}`, RULE_FUZZ, solo)
   installGlobals(1, N)
 }
+
+// The setup pass, then `update` on the same instance as the app runs them. A pass
+// is many `update` calls, so it draws fewer states. Each state keeps the true
+// solution, so a test of a true digit must never read as broken, and a cut-short
+// test must never read as one either: the call limit is the second run, set low
+// enough to land inside tests.
+const SETUP_FUZZ = Math.ceil(FUZZ / 100)
+const LOW_CALL_LIMIT = 25
+const lowLimit = load('FillominoComponent.js', NAMES, src => patchSource(src, 'const SETUP_CALL_LIMIT = 40000', `const SETUP_CALL_LIMIT = ${LOW_CALL_LIMIT}`))
+for (const [passName, passMod] of [['setup pass', mod], [`setup pass limited to ${LOW_CALL_LIMIT} calls`, lowLimit]]) {
+  const withPass = {
+    setParams: passMod.setParams,
+    validate: passMod.validate,
+    * update (inst, p) {
+      if (!inst.passDone) {
+        inst.passDone = true
+        yield * passMod.initialize(inst, p)
+      }
+      yield * passMod.update(inst, p)
+    }
+  }
+  bad += fuzzFixtures(name => `fillomino ${passName}, ${name}`, SETUP_FUZZ, withPass)
+}
+installGlobals(1, N)
 
 function judge (truth) {
   const p = makePuzzle(truth, (c, v) => [v])

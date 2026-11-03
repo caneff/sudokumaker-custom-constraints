@@ -14,7 +14,8 @@ and #309 (**rung 3**, cut starve). The ladder is complete.
 
 ## What the component deduces
 
-One whole-grid `update`. Each call makes one grid scan, `findIslands`, that
+One whole-grid `update`, with one setup pass before the search (rule 8 below). Each
+`update` call makes one grid scan, `findIslands`, that
 finds the **islands** — a maximal connected set of placed cells of one digit.
 Two adjacent cells holding `k` lie in one region, so an island of digit `k`
 with `p` cells sits wholly inside one region and that region needs `k - p` more
@@ -65,6 +66,15 @@ And once per digit, over the whole board:
    cell of a pocket under `k` cells loses `k`. This is the only rule that
    reaches a **silent region** — a region with no placed cell in it — because
    every other rule starts from an island.
+
+And once before the search starts (`initialize`):
+
+8. **Trying each digit** (#882) — on a private copy of the board, place each
+   candidate, largest digit first, run `update` until nothing changes, and remove
+   the candidate if the rules break. Sweeps repeat until a sweep removes nothing,
+   100 tests in a row remove nothing, 40,000 `update` calls are spent or the board
+   breaks; then the removals are yielded. A test the call limit cuts short proves
+   nothing and removes nothing. `## Timing` has the numbers.
 
 Rule 5's `M` tests are #308's growth test at frontier scope, rule 6 is the
 bound #308 paired it with, and rule 4 is #309's rung 3. The sections below keep
@@ -262,8 +272,8 @@ uv run --with lzstring examples/fillomino/build_link.py
 `docs/share-checklist.md`, criterion by criterion, against `PUZZLE_LINK.txt`
 as it ships. This is the record the checklist asks for; re-walk it whenever
 the board or the rules text changes. Last walked against the link rebuilt
-with the readable component (#870, 2026-10-22): same board, same 28 givens,
-same rules text, new embedded code.
+with the setup pass (#882, 2026-11-03): same board, same 28 givens, same rules
+text, new embedded code.
 
 **Free gate** — `just check-full` green: layout, lint, probe goldens, soundness
 at zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
@@ -304,7 +314,7 @@ fixtures, the three hunt records):
    README says so where the board is described.
 4. **Component reads well at its source** ✓ — rewritten for a setter who
    reads some JavaScript (#870). `FillominoComponent.js` opens with the rules,
-   defines **island** and **region** once, and lists the six things it tells
+   defines **island** and **region** once, and lists the eight things it tells
    the solver in puzzle words; each rule's code sits under a numbered comment
    that repeats that explanation, and the two shared files it includes (the
    neighbour and bottleneck helpers in `dominator.js`, the visit marks in
@@ -364,7 +374,13 @@ minimal clue set in the live app; the generator itself carries no strip step.
 
 - `soundness-harness.mjs` — the invariant: `update` never removes a cell's true
   value. Two fixtures, 20,000 fuzzed states each, plus one directed check per
-  rule. `FUZZ=80000` for a deep run before a ship.
+  rule. The setup pass then `update` on one instance, 200 states per fixture, once as
+  shipped and once with the call limit at 25, so the limit lands inside tests.
+  `FUZZ=80000` for a deep run before a ship.
+- `setup-pass.test.mjs` — the setup pass driven as the app drives it, a change
+  doing nothing until it is yielded: it solves the shipped and 7x5 boards to the
+  generator's grids, yields only after the search ends, stops at both limits, tests
+  largest digit first, and leaves a board with broken clues with an empty cell.
 - `update-strength.test.mjs` — both halves of the strength gate: on any state
   the component never keeps a candidate the vendored baseline removed, and on
   some state it removes one the baseline keeps. The count alone does not
@@ -439,6 +455,58 @@ different grid and a different stripper.
 
 ## Timing
 
+### The setup pass (#882)
+
+`just time fillomino`, 3 reps, a deduction added, against the link before the pass:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-03 | v2026.10.05-a3aef4c | fillomino | 4600ms | 100ms | 0.02 | PASS |
+| 2026-11-03 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+
+`two-row rule: SHIP`. The baseline's after-logical 0ms has the doubt recorded under
+*The cell count and digits 1-29*: the pass it ran after can stall. That row ran on the
+pass before its review round, which changed no deduction. The final link against the
+link before the pass, `just time-link`, did not give a row:
+
+    time-link: app-solve.mjs: .scratch/old/PUZZLE_LINK.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+
+The final link alone, `app-solve.mjs`, 3 reps: 100ms cold, 0ms after logical, unique on
+all 6.
+
+The rebuilt `PUZZLE_LINK.txt` in the recorded app, 2026-11-03:
+
+| run | result |
+| --- | --- |
+| full solve, non-deterministic solve on, 20 reps | 100ms and unique on all 20, against 3.9-42.3 s, median 19.5 s, without the pass |
+| AutoStep, default settings, 5 reps | finished on all 5, the app reading 0.2-0.3s |
+| `PUZZLE_LINK_annotated.txt`, full solve, 3 reps | 100ms, unique |
+| `PUZZLE_LINK_15g.txt`, full solve, 3 reps | 0ms, unique |
+
+The pass on the shipped board, in Node: 676 tests, 297 removals, 1,654 `update` calls,
+63-90 ms, 81 of 81 cells solved, and the grid matches `gen.json`.
+
+**The limits.** The 100 is a fixed value, by Chris's ruling, and it comes from 9x9
+boards only: their longest run of tests removing nothing was 74 where the pass
+finished (75 counting the test that ended it, as the older record below does). A bigger sparse unique board was never reached, so a board that size may stop
+before it has found all it could; that costs search time and never soundness.
+`cap12-seed11` is the committed board it stops early on: 48 cells at the limit, 49
+without it. The 40,000 was the prototype's cap; the shipped board spends 1,654 of it.
+
+**What this costs a setter.** In-app timing of a board built with the pass no longer
+shows how hard the board is, since this one now reads 100ms. `hunt-lib.mjs` does not load
+`initialize`, so offline scores stay as they were. To time a board's hardness in the app,
+build a link without the pass: copy `FillominoComponent.js` to `.scratch/nopass/`, keeping
+the name, rename `initialize` in the copy, link `.scratch/_shared` to `examples/_shared`
+for the copy's includes, and run `build_link.py --component <copy> --out <file>`, adding
+`--board <link>` for another board. That link of the shipped board reads 4500ms cold,
+median of 3.
+
+A board only the tests can break now fails as the solver sets it up, not in the search.
+From reading the bundle, verbose solving then says "This puzzle is broken." without
+"unable to satisfy Fillomino", because `initializeComponent` adds no reason; not seen in
+the app. The result is the same.
+
 ### The cell count and digits 1-29
 
 Rule 7 against the committed link, the shipped board at digits 1-9 (`just
@@ -477,6 +545,8 @@ cell (recorded app, 2026-11-02). `generate.py unique` proves the clues unique at
 1-29.
 
 **The logical solver stalls at wide digit ranges, and the component is not why.**
+Everything from here to *Timing a frozen fixture now* was measured before the setup
+pass shipped, so "shipped" there means the component without it.
 The AutoStep button on the shipped clues, recorded app, 2026-11-03, one rep unless
 noted:
 
@@ -537,14 +607,15 @@ Only T = 30 and shipped were interleaved on a quiet machine, so the other full-s
 times are not comparable with them or each other. T = 30 is 1.11x on the full solve,
 one step over the 1.1 limit. It is one board's value, and no other board has run.
 
-**A component can get past the stall.** A prototype, not shipped: `initialize` runs
+**A component can get past the stall.** The prototype of what #882 shipped (*The
+setup pass*, above): `initialize` runs
 one by-contradiction pass on a private copy of the board, feeding the component's
 own `update` a stand-in `puzzle` (`hasValue`, `getValue`, `getCandidatesBitMask` and
 the two removal calls), capped at 40,000 `update` calls, then yields what it removed.
 Changes made there come before the app's step list, so the walk has nothing left to
 search. Recorded app, 2026-11-03:
 
-| board | with the prototype | shipped |
+| board | with the prototype | without it |
 | --- | --- | --- |
 | 1-29, AutoStep | 0.4s, 3 reps | 1 of 4 reps finished, see above |
 | 1-29, full solve, first + unique | 100-200ms, 3 reps | 5000ms |
@@ -554,7 +625,7 @@ search. Recorded app, 2026-11-03:
 Its setup pass on the shipped board is about 140 ms: 676 trials, 297 removals, 81 of
 81 cells solved, and the grid matches `gen.json`. AutoStep then shows only naked
 singles; its log on this board already said little more than that the component ruled
-candidates out, so nothing useful is lost. The soundness harness and `just time` have not run on it.
+candidates out, so nothing useful is lost.
 
 The 5000ms above is one fixed search order, non-deterministic solve off. With it on,
 the app's default, 20 reps each on the shipped board, recorded app, 2026-11-03:
