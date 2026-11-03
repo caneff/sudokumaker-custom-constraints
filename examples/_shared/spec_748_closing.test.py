@@ -38,7 +38,7 @@ recipe closure (recipe_discovery.test.py).
 import pathlib
 import sys
 
-from sudoku_kit.cpsat import solve_unique, sudoku_model
+from sudoku_kit.cpsat import boxes, solve_unique, sudoku_model
 from sudoku_kit.link_codec import decode_puzzle, encode_link, read_link
 from sudoku_kit.uniqueness import check_uniqueness
 
@@ -70,7 +70,7 @@ def a_link_goes_through_the_library():
 
 
 def given_model(grid):
-    m, x = sudoku_model(4, (2, 2))
+    m, x = sudoku_model(4, boxes(4, 2, 2))
     for r, row in enumerate(grid):
         for c, digit in enumerate(row):
             m.Add(x[r, c] == digit)
@@ -83,10 +83,10 @@ def a_board_is_proved_through_the_library():
 
     m, x = given_model(GRID_4X4)
     assert check_uniqueness(m, x.values()).status == "unique"
-    m, x = sudoku_model(4, (2, 2))
+    m, x = sudoku_model(4, boxes(4, 2, 2))
     assert check_uniqueness(m, x.values()).status == "not_unique"
 
-    m, x = sudoku_model(TIMEOUT_SIZE, TIMEOUT_BOX)
+    m, x = sudoku_model(TIMEOUT_SIZE, boxes(TIMEOUT_SIZE, *TIMEOUT_BOX))
     result = check_uniqueness(m, x.values(), time_limit=TIMEOUT_LIMIT)
     assert result.status == "timeout" and not result.unique, result.status
     try:

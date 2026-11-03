@@ -10,7 +10,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from board_kit import N
 from minify import minify_js
 from ortools.sat.python import cp_model
-from sudoku_kit.cpsat import sudoku_model
+from sudoku_kit.cpsat import boxes, sudoku_model
 
 HERE = pathlib.Path(__file__).parent
 COMPONENT = HERE / "CountDigitsGacComponent.js"
@@ -25,7 +25,7 @@ def model(groups, givens):
     digit equal to the number of target cells holding a listed digit. A group's
     `cells` are its targets; on a self-counting board the counter is the first
     of them."""
-    m, x = sudoku_model(N, (3, 3))
+    m, x = sudoku_model(N, boxes(N, 3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
     for g in groups:

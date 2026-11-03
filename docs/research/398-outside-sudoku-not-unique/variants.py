@@ -42,7 +42,7 @@ def solve_inner(doc, link, W, n, groups):
         if region[i] >= 0:
             r, c = divmod(i, W)
             houses.setdefault(region[i], []).append((r - 1, c - 1))
-    m, grid = cpsat.sudoku_model(n, None, regions=list(houses.values()))
+    m, grid = cpsat.sudoku_model(n, list(houses.values()))
     x = {(r + 1) * W + c + 1: v for (r, c), v in grid.items()}
     for i in x:
         if cells[i].get("given"):

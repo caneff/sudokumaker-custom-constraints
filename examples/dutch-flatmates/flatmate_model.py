@@ -7,7 +7,7 @@
 import dataclasses
 
 from ortools.sat.python import cp_model
-from sudoku_kit.cpsat import SOLVED, solve_unique, solver, sudoku_model
+from sudoku_kit.cpsat import SOLVED, boxes, solve_unique, solver, sudoku_model
 
 N = 9
 BOX = 3
@@ -30,7 +30,7 @@ def build_model(givens=(), flatmate=True, extras=NO_EXTRAS):
     """(model, x) for sudoku with `givens` ({(row, column): digit}), `extras`
     and, when `flatmate` is true, the flatmate rule on every cell. `x` maps
     (row, column) to its variable."""
-    m, x = sudoku_model(N, (BOX, BOX))
+    m, x = sudoku_model(N, boxes(N, BOX, BOX))
     for (r, c), v in dict(givens).items():
         m.Add(x[r, c] == v)
     if flatmate:

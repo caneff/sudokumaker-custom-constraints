@@ -1,5 +1,5 @@
 # The CP-SAT helper and the link codec have one home, the sudoku-kit library
-# (#750): this repo pins it by tag, keeps no copy of its own, imports neither
+# (#750): this repo follows its main branch, keeps no copy of its own, imports neither
 # as a module of this repo, and no tracked file names a path into a gridfind
 # checkout in one of GRIDFIND_PATH's spellings. Checked on the tracked tree,
 # the lock file and one real link.
@@ -13,8 +13,6 @@ import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ME = pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
-
-TAG = "v0.1.0"
 
 LOCAL_COPIES = [
     "examples/_shared/cpsat.py",
@@ -53,12 +51,20 @@ def tracked(*patterns):
     return [p for p in out.split("\0") if p and p != ME and (ROOT / p).is_file()]
 
 
-def the_lock_pins_the_tag():
+def the_lock_follows_main():
     lock = tomllib.loads((ROOT / "uv.lock").read_text())
     kits = [p for p in lock["package"] if p["name"] == "sudoku-kit"]
     assert len(kits) == 1, f"uv.lock holds {len(kits)} sudoku-kit packages"
     git = kits[0]["source"].get("git", "")
-    assert f"?tag={TAG}#" in git, f"sudoku-kit is not pinned at {TAG}: {git!r}"
+    assert re.fullmatch(r"https://github\.com/caneff/sudoku-kit#[0-9a-f]{40}", git), (
+        f"sudoku-kit is not locked to a bare-URL commit (no tag, no rev): {git!r}"
+    )
+    sources = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"][
+        "sources"
+    ]
+    assert set(sources["sudoku-kit"]) == {"git"}, (
+        f"sudoku-kit source pins more than the repo: {sources['sudoku-kit']}"
+    )
 
 
 def no_local_copy_is_left():
@@ -94,7 +100,7 @@ def the_library_reads_a_committed_link():
 
 
 if __name__ == "__main__":
-    the_lock_pins_the_tag()
+    the_lock_follows_main()
     no_local_copy_is_left()
     nothing_imports_a_local_copy()
     nothing_reaches_into_gridfind()
