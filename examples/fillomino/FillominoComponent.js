@@ -620,7 +620,6 @@ function testDigit (instance, board, cell, digit) {
   board.savedCandidates.set(board.candidates)
   board.savedValues.set(board.values)
   board.candidates[cell] = 1 << digit
-  board.values[cell] = digit
   const result = settle(instance, board)
   board.candidates.set(board.savedCandidates)
   board.values.set(board.savedValues)

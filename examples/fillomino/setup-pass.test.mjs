@@ -21,10 +21,13 @@ const UPDATE = 'function * update (instance, puzzle) {'
 const CALL_LIMIT = 'const SETUP_CALL_LIMIT = 40000'
 const DRY_LIMIT = 'const SETUP_DRY_LIMIT = 100'
 
-// Each load counts its own `update` calls, in `calls.n`.
-const calls = { n: 0 }
+// Each load counts its own `update` calls, in `calls.n`, and notes what cell 0
+// held at each, in `calls.cell0`.
+const calls = { n: 0, cell0: [] }
 globalThis.setupPassCalls = calls
-const countCalls = src => patchSource(src, UPDATE, `${UPDATE}\n  globalThis.setupPassCalls.n++`)
+const countCalls = src => patchSource(src, UPDATE, `${UPDATE}
+  globalThis.setupPassCalls.n++
+  globalThis.setupPassCalls.cell0.push(puzzle.getValue(0))`)
 const { load } = makeIo(HERE)
 const loadWith = (...patches) => load('FillominoComponent.js', NAMES, src => patches.reduce((out, patch) => patch(out), countCalls(src)))
 const shipped = loadWith()
@@ -54,6 +57,7 @@ function runPass (mod, board) {
   mod.setParams(inst, Array.from({ length: width * height }, (_, i) => i), width, height)
   const p = appPuzzle(board)
   calls.n = 0
+  calls.cell0 = []
   let callsAtFirstChange = null
   for (const change of mod.initialize(inst, p)) {
     if (callsAtFirstChange === null) callsAtFirstChange = calls.n
@@ -99,6 +103,10 @@ const assertSolved = (p, { grid }) => {
   const { p, callsAtFirstChange } = runPass(shipped, board)
   assert.strictEqual(callsAtFirstChange, null, 'a clue-free board lost a candidate')
   assert.strictEqual(singles(p), 0)
+  // Cell 0 is tested first, largest digit first, and the board is otherwise
+  // empty, so its tests run 29, 28, ... 1.
+  const tested = calls.cell0.filter((d, k, all) => d !== -1 && d !== all[k - 1])
+  assert.deepStrictEqual(tested, Array.from({ length: 29 }, (_, k) => 29 - k), 'cell 0 was not tested largest digit first')
 }
 
 // The one committed board the pass does not finish. Its longest dry run, 235
