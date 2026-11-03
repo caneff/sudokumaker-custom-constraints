@@ -514,6 +514,29 @@ of 3 (1.1s). Contradiction steps with the step off: 132 and 123 against 129, so
 neither rule replaces them, and the full solve read 6200ms against about 5000ms, one
 rep. Not shipped.
 
+**Pruning later does help.** The walk only takes cells with at most half the digit
+count in candidates, and rules 6 and 7 push cells under that early. A scratch test,
+not shipped, with the same clues and digits: rules 6 and 7 leave empty cells alone
+until at most T cells are empty. Placed cells still break the board as before.
+Default settings, 30 s limit, at 1-29:
+
+| T | logic finished | full solve |
+| --- | --- | --- |
+| 16 | 3 of 3 | 14.0s |
+| 20 | 3 of 3 | 13.1s |
+| 24 | 3 of 3 | 10.3s |
+| 28 | 5 of 5 | 8.0s |
+| 30 | 15 of 15, 0.7-1.2s | 4.9s, 5 reps, interleaved |
+| 32 | 5 of 5, one at 23.9s | 6.3s |
+| 34 | 4 of 5 | 4.7s |
+| 36 | 4 of 5 | 6.0s |
+| 40 | 0 of 5 | 4.5s |
+| shipped | 1 of 4 | 4.4s, 5 reps, interleaved |
+
+Only T = 30 and shipped were interleaved on a quiet machine, so the other full-solve
+times are not comparable with them or each other. T = 30 is 1.11x on the full solve,
+one step over the 1.1 limit. It is one board's value, and no other board has run.
+
 **A component can get past the stall.** A prototype, not shipped: `initialize` runs
 one by-contradiction pass on a private copy of the board, feeding the component's
 own `update` a stand-in `puzzle` (`hasValue`, `getValue`, `getCandidatesBitMask` and
