@@ -20,6 +20,11 @@ jobs:
   # the source of truth, not this list of names.
   gate:
     runs-on: ubuntu-latest
+    # pants.toml sets process_execution_local_parallelism = 1 (the box's gate is
+    # one core); the runner has 4 vCPUs, so every leg's Pants call uses them
+    # (#872). The Pants result cache is off, so every suite a leg selects runs.
+    env:
+      PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM: 4
     strategy:
       fail-fast: false
       matrix:
