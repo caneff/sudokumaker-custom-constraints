@@ -462,10 +462,11 @@ different grid and a different stripper.
 | date | app version | fixture | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-03 | v2026.10.05-a3aef4c | fillomino | 4600ms | 100ms | 0.02 | PASS |
-| 2026-11-03 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-11-03 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms (void) | 0ms (void) | — | NO TIME |
 
-`two-row rule: SHIP`. The baseline's after-logical 0ms has the doubt recorded under
-*The cell count and digits 1-29*: the pass it ran after can stall. That row ran on the
+`two-row rule: SHIP`. Both after-logical 0ms readings are void: the old settle test
+called the pass done mid-pass, recorded under *The cell count and digits 1-29*, where
+the link before the setup pass did not finish in 300 s when re-measured. That row ran on the
 pass before its review round, which changed no deduction. The final link against the
 link before the pass, `just time-link`, did not give a row:
 
@@ -523,7 +524,7 @@ replaces (`just time-link`, interleaved, 3 reps):
 | date | app version | fixture | 1-9, no rule 7 | 1-29, rule 7 | ratio |
 | --- | --- | --- | --- | --- | --- |
 | 2026-11-02 | v2026.10.05-a3aef4c | shipped board, cold | 4900ms | 5000ms | 1.02 |
-| 2026-11-02 | v2026.10.05-a3aef4c | shipped board, after-logical | 0ms | 0ms | — |
+| 2026-11-02 | v2026.10.05-a3aef4c | shipped board, after-logical | 0ms | 0ms (void) | — |
 
 One rep each, `app-solve.mjs`, the same clues at other ranges:
 
@@ -570,11 +571,18 @@ removal. The timings vary because the app's logical solver runs with randomness 
 The step is on by default, and the setting belongs to the viewer: the link cannot
 carry it, and a component cannot reach it.
 
-The after-logical rows at 1-29 under *The cell count and digits 1-29* are suspect.
-`solveLogically` (`examples/_shared/app-dom.mjs`) calls the pass settled when the
-board stops changing for three samples 500 ms apart, and in this stall the board
-went quiet for 56 s or more with the solver still running. So those 0 ms rows may
-have started mid-pass. Not re-measured.
+The after-logical rows at 1-29 under *The cell count and digits 1-29* are void.
+`solveLogically` (`examples/_shared/app-dom.mjs`) used to call the pass settled when
+the board stopped changing for three samples 500 ms apart, and in this stall the board
+went quiet for 56 s or more with the solver still running, so those 0 ms rows started
+mid-pass. It now waits for "Stop solving" to be gone for three samples (#881).
+Re-measured, recorded app v2026.10.05-a3aef4c, 2026-11-03, `app-solve.mjs
+--after-logical`:
+
+| link | result |
+| --- | --- |
+| 1-29 before the setup pass (`a374280`), 1 rep | the logic pass did not finish in 300 s: no time |
+| shipped 1-29 (`f3a566a`, with the setup pass), 3 reps | the pass finished; 0 ms after it, unique on all 3 |
 
 **Wider deductions did not help.** A scratch test asked rule 5's question of every
 empty cell, not only the exits, and extended rule 7's count to digits already placed.

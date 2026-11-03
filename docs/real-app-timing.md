@@ -120,7 +120,7 @@ custom component's `update` on every node — the work we want to time. Reading
 the app's own readout, not a self-computed clock, keeps it honest.
 
 With `--after-logical` the driver first clicks the app's own logical solver
-(the `AutoStep` icon) and waits for the board to stop changing, then clicks the
+(the `AutoStep` icon) and waits until the "Stop solving" button has been gone for three samples, then clicks the
 same button and reads the same readout. The printed row has the shape of the
 cold row; the header line names the mode.
 
