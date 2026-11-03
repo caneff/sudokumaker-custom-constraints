@@ -465,7 +465,14 @@ different grid and a different stripper.
 | 2026-11-03 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
 
 `two-row rule: SHIP`. The baseline's after-logical 0ms has the doubt recorded under
-*The cell count and digits 1-29*: the pass it ran after can stall.
+*The cell count and digits 1-29*: the pass it ran after can stall. That row ran on the
+pass before its review round, which changed no deduction. The final link against the
+link before the pass, `just time-link`, did not give a row:
+
+    time-link: app-solve.mjs: .scratch/old/PUZZLE_LINK.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+
+The final link alone, `app-solve.mjs`, 3 reps: 100ms cold, 0ms after logical, unique on
+all 6.
 
 The rebuilt `PUZZLE_LINK.txt` in the recorded app, 2026-11-03:
 
@@ -489,10 +496,11 @@ without it. The 40,000 was the prototype's cap; the shipped board spends 1,654 o
 **What this costs a setter.** In-app timing of a board built with the pass no longer
 shows how hard the board is, since this one now reads 100ms. `hunt-lib.mjs` does not load
 `initialize`, so offline scores stay as they were. To time a board's hardness in the app,
-build a link without the pass: copy `FillominoComponent.js` to a folder of its own under
-`.scratch/`, keeping the name, rename `initialize` in the copy, and run `build_link.py
---component <copy> --out <file>`, adding `--board <link>` for another board. That link
-of the shipped board reads 4900ms cold, one rep.
+build a link without the pass: copy `FillominoComponent.js` to `.scratch/nopass/`, keeping
+the name, rename `initialize` in the copy, link `.scratch/_shared` to `examples/_shared`
+for the copy's includes, and run `build_link.py --component <copy> --out <file>`, adding
+`--board <link>` for another board. That link of the shipped board reads 4500ms cold,
+median of 3.
 
 A board only the tests can break now fails as the solver sets it up, not in the search.
 From reading the bundle, verbose solving then says "This puzzle is broken." without
