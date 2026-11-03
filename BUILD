@@ -24,4 +24,7 @@ files(name="builtin-components", sources=["docs/builtin-components.md"])
 # The justfile, for the suite that reads only it.
 files(name="justfile", sources=["justfile"])
 
+# The pre-commit config, for the suite that reads only it.
+files(name="precommit-config", sources=[".pre-commit-config.yaml"])
+
 files(name="tree", sources=["**", "!.git", "!.git/**"])

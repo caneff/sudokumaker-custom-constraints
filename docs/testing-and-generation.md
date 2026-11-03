@@ -76,11 +76,15 @@ a different puzzle than the app enforces.
 ## Layout gate on commit and push
 
 `.pre-commit-config.yaml` runs `examples/_shared/check_layout.py` (about 3 s)
-on `pre-commit` and `pre-push`, always and over the whole tree (#879). It
-exists because the research-load rule (#659) ran only inside `just check`: a
-docs commit auto-shipped to main met no gate and turned main red.
+on `pre-commit` and `pre-push`, always and over the whole tree (#879), so a
+docs-only change meets the research-load rule (#659) as well as `just check`.
+Every other hook there is commit-only (`default_stages`). The gate reads the
+working tree, untracked files included, as `just check` does.
 
-The hook is per clone, not in the tree. Install both stages once:
-`uvx pre-commit install --hook-type pre-commit --hook-type pre-push`.
+The hook is per clone, and `uvx pre-commit install` takes over the hook slots.
+**Do not run it in a clone that has the lane's commit-identity guard wrappers**
+(`.git/hooks/pre-commit.foreign` or `pre-push.foreign`): it moves them to
+`.legacy`, `implement-dispatch` then refuses, and a pushed ref can loop. The
+lane's own install of this hook is not done here.
 `examples/_shared/precommit_layout_hook.test.py` holds the config's shape; it
 does not check that a clone has the hook installed.

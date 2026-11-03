@@ -959,7 +959,7 @@ def main(argv):
     violations = check_tree(root)
     # The research-load scan reads the whole repo, found relative to this file
     # rather than `root` -- but only for the real, no-args invocation `just
-    # check` makes. A test that passes an explicit root is pointed at a temp
+    # check` and the pre-commit hook (#879) make. A test that passes an explicit root is pointed at a temp
     # tree on purpose, and must stay hermetic: scanning this file's real repo
     # location in that case would fail check_layout.test.py's subprocess cases
     # on whatever another session has under examples/ right now, unrelated to

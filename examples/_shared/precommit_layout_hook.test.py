@@ -1,21 +1,13 @@
-"""#879: a docs push to main runs check_layout.
+"""#879: a docs-only change runs check_layout, on commit and on push.
 
-check_layout's "nothing gated loads from docs/research" rule (#659) ran only
-inside `just check`, so a docs commit that auto-shipped to main never met it.
-The fix is a local hook in .pre-commit-config.yaml. This test reads that file
-and holds the hook to what the incident needs:
+check_layout's research-load rule (#659) is checked by running it with no
+argument (check_layout.main), so the hook must be exactly that command, fire on
+both stages whatever the diff touches, and be the only hook on the push stage.
+This test reads .pre-commit-config.yaml and holds the hook to that.
 
-  - it runs examples/_shared/check_layout.py with no argument (the no-arg run
-    is the one that scans docs/research loads; see check_layout.main);
-  - it fires on a push, the last step before main, as well as on a commit;
-  - it fires whatever the diff touches, because the commit that broke main
-    touched only docs/ and check_layout reads the whole tree: always_run, and
-    no filename list handed to it.
-
-WHAT A GREEN RUN DOES NOT COVER: that pre-commit is installed in a clone
-(`uvx pre-commit install --hook-type pre-commit --hook-type pre-push`), and
-that this box's commit-identity guard wrappers in .git/hooks coexist with it.
-Those are per-clone state, not in the tree.
+WHAT A GREEN RUN DOES NOT COVER: that pre-commit is installed in a clone, and
+that it coexists with the commit-identity guard wrappers in .git/hooks. Those
+are per-clone state, not in the tree (docs/testing-and-generation.md).
 
     uv run examples/_shared/precommit_layout_hook.test.py
 """
@@ -24,6 +16,7 @@ import pathlib
 import re
 
 CONFIG = pathlib.Path(__file__).resolve().parents[2] / ".pre-commit-config.yaml"
+ENTRY = "uv run examples/_shared/check_layout.py"
 
 
 def hook_blocks(text):
@@ -31,30 +24,35 @@ def hook_blocks(text):
     return re.split(r"(?m)^(?=\s*- id: )", text)[1:]
 
 
-def layout_hook(text):
-    blocks = [b for b in hook_blocks(text) if "check_layout.py" in b]
-    assert len(blocks) == 1, f"want one hook running check_layout.py, got {len(blocks)}"
-    return blocks[0]
-
-
 def field(block, name):
-    m = re.search(rf"(?m)^\s*(?:- )?{name}:\s*(.+)$", block)
+    """A hook field's value, its trailing YAML comment dropped."""
+    m = re.search(rf"(?m)^\s*(?:- )?{name}:[ \t]*([^#\n]*)", block)
     return m.group(1).strip() if m else None
 
 
-def main():
-    block = layout_hook(CONFIG.read_text())
+def stages(block):
+    value = field(block, "stages") or ""
+    assert value.startswith("[") and value.endswith("]"), f"stages: {value!r}"
+    return {s.strip() for s in value[1:-1].split(",")}
 
-    entry = field(block, "entry")
-    assert entry.endswith("examples/_shared/check_layout.py"), (
-        f"entry must run check_layout.py with no argument, got: {entry}"
-    )
-    stages = field(block, "stages") or ""
-    assert "pre-push" in stages and "pre-commit" in stages, (
-        f"hook must run on pre-commit and pre-push, stages: {stages!r}"
-    )
+
+def main():
+    text = CONFIG.read_text()
+    blocks = [b for b in hook_blocks(text) if "check_layout.py" in b]
+    assert len(blocks) == 1, f"want one hook running check_layout.py, got {len(blocks)}"
+    block = blocks[0]
+
+    assert field(block, "entry") == ENTRY, f"entry: {field(block, 'entry')!r}"
+    assert field(block, "args") is None, "args would change the no-argument run"
+    assert stages(block) == {"pre-commit", "pre-push"}, f"stages: {stages(block)}"
     assert field(block, "always_run") == "true", "a docs-only change must run it"
     assert field(block, "pass_filenames") == "false", "it reads the whole tree"
+
+    # No other hook may reach the push stage: ruff --fix and the whitespace
+    # fixers rewrite files, which fails a push.
+    assert field(text, "default_stages") == "[pre-commit]", "default_stages"
+    others = [b for b in hook_blocks(text) if b != block and field(b, "stages")]
+    assert not others, "another hook sets its own stages"
     print("precommit_layout_hook.test.py: ok")
 
 

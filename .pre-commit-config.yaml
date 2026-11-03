@@ -1,9 +1,13 @@
 # Fast local gate before each commit. Run once after cloning:
-#   uvx pre-commit install --hook-type pre-commit --hook-type pre-push
+#   uvx pre-commit install
 # The full gate (tests + soundness fuzz) is too slow for a commit hook and runs
 # in CI via `just check-full`. Keep verbatim comparison files and probe goldens
 # untouched — they must stay byte-for-byte.
 exclude: '^(examples/numbered-rooms/original/|examples/skyscraper/original/|examples/[^/]+/\.golden/)'
+
+# Only the layout gate also runs on push; every other hook is commit-only.
+default_stages: [pre-commit]
+default_install_hook_types: [pre-commit, pre-push]
 
 repos:
   # Python: ruff check + format, its own isolated env, reads ruff.toml.
@@ -35,11 +39,9 @@ repos:
         files: '\.(js|mjs)$'
         pass_filenames: false
 
-  # The layout gate (#879). Its research-load rule (#659) ran only inside
-  # `just check`, so a docs commit auto-shipped to main never met it and main
-  # went red. always_run: a docs-only change must trigger it, and it reads the
-  # whole tree, so it takes no filenames. About 3 s. Install both stages:
-  #   uvx pre-commit install --hook-type pre-commit --hook-type pre-push
+  # The layout gate (#879): check_layout's research-load rule (#659) also runs
+  # on a docs-only change, and it reads the whole tree, so the hook takes no
+  # filenames. About 3 s. See docs/testing-and-generation.md.
   - repo: local
     hooks:
       - id: check-layout
