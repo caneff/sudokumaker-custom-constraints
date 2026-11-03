@@ -214,6 +214,11 @@ if __name__ == "__main__":
 
     # Each leg-specific step guards on its own leg.
     steps = steps_of(jobs["gate"])
+    # ...and no step overrides it, which would put that leg back on one core.
+    for s in steps:
+        assert "PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM" not in s.get("env", ""), (
+            f"step '{s.get('name')}' overrides the job-level Pants parallelism"
+        )
     # A suite run through Pants shells out to `just`, so every leg has one on PATH.
     assert step(steps, "Install just")["run"] == "uv tool install rust-just"
     narrowed = step(steps, "Narrowed seam")
