@@ -148,32 +148,30 @@ export async function enterDigit (page, digit) {
   if (!clicked) throw new Error(`digit pad button "${digit}" not found`)
 }
 
-// How long solveLogically waits for the app's logic pass to stop changing the
-// board. The app's own solve limit is 300 s, so a pass that outlives this has
-// stalled, not merely taken a while.
+// How long solveLogically waits for the app's logic pass to finish. The app's
+// own solve limit is 300 s, so a pass that outlives this has stalled, not
+// merely taken a while.
 const LOGIC_SETTLE_TIMEOUT_MS = 300000
 
 // Run the app's own logical solver to its fixpoint: the state a player reaches
 // before any search. `AutoStep` is the run-to-fixpoint button, not `SingleStep`
-// (one step) beside it. Settled means the BOARD -- every digit and pencil mark
-// the grid draws -- stops changing across three consecutive samples; sampling
-// the whole page instead would never settle beside any ticking readout.
-// Throws when the pass has not settled in time, so a run never times a
-// half-finished logic pass.
-export async function solveLogically (page) {
+// (one step) beside it. Finished means the "Stop solving" button has been gone
+// for three consecutive samples 500 ms apart. The board is no signal: the pass
+// can run for minutes with no board change (fillomino 1-29 stopped changing at
+// 33.7 s and was still running at 300 s, #881). Throws when the pass has not
+// finished in time, so a run never times a half-finished logic pass.
+// `opts.now` and `opts.timeoutMs` exist for the test's stub page.
+export async function solveLogically (page, { now = Date.now, timeoutMs = LOGIC_SETTLE_TIMEOUT_MS } = {}) {
   if (!await clickIcon(page, 'AutoStep')) throw new Error('logical solver not found: Icon AutoStep')
-  const deadline = Date.now() + LOGIC_SETTLE_TIMEOUT_MS
-  const readBoard = () => page.evaluate(() =>
-    [...document.querySelectorAll('svg text')].map(t => t.textContent).join('|'))
-  let prev = null
-  let stable = 0
-  while (stable < 3) {
-    if (Date.now() > deadline) {
-      throw new Error(`logical solver did not settle within ${LOGIC_SETTLE_TIMEOUT_MS}ms`)
+  const deadline = now() + timeoutMs
+  const stopShown = () => page.evaluate(() =>
+    [...document.querySelectorAll('button')].some(b => b.textContent.replace(/\s+/g, ' ').trim() === 'Stop solving'))
+  let gone = 0
+  while (gone < 3) {
+    if (now() > deadline) {
+      throw new Error(`logical solver did not settle within ${timeoutMs}ms`)
     }
     await page.waitForTimeout(500)
-    const board = await readBoard()
-    stable = board === prev ? stable + 1 : 0
-    prev = board
+    gone = await stopShown() ? 0 : gone + 1
   }
 }
