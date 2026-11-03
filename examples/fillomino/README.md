@@ -488,7 +488,7 @@ noted:
 | 1-24 | 8.0s, then unfinished at 90s | 1.2s |
 | 1-25 | 16.3s | |
 | 1-26 | unfinished at 90s | |
-| 1-29 | unfinished at 300s | 1.0-1.4s, 4 reps |
+| 1-29 | unfinished at 300s; then 1.1s and unfinished at 120s twice | 0.7-1.4s, 5 reps |
 
 Without rule 7, 1-29 is also unfinished at 300s. At 1-24, timers inside `update`
 read about 290 ms of the first 5.2 s, over 4,312 calls. The cost is
@@ -506,6 +506,14 @@ board stops changing for three samples 500 ms apart, and in this stall the board
 went quiet for 56 s or more with the solver still running. So those 0 ms rows may
 have started mid-pass. Not re-measured.
 
+**Wider deductions did not help.** A scratch test asked rule 5's question of every
+empty cell, not only the exits, and extended rule 7's count to digits already placed.
+Three reps each at 1-29, default settings, 120 s limit: both rules 0 of 3 finished
+(one earlier run took 6.4s), rule 7's count alone 1 of 3 (2.3s), the shipped link 1
+of 3 (1.1s). Contradiction steps with the step off: 132 and 123 against 129, so
+neither rule replaces them, and the full solve read 6200ms against about 5000ms, one
+rep. Not shipped.
+
 **A component can get past the stall.** A prototype, not shipped: `initialize` runs
 one by-contradiction pass on a private copy of the board, feeding the component's
 own `update` a stand-in `puzzle` (`hasValue`, `getValue`, `getCandidatesBitMask` and
@@ -515,7 +523,7 @@ search. Recorded app, 2026-11-03:
 
 | board | with the prototype | shipped |
 | --- | --- | --- |
-| 1-29, AutoStep | 0.4s, 3 reps | unfinished at 300s |
+| 1-29, AutoStep | 0.4s, 3 reps | 1 of 4 reps finished, see above |
 | 1-29, full solve, first + unique | 100-200ms, 3 reps | 5000ms |
 | 1-29 with 4 clues removed, full solve | 700 + 400ms, not unique | 2100 + 300ms, not unique |
 | 1-29 with no clues, setup pass | about 130ms, removes nothing | |
