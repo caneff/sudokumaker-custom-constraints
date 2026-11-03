@@ -199,13 +199,15 @@ if __name__ == "__main__":
     # Every leg's Pants call uses the runner's 4 cores (#872): a job-level env
     # reaches the narrowed step and the recipe step alike. The box default in
     # pants.toml stays one core ("the gate is one core").
-    job_env = re.search(
-        r"^    env:\n((?:      \S.*\n)+)", jobs["gate"] + "\n", re.M
-    )
+    job_env = re.search(r"^    env:\n((?:      \S.*\n)+)", jobs["gate"] + "\n", re.M)
     assert job_env, "the gate job has no job-level `env:` block"
     assert re.search(
-        r"^      PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM: 4\s*$", job_env.group(1), re.M
-    ), f"the gate job must set PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM: 4: {job_env.group(1)}"
+        r"^      PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM: 4\s*$",
+        job_env.group(1),
+        re.M,
+    ), (
+        f"the gate job must set PANTS_PROCESS_EXECUTION_LOCAL_PARALLELISM: 4: {job_env.group(1)}"
+    )
     assert re.search(
         r"^process_execution_local_parallelism = 1\s*$",
         (ROOT / "pants.toml").read_text(),
