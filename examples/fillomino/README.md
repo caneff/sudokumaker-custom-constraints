@@ -462,10 +462,11 @@ different grid and a different stripper.
 | date | app version | fixture | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-03 | v2026.10.05-a3aef4c | fillomino | 4600ms | 100ms | 0.02 | PASS |
-| 2026-11-03 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-11-03 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms (void) | 0ms (void) | — | NO TIME |
 
-`two-row rule: SHIP`. The baseline's after-logical 0ms has the doubt recorded under
-*The cell count and digits 1-29*: the pass it ran after can stall. That row ran on the
+`two-row rule: SHIP`. Both after-logical 0ms readings are void: the old settle test
+called the pass done mid-pass, recorded under *The cell count and digits 1-29*, where
+the link before the setup pass did not finish in 300 s when re-measured. That row ran on the
 pass before its review round, which changed no deduction. The final link against the
 link before the pass, `just time-link`, did not give a row:
 
@@ -523,7 +524,7 @@ replaces (`just time-link`, interleaved, 3 reps):
 | date | app version | fixture | 1-9, no rule 7 | 1-29, rule 7 | ratio |
 | --- | --- | --- | --- | --- | --- |
 | 2026-11-02 | v2026.10.05-a3aef4c | shipped board, cold | 4900ms | 5000ms | 1.02 |
-| 2026-11-02 | v2026.10.05-a3aef4c | shipped board, after-logical | 0ms | 0ms | — |
+| 2026-11-02 | v2026.10.05-a3aef4c | shipped board, after-logical | 0ms | 0ms (void) | — |
 
 One rep each, `app-solve.mjs`, the same clues at other ranges:
 

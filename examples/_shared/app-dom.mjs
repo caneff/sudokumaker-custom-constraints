@@ -1,7 +1,8 @@
 // Browser-page helpers shared by the Playwright drivers that automate the
 // live SudokuMaker app (app-solve.mjs, app-strip.mjs). Needs a live `page`,
 // so it runs only under Playwright -- the pure, node:assert-testable logic
-// lives in app-solve-lib.mjs and app-strip-lib.mjs instead.
+// lives in app-solve-lib.mjs and app-strip-lib.mjs instead. The exception is
+// solveLogically, which app-dom.test.mjs drives against a stub page.
 
 import fs from 'fs'
 
@@ -148,28 +149,31 @@ export async function enterDigit (page, digit) {
   if (!clicked) throw new Error(`digit pad button "${digit}" not found`)
 }
 
-// How long solveLogically waits for the app's logic pass to finish. The app's
+// How long solveLogically waits for the app's logic pass to settle. The app's
 // own solve limit is 300 s, so a pass that outlives this has stalled, not
 // merely taken a while.
 const LOGIC_SETTLE_TIMEOUT_MS = 300000
 
 // Run the app's own logical solver to its fixpoint: the state a player reaches
 // before any search. `AutoStep` is the run-to-fixpoint button, not `SingleStep`
-// (one step) beside it. Finished means the "Stop solving" button has been gone
+// (one step) beside it. Settled means the "Stop solving" button has been gone
 // for three consecutive samples 500 ms apart. The board is no signal: the pass
 // can run for minutes with no board change (fillomino 1-29 stopped changing at
-// 33.7 s and was still running at 300 s, #881). Throws when the pass has not
-// finished in time, so a run never times a half-finished logic pass.
-// `opts.now` and `opts.timeoutMs` exist for the test's stub page.
-export async function solveLogically (page, { now = Date.now, timeoutMs = LOGIC_SETTLE_TIMEOUT_MS } = {}) {
+// 33.7 s and was still running at 90 s and at 300 s, #881). The button's text
+// gains a "(Esc)" hotkey hint once a key is pressed or the mouse moves, so it
+// is matched by its prefix. A pass that can end before the first sample leaves
+// no sighting to require. Throws when the pass has not settled in time, so a
+// run never times a half-finished logic pass. `now` is the clock, a parameter
+// for the test's stub page.
+export async function solveLogically (page, { now = Date.now } = {}) {
   if (!await clickIcon(page, 'AutoStep')) throw new Error('logical solver not found: Icon AutoStep')
-  const deadline = now() + timeoutMs
+  const deadline = now() + LOGIC_SETTLE_TIMEOUT_MS
   const stopShown = () => page.evaluate(() =>
-    [...document.querySelectorAll('button')].some(b => b.textContent.replace(/\s+/g, ' ').trim() === 'Stop solving'))
+    [...document.querySelectorAll('button')].some(b => /^Stop solving\b/.test(b.textContent.replace(/\s+/g, ' ').trim())))
   let gone = 0
   while (gone < 3) {
     if (now() > deadline) {
-      throw new Error(`logical solver did not settle within ${timeoutMs}ms`)
+      throw new Error(`logical solver did not settle within ${LOGIC_SETTLE_TIMEOUT_MS}ms`)
     }
     await page.waitForTimeout(500)
     gone = await stopShown() ? 0 : gone + 1
