@@ -1,8 +1,8 @@
 """Decode a SudokuMaker link and print its puzzle document as JSON.
 
 The one JS-side consumer of `sudoku_kit.link_codec.decode_puzzle`: there is
-no JS LZString decompressor in this repo (the sudoku-kit library, pinned in
-`pyproject.toml`, is the only codec dependency), so `bundle-solve-lib.mjs` shells out to this instead of
+no JS LZString decompressor in this repo (the sudoku-kit library, locked to its
+`main` in `uv.lock`, is the only codec dependency), so `bundle-solve-lib.mjs` shells out to this instead of
 carrying a second decoder or a new npm dependency.
 
     uv run examples/_shared/link_codec_cli.py <link_file>

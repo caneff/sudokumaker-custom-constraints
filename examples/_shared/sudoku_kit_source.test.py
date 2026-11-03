@@ -59,11 +59,11 @@ def the_lock_follows_main():
     assert re.fullmatch(r"https://github\.com/caneff/sudoku-kit#[0-9a-f]{40}", git), (
         f"sudoku-kit is not locked to a bare-URL commit (no tag, no rev): {git!r}"
     )
-    source = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"][
+    sources = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"][
         "sources"
     ]
-    assert set(source["sudoku-kit"]) == {"git"}, (
-        f"sudoku-kit source pins more than the repo: {source['sudoku-kit']}"
+    assert set(sources["sudoku-kit"]) == {"git"}, (
+        f"sudoku-kit source pins more than the repo: {sources['sudoku-kit']}"
     )
 
 

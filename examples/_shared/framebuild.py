@@ -347,6 +347,8 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     if model_fn:
         m, x = model_fn(n, (bh, bw), **board.shape)
     else:
+        if board.shape:
+            raise ValueError("a rectangular board needs the Spec's own model_fn")
         m, x = cpsat.sudoku_model(n, cpsat.boxes(n, bh, bw))
     for (r, c), v in board.givens.items():
         m.Add(x[r, c] == v)
