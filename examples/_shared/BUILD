@@ -40,6 +40,7 @@ files(name="data", sources=["*.toml", "*.har"])
 
 # Imports only: Pants infers everything these read.
 for file in [
+    "app-dom.test.mjs",
     "app-strip-lib.test.mjs",
     "board_checks.test.py",
     "bundle-behaviour.test.mjs",
