@@ -30,7 +30,7 @@ from board_kit import N, board_doc, box
 from board_kit import search as search_board
 from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
-from sudoku_kit.cpsat import sudoku_model
+from sudoku_kit.cpsat import boxes, sudoku_model
 
 HERE = pathlib.Path(__file__).parent
 BOARD_DIR = HERE / "required-digits" / "sparse"
@@ -58,7 +58,7 @@ def is_house(cells):
 
 
 def model(groups, givens):
-    m, x = sudoku_model(N, (3, 3))
+    m, x = sudoku_model(N, boxes(N, 3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
     for g in groups:

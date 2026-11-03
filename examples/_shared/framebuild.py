@@ -344,7 +344,10 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     from sudoku_kit import cpsat
 
     n, bh, bw = board.n, board.bh, board.bw
-    m, x = (model_fn or cpsat.sudoku_model)(n, (bh, bw), **board.shape)
+    if model_fn:
+        m, x = model_fn(n, (bh, bw), **board.shape)
+    else:
+        m, x = cpsat.sudoku_model(n, cpsat.boxes(n, bh, bw))
     for (r, c), v in board.givens.items():
         m.Add(x[r, c] == v)
     # sorted: `active` is a set, whose iteration order is randomized per

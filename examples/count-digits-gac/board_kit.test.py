@@ -17,11 +17,11 @@ from board_kit import (
     givens_of,
     search,
 )
-from sudoku_kit.cpsat import sudoku_model
+from sudoku_kit.cpsat import boxes, sudoku_model
 
 
 def plain_model(groups, givens):
-    m, x = sudoku_model(N, (3, 3))
+    m, x = sudoku_model(N, boxes(N, 3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
     return m, x

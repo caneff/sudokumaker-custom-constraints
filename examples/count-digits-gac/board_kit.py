@@ -6,7 +6,7 @@
 
 import random
 
-from sudoku_kit.cpsat import SOLVED, solve_unique, solver, sudoku_model
+from sudoku_kit.cpsat import SOLVED, boxes, solve_unique, solver, sudoku_model
 
 N = 9
 
@@ -48,7 +48,7 @@ def givens_of(gen):
 def draw_grid(rng, seed):
     """Not reproducible from the seed: the grid is written to a gen, and
     proved from there."""
-    m, x = sudoku_model(N, (3, 3))
+    m, x = sudoku_model(N, boxes(N, 3, 3))
     for cell in x:
         m.AddHint(x[cell], rng.randrange(1, N + 1))
     sv = solver(30, reproducible=False, seed=seed, randomize=True)

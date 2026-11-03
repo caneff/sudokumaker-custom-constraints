@@ -52,7 +52,7 @@ from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
 from sm_document import code_constraint, find_constraint
-from sudoku_kit.cpsat import solve_unique, sudoku_model
+from sudoku_kit.cpsat import boxes, solve_unique, sudoku_model
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 MANIFEST = load_manifest(HERE)
@@ -61,7 +61,7 @@ TIMED_COMPONENT = MANIFEST.timed_component
 
 
 def prove_unique(givens):
-    m, x = sudoku_model(9, (3, 3))
+    m, x = sudoku_model(9, boxes(9, 3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
     first, unique = solve_unique(m, x, 60)
