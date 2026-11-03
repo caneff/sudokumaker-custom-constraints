@@ -552,9 +552,9 @@ search. Recorded app, 2026-11-03:
 | 1-29 with no clues, setup pass | about 130ms, removes nothing | |
 
 Its setup pass on the shipped board is about 140 ms: 676 trials, 297 removals, 81 of
-81 cells solved, and the grid matches `gen.json`. The cost is that AutoStep then
-shows only naked singles, so the app's step log no longer explains the solve. The
-soundness harness and `just time` have not run on it.
+81 cells solved, and the grid matches `gen.json`. AutoStep then shows only naked
+singles; its log on this board already said little more than that the component ruled
+candidates out, so nothing useful is lost. The soundness harness and `just time` have not run on it.
 
 The 5000ms above is one fixed search order, non-deterministic solve off. With it on,
 the app's default, 20 reps each on the shipped board, recorded app, 2026-11-03:
