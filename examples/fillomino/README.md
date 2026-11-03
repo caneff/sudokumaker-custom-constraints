@@ -506,6 +506,25 @@ board stops changing for three samples 500 ms apart, and in this stall the board
 went quiet for 56 s or more with the solver still running. So those 0 ms rows may
 have started mid-pass. Not re-measured.
 
+**A component can get past the stall.** A prototype, not shipped: `initialize` runs
+one by-contradiction pass on a private copy of the board, feeding the component's
+own `update` a stand-in `puzzle` (`hasValue`, `getValue`, `getCandidatesBitMask` and
+the two removal calls), capped at 40,000 `update` calls, then yields what it removed.
+Changes made there come before the app's step list, so the walk has nothing left to
+search. Recorded app, 2026-11-03:
+
+| board | with the prototype | shipped |
+| --- | --- | --- |
+| 1-29, AutoStep | 0.4s, 3 reps | unfinished at 300s |
+| 1-29, full solve, first + unique | 100-200ms, 3 reps | 5000ms |
+| 1-29 with 4 clues removed, full solve | 700 + 400ms, not unique | 2100 + 300ms, not unique |
+| 1-29 with no clues, setup pass | about 130ms, removes nothing | |
+
+Its setup pass on the shipped board is about 140 ms: 676 trials, 297 removals, 81 of
+81 cells solved, and the grid matches `gen.json`. The cost is that AutoStep then
+shows only naked singles, so the app's step log no longer explains the solve. The
+soundness harness and `just time` have not run on it.
+
 **Timing a frozen fixture now.** The committed `timing-fixture-*.txt` links
 embed the square-only `main.js` from before #867, which hands the component no
 width or height, so `just time fillomino --board <fixture>` refuses them (the
