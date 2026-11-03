@@ -556,6 +556,46 @@ Its setup pass on the shipped board is about 140 ms: 676 trials, 297 removals, 8
 shows only naked singles, so the app's step log no longer explains the solve. The
 soundness harness and `just time` have not run on it.
 
+The 5000ms above is one fixed search order, non-deterministic solve off. With it on,
+the app's default, 20 reps each on the shipped board, recorded app, 2026-11-03:
+3.9-42.3 s, median 19.5 s, without the prototype, and 100ms on all 20 with it. All
+40 read unique. So the gain is not that one order being unlucky.
+
+Why it is faster, as far as it is measured. The full solve makes about 162,800
+`update` calls and the pass 1,657, so the gain is fewer calls; a call in the pass
+costs more (about 0.08 ms against 0.015). A removal in the pass holds for the whole
+solve, and a removal under a guess is undone on backing out. That those extra calls
+are mostly repeats is inferred, not counted. Digit order is not the reason: testing
+small digits first takes 656 trials and 1,646 calls, against 676 and 1,657 for large
+digits first, and the search already tries small digits first (`listDigitsInMask`).
+
+Where the prototype is worse. Every committed 9x9 board but the frozen `-rung1` and
+`-base` ones, 22 boards, caps 9 and 12, one rep, a 100 ms timer: none slower. Fifteen
+tie and seven gain, the most `cap9-seed10`, 1600ms to 100ms. `cap12-seed11` is the only
+one the pass does not finish, 49 of 81 cells, 155 ms in the pass and 200ms either way.
+Empty boards at 1-29, the only boards found that are worse, none of them a puzzle:
+
+| empty board | no pass | pass | pass stopping after 100 dry tests |
+| --- | --- | --- | --- |
+| 9x9 | 400ms | 500ms | 400ms |
+| 12x12 | 400ms | 700ms | 500ms |
+| 15x15 | 500ms | 1000ms | 400ms |
+| 18x18 | 500ms | 1600ms | 500ms |
+| 21x21 | 600ms | 2700ms | 600ms |
+| 25x25 | 600ms | 4400ms | 700ms |
+
+A big sparse unique board was not reached. `generate.py sample` at 15x15 with cap 29
+ran 7 minutes without a grid (stopped), and at 21x21 with cap 21 timed out at 600 s. A
+15x15 grid thinned to 124 clues, 15 minutes, is 0ms both ways.
+
+Stopping early. Longest run of trials removing nothing: at most 75 on the 20 of these
+boards where the pass ran trials and finished, 41 on the shipped board, 235 on
+`cap12-seed11`, every trial on an empty board. Large digits first and small digits
+first have no clear winner. With a limit of 100, one rep, those boards keep their
+trials, removals and cells exactly, and `cap12-seed11` stops at 484 trials and 48 cells,
+76 ms in the pass, 300ms. The limit comes from 9x9 boards, so it may need to grow with
+the board. These are scratch tests.
+
 **Timing a frozen fixture now.** The committed `timing-fixture-*.txt` links
 embed the square-only `main.js` from before #867, which hands the component no
 width or height, so `just time fillomino --board <fixture>` refuses them (the
