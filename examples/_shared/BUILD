@@ -85,6 +85,7 @@ suite("include.test.mjs", needs=[":data", ":js", "./include_agreement.py:py"])
 for file in [
     "check_layout.py",
     "check_layout.test.py",
+    "precommit_layout_hook.test.py",
     "global-backends.test.mjs",
     "size_builders.test.py",
     "spec_855_closing.test.py",

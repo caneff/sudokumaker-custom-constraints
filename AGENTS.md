@@ -145,6 +145,7 @@ repo 2026-10-11).
   `workspace-write` has no network by default, so such a run dies before the
   puzzle loads. Delegate the reading and the reasoning; drive the browser here.
 - Node dev tools install with `npm ci`.
+- Layout gate on a push: `.pre-commit-config.yaml` runs `check_layout` on pre-commit and pre-push (#879), so a docs-only push meets the research-load rule. Per clone: `uvx pre-commit install --hook-type pre-commit --hook-type pre-push`.
 
 ## Pointers
 

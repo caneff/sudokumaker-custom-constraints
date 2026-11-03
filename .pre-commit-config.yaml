@@ -1,5 +1,5 @@
 # Fast local gate before each commit. Run once after cloning:
-#   uvx pre-commit install
+#   uvx pre-commit install --hook-type pre-commit --hook-type pre-push
 # The full gate (tests + soundness fuzz) is too slow for a commit hook and runs
 # in CI via `just check-full`. Keep verbatim comparison files and probe goldens
 # untouched — they must stay byte-for-byte.
@@ -34,3 +34,18 @@ repos:
         language: system
         files: '\.(js|mjs)$'
         pass_filenames: false
+
+  # The layout gate (#879). Its research-load rule (#659) ran only inside
+  # `just check`, so a docs commit auto-shipped to main never met it and main
+  # went red. always_run: a docs-only change must trigger it, and it reads the
+  # whole tree, so it takes no filenames. About 3 s. Install both stages:
+  #   uvx pre-commit install --hook-type pre-commit --hook-type pre-push
+  - repo: local
+    hooks:
+      - id: check-layout
+        name: check_layout
+        entry: uv run examples/_shared/check_layout.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
