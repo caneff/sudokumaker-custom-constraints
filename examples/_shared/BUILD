@@ -81,6 +81,9 @@ suite("spec_427_closing.test.mjs", needs=[":data", ":js", "./grid_to_link.py:py"
 # Starts include_agreement.py as a subprocess, and reads shared .js by path.
 suite("include.test.mjs", needs=[":data", ":js", "./include_agreement.py:py"])
 
+# Reads only the pre-commit config.
+suite("precommit_layout_hook.test.py", needs=["//:precommit-config"])
+
 # These read the tree: they scan every example.
 for file in [
     "check_layout.py",

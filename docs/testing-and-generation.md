@@ -72,3 +72,19 @@ constant. Running Start with clue `k` over line `x[0..8]` is exactly:
 `x[0] < x[1] < ... < x[k-1]`, and if `k < 9`, `x[k] < x[k-1]`. Make the CP-SAT
 model and the JS component agree on the rule, or your uniqueness proof describes
 a different puzzle than the app enforces.
+
+## Layout gate on commit and push
+
+`.pre-commit-config.yaml` runs `examples/_shared/check_layout.py` (about 3 s)
+on `pre-commit` and `pre-push`, always and over the whole tree (#879), so a
+docs-only change meets the research-load rule (#659) as well as `just check`.
+Every other hook there is commit-only (`default_stages`). The gate reads the
+working tree, untracked files included, as `just check` does.
+
+The hook is per clone, and `uvx pre-commit install` takes over the hook slots.
+**Do not run it in a clone that has the lane's commit-identity guard wrappers**
+(`.git/hooks/pre-commit.foreign` or `pre-push.foreign`): it moves them to
+`.legacy`, `implement-dispatch` then refuses, and a pushed ref can loop. The
+lane's own install of this hook is not done here.
+`examples/_shared/precommit_layout_hook.test.py` holds the config's shape; it
+does not check that a clone has the hook installed.

@@ -5,6 +5,10 @@
 # untouched — they must stay byte-for-byte.
 exclude: '^(examples/numbered-rooms/original/|examples/skyscraper/original/|examples/[^/]+/\.golden/)'
 
+# Only the layout gate also runs on push; every other hook is commit-only.
+default_stages: [pre-commit]
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   # Python: ruff check + format, its own isolated env, reads ruff.toml.
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -34,3 +38,16 @@ repos:
         language: system
         files: '\.(js|mjs)$'
         pass_filenames: false
+
+  # The layout gate (#879): check_layout's research-load rule (#659) also runs
+  # on a docs-only change, and it reads the whole tree, so the hook takes no
+  # filenames. About 3 s. See docs/testing-and-generation.md.
+  - repo: local
+    hooks:
+      - id: check-layout
+        name: check_layout
+        entry: uv run examples/_shared/check_layout.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
