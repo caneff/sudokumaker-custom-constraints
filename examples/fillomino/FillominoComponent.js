@@ -542,18 +542,18 @@ function * cellCountRule (instance, puzzle) {
 // guesses is undone when the guess is. On the boards this has run on, that saves
 // far more `update` calls than the pass spends.
 //
-// Three things end the pass: a sweep over the board that removes nothing, this
-// many tests in a row that remove nothing, or this many `update` calls. They keep
-// a board with nothing to find cheap. The tests limit comes from 9x9 boards, the
-// longest such run on any of them that finished being 75 tests, so a much bigger
-// board may stop before it has found all it could.
+// Besides a board that breaks, three things end the pass: a sweep over the board
+// that removes nothing, this many tests in a row that remove nothing, or this many
+// `update` calls. They keep a board with nothing to find cheap. The tests limit
+// comes from 9x9 boards, the longest such run on any of them that finished being 74
+// tests, so a much bigger board may stop before it has found all it could.
 const SETUP_DRY_LIMIT = 100
 const SETUP_CALL_LIMIT = 40000
 
 // What running the rules on the copy came to.
-const SETTLED = 0 // the rules have nothing more to say
-const BROKE = 1 // a cell has no digit left
-const OUT_OF_CALLS = 2 // stopped part-way, which proves nothing
+const COPY_SETTLED = 0 // the rules have nothing more to say
+const COPY_BROKEN = 1 // a cell has no digit left
+const COPY_OUT_OF_CALLS = 2 // stopped part-way, which proves nothing
 
 // Every test reads and writes this copy, and the app's board stays as it was
 // until the pass is over and the removals are yielded. Where the app builds a
@@ -588,34 +588,30 @@ function scratchBoard (instance, puzzle) {
   return board
 }
 
-// A cell with one candidate left holds it. Returns whether any did.
+// A cell with one candidate left holds it.
 function placeSingles (instance, board) {
-  let placed = false
   for (const cell of instance.cells) {
     const digits = board.candidates[cell]
     if (board.hasValue(cell) || digits === 0 || (digits & (digits - 1)) !== 0) continue
     board.values[cell] = 31 - Math.clz32(digits)
-    placed = true
   }
-  return placed
 }
 
 // Run the rules on the copy until they stop changing it.
 function settle (instance, board) {
   while (true) {
     placeSingles(instance, board)
-    if (board.calls >= SETUP_CALL_LIMIT) return OUT_OF_CALLS
+    if (board.calls >= SETUP_CALL_LIMIT) return COPY_OUT_OF_CALLS
     board.calls++
     board.changed = false
     for (const change of update(instance, board)) {
-      if (board.broken) return BROKE
+      if (board.broken) return COPY_BROKEN
     }
-    if (board.broken) return BROKE
-    if (!board.changed) return SETTLED
+    if (!board.changed) return COPY_SETTLED
   }
 }
 
-// Whether `digit` in cell `cell` breaks the board, the copy left as it was found.
+// What the rules make of `digit` in cell `cell`, the copy left as it was found.
 function testDigit (instance, board, cell, digit) {
   board.savedCandidates.set(board.candidates)
   board.savedValues.set(board.values)
@@ -629,7 +625,8 @@ function testDigit (instance, board, cell, digit) {
 
 // Sweep the board until one of the limits above ends the pass, or the board
 // itself breaks: every removal made follows from the board as it was, so the
-// board has no answer.
+// board has no answer. Largest digit first is a choice: smallest first measures
+// about the same.
 function sweepDigits (instance, board) {
   const { minDigit, maxDigit } = helpers.digits
   let dry = 0
@@ -640,15 +637,15 @@ function sweepDigits (instance, board) {
       for (let digit = maxDigit; digit >= minDigit; digit--) {
         if (board.hasValue(cell) || !allows(board.candidates[cell], digit)) continue
         const result = testDigit(instance, board, cell, digit)
-        if (result === OUT_OF_CALLS) return
-        if (result === SETTLED) {
+        if (result === COPY_OUT_OF_CALLS) return
+        if (result === COPY_SETTLED) {
           if (++dry >= SETUP_DRY_LIMIT) return
           continue
         }
         dry = 0
         removedAny = true
         board.removeCandidateFromCell(digit, cell)
-        if (settle(instance, board) !== SETTLED) return
+        if (settle(instance, board) !== COPY_SETTLED) return
       }
     }
   }
@@ -657,7 +654,7 @@ function sweepDigits (instance, board) {
 // The app runs this once, after the givens are placed, and calls `update` next.
 function * initialize (instance, puzzle) {
   const board = scratchBoard(instance, puzzle)
-  if (settle(instance, board) === SETTLED) sweepDigits(instance, board)
+  if (settle(instance, board) === COPY_SETTLED) sweepDigits(instance, board)
   for (const cell of instance.cells) {
     const removed = puzzle.getCandidatesBitMask(cell) & ~board.candidates[cell]
     if (removed !== 0) yield puzzle.removeCandidatesFromCell(removed, cell)

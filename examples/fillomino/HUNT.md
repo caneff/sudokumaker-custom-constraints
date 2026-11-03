@@ -5,8 +5,9 @@ end, at minutes a board. This is the offline loop: score a clue set in Node in
 milliseconds, strip offline, and let the app judge the survivors.
 
 The app can only judge a survivor's hardness on a link built without the setup pass
-(#882, `README.md` § Timing): the pass clears a hard board in about 100ms there, and
-`hunt-lib.mjs` does not load it, so offline scores are unaffected.
+(#882): the pass clears a hard board in about 100ms there, so `build_link.py` as it
+stands will not do. `README.md` § Timing, *What this costs a setter*, has the steps.
+`hunt-lib.mjs` does not load the pass, so offline scores are unaffected.
 
 The loop's adversarial half — the hill-climb (`climb`), the ranking handoff
 (`finalists`), the CP-SAT resampler and the `--times` rank correlation — was

@@ -5,18 +5,19 @@
 // removals and never yielded them would pass on it. Soundness over fuzzed
 // states is in soundness-harness.mjs.
 //
-// The expected grids are the generator's, from gen.json and gen_15g.json, and
-// the expected counts on the no-clue and cap12-seed11 boards are the ones the
-// README recorded before the pass shipped.
+// The expected grids are the generator's, from gen.json and gen_15g.json. The
+// expected counts on the cap12-seed11 board are the ones the README records from
+// a scratch prototype, which shared no code with this component.
 
 import assert from 'assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { installGlobals, makeIo, patchSource } from '../_shared/harness-lib.mjs'
-import { fixtureBoards } from './bound-screen-lib.mjs'
+import { fixtureBoard } from './bound-screen-lib.mjs'
+import { givensOf } from './hunt-lib.mjs'
 
 const HERE = import.meta.dirname
-const NAMES = ['setParams', 'initialize', 'update']
+const NAMES = ['setParams', 'initialize']
 const UPDATE = 'function * update (instance, puzzle) {'
 const CALL_LIMIT = 'const SETUP_CALL_LIMIT = 40000'
 const DRY_LIMIT = 'const SETUP_DRY_LIMIT = 100'
@@ -29,8 +30,8 @@ const countCalls = src => patchSource(src, UPDATE, `${UPDATE}
   globalThis.setupPassCalls.n++
   globalThis.setupPassCalls.cell0.push(puzzle.getValue(0))`)
 const { load } = makeIo(HERE)
-const loadWith = (...patches) => load('FillominoComponent.js', NAMES, src => patches.reduce((out, patch) => patch(out), countCalls(src)))
-const shipped = loadWith()
+const loadWith = patch => load('FillominoComponent.js', NAMES, src => patch(countCalls(src)))
+const shipped = loadWith(src => src)
 
 function appPuzzle ({ width, height, cap, givens }) {
   const every = (2 ** (cap + 1)) - 2
@@ -42,7 +43,6 @@ function appPuzzle ({ width, height, cap, givens }) {
     hasValue: c => values[c] !== undefined,
     getValue: c => values[c],
     getCandidatesBitMask: c => candidates[c],
-    removeCandidateFromCell: (digit, cell) => change(1 << digit, cell),
     removeCandidatesFromCell: change,
     apply ({ mask, cell }) { candidates[cell] &= ~mask }
   }
@@ -72,8 +72,7 @@ function boardFrom (file) {
   const { grid, clues, cap } = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
   const height = grid.length
   const width = grid[0].length
-  const givens = Object.fromEntries(clues.map(([r, c]) => [r * width + c, grid[r][c]]))
-  return { width, height, cap: cap ?? Math.max(width, height), givens, grid }
+  return { width, height, cap: cap ?? Math.max(width, height), givens: givensOf(grid, clues), grid }
 }
 
 const assertSolved = (p, { grid }) => {
@@ -113,7 +112,7 @@ const assertSolved = (p, { grid }) => {
 // tests, is past the limit, so the pass stops early at 48 cells; with no dry
 // limit it reaches 49.
 {
-  const board = fixtureBoards(HERE).find(b => b.name === '9x9-cap12-seed11')
+  const board = fixtureBoard(HERE, 'timing-fixture-9x9-cap12-seed11-rung25.txt')
   assert.strictEqual(singles(runPass(shipped, board).p), 48, 'the dry limit stopped the pass somewhere else')
   const noDryLimit = loadWith(src => patchSource(src, DRY_LIMIT, 'const SETUP_DRY_LIMIT = Infinity'))
   assert.strictEqual(singles(runPass(noDryLimit, board).p), 49, 'with no dry limit the pass should finish')
@@ -139,6 +138,15 @@ const assertSolved = (p, { grid }) => {
   const board = { width: 3, height: 3, cap: 9, givens: { 0: 1, 1: 1 } }
   const { p } = runPass(shipped, board)
   assert.ok(p.candidates.includes(0), 'a broken board left no cell empty')
+}
+
+// The same when only the tests show it: these clues get past the rules alone, and
+// this board has no answer, so the pass ends at the removal that breaks it.
+{
+  const board = { width: 3, height: 3, cap: 3, givens: { 1: 1, 3: 3, 8: 2 } }
+  const { p, calls: spent } = runPass(shipped, board)
+  assert.ok(p.candidates.includes(0), 'a board the tests broke left no cell empty')
+  assert.strictEqual(spent, 5, 'the pass went on past the removal that broke the board')
 }
 
 console.log('PASS')

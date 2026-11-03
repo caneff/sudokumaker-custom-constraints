@@ -44,20 +44,28 @@ const FUZZ = Number(process.env.FUZZ) || 20000
 // The shipped board offers more digits than its side, and the cell count reads
 // the whole range.
 const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
-for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
-  installGlobals(1, cap)
-  const CELLS = Array.from({ length: width * height }, (_, i) => i)
-  const ALL = Array.from({ length: cap }, (_, d) => d + 1)
-  const seed = makeSeeder(rnd, ALL)
-  bad += fuzzSoundness(`fillomino ${name} fixture`, {
-    iters: FUZZ,
-    draw: () => {
-      const inst = {}
-      mod.setParams(inst, CELLS, width, height)
-      return { truth, seed, parts: [{ mod, inst }] }
-    }
-  }).failures
+
+// Fuzz one component on every fixture, a fresh instance per state. Returns the
+// failures.
+function fuzzFixtures (labelOf, iters, part) {
+  let failures = 0
+  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
+    installGlobals(1, cap)
+    const cells = Array.from({ length: width * height }, (_, i) => i)
+    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
+    failures += fuzzSoundness(labelOf(name), {
+      iters,
+      draw: () => {
+        const inst = {}
+        part.setParams(inst, cells, width, height)
+        return { truth, seed, parts: [{ mod: part, inst }] }
+      }
+    }).failures
+  }
+  return failures
 }
+
+bad += fuzzFixtures(name => `fillomino ${name} fixture`, FUZZ, mod)
 
 const N = 6
 installGlobals(1, N)
@@ -162,22 +170,7 @@ for (const rule of Object.keys(RULES)) {
       }
     }
   }
-  // The shipped board offers more digits than its side, and the cell count reads
-  // the whole range.
-  const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
-  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
-    installGlobals(1, cap)
-    const RCELLS = Array.from({ length: width * height }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
-    bad += fuzzSoundness(`fillomino ${rule} alone, ${name}`, {
-      iters: RULE_FUZZ,
-      draw: () => {
-        const inst = {}
-        solo.setParams(inst, RCELLS, width, height)
-        return { truth, seed, parts: [{ mod: solo, inst }] }
-      }
-    }).failures
-  }
+  bad += fuzzFixtures(name => `fillomino ${rule} alone, ${name}`, RULE_FUZZ, solo)
   installGlobals(1, N)
 }
 
@@ -201,19 +194,7 @@ for (const [passName, passMod] of [['setup pass', mod], [`setup pass limited to 
       yield * passMod.update(inst, p)
     }
   }
-  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
-    installGlobals(1, cap)
-    const PCELLS = Array.from({ length: width * height }, (_, i) => i)
-    const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))
-    bad += fuzzSoundness(`fillomino ${passName}, ${name}`, {
-      iters: SETUP_FUZZ,
-      draw: () => {
-        const inst = {}
-        withPass.setParams(inst, PCELLS, width, height)
-        return { truth, seed, parts: [{ mod: withPass, inst }] }
-      }
-    }).failures
-  }
+  bad += fuzzFixtures(name => `fillomino ${passName}, ${name}`, SETUP_FUZZ, withPass)
 }
 installGlobals(1, N)
 

@@ -14,7 +14,8 @@ and #309 (**rung 3**, cut starve). The ladder is complete.
 
 ## What the component deduces
 
-One whole-grid `update`. Each call makes one grid scan, `findIslands`, that
+One whole-grid `update`, with one setup pass before the search (rule 8 below). Each
+`update` call makes one grid scan, `findIslands`, that
 finds the **islands** — a maximal connected set of placed cells of one digit.
 Two adjacent cells holding `k` lie in one region, so an island of digit `k`
 with `p` cells sits wholly inside one region and that region needs `k - p` more
@@ -71,9 +72,9 @@ And once before the search starts (`initialize`):
 8. **Trying each digit** (#882) — on a private copy of the board, place each
    candidate, largest digit first, run `update` until nothing changes, and remove
    the candidate if the rules break. Sweeps repeat until a sweep removes nothing,
-   100 tests in a row remove nothing, or 40,000 `update` calls are spent; then the
-   removals are yielded. A test the call limit cuts short proves nothing and removes
-   nothing. `## Timing` has the numbers.
+   100 tests in a row remove nothing, 40,000 `update` calls are spent or the board
+   breaks; then the removals are yielded. A test the call limit cuts short proves
+   nothing and removes nothing. `## Timing` has the numbers.
 
 Rule 5's `M` tests are #308's growth test at frontier scope, rule 6 is the
 bound #308 paired it with, and rule 4 is #309's rung 3. The sections below keep
@@ -479,16 +480,24 @@ The pass on the shipped board, in Node: 676 tests, 297 removals, 1,654 `update` 
 63-90 ms, 81 of 81 cells solved, and the grid matches `gen.json`.
 
 **The limits.** The 100 is a fixed value, by Chris's ruling, and it comes from 9x9
-boards only: their longest run of tests removing nothing was 75 where the pass
-finished. A bigger sparse unique board was never reached, so a board that size may stop
+boards only: their longest run of tests removing nothing was 74 where the pass
+finished (75 counting the test that ended it, as the older record below does). A bigger sparse unique board was never reached, so a board that size may stop
 before it has found all it could; that costs search time and never soundness.
 `cap12-seed11` is the committed board it stops early on: 48 cells at the limit, 49
 without it. The 40,000 was the prototype's cap; the shipped board spends 1,654 of it.
 
 **What this costs a setter.** In-app timing of a board built with the pass no longer
 shows how hard the board is, since this one now reads 100ms. `hunt-lib.mjs` does not load
-`initialize`, so offline scores stay as they were; time a board's hardness there, or
-on a link built without the pass.
+`initialize`, so offline scores stay as they were. To time a board's hardness in the app,
+build a link without the pass: copy `FillominoComponent.js` to a folder of its own under
+`.scratch/`, keeping the name, rename `initialize` in the copy, and run `build_link.py
+--component <copy> --out <file>`, adding `--board <link>` for another board. That link
+of the shipped board reads 4900ms cold, one rep.
+
+A board only the tests can break now fails as the solver sets it up, not in the search.
+From reading the bundle, verbose solving then says "This puzzle is broken." without
+"unable to satisfy Fillomino", because `initializeComponent` adds no reason; not seen in
+the app. The result is the same.
 
 ### The cell count and digits 1-29
 
@@ -528,7 +537,8 @@ cell (recorded app, 2026-11-02). `generate.py unique` proves the clues unique at
 1-29.
 
 **The logical solver stalls at wide digit ranges, and the component is not why.**
-Measured without the setup pass, which now gets the shipped link past it.
+Everything from here to *Timing a frozen fixture now* was measured before the setup
+pass shipped, so "shipped" there means the component without it.
 The AutoStep button on the shipped clues, recorded app, 2026-11-03, one rep unless
 noted:
 
@@ -597,7 +607,7 @@ the two removal calls), capped at 40,000 `update` calls, then yields what it rem
 Changes made there come before the app's step list, so the walk has nothing left to
 search. Recorded app, 2026-11-03:
 
-| board | with the prototype | shipped |
+| board | with the prototype | without it |
 | --- | --- | --- |
 | 1-29, AutoStep | 0.4s, 3 reps | 1 of 4 reps finished, see above |
 | 1-29, full solve, first + unique | 100-200ms, 3 reps | 5000ms |
