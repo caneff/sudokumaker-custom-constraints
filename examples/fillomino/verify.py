@@ -81,4 +81,6 @@ if __name__ == "__main__":
             tmp,
             offline_solve=False,
         )
-    print("verify.py: gen.json is unique and PUZZLE_LINK.txt carries exactly its givens")
+    print(
+        "verify.py: gen.json is unique and PUZZLE_LINK.txt carries exactly its givens"
+    )

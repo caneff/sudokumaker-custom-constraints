@@ -25,4 +25,6 @@ with tempfile.TemporaryDirectory() as tmp:
     assert len(rect["grid"]) != len(rect["grid"][0]), "gen_15g.json must not be square"
     prove(rect, (HERE / "PUZZLE_LINK_15g.txt").read_text().strip(), tmp)
 
-print("pipeline.test.py: the proof, the component and the link agree on the rectangular board")
+print(
+    "pipeline.test.py: the proof, the component and the link agree on the rectangular board"
+)
