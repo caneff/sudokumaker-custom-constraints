@@ -9,7 +9,7 @@ import assert from 'assert'
 import { loadVariants, fixtureBoards, runScreen } from './bound-screen-lib.mjs'
 import { score } from './hunt-lib.mjs'
 import { installGlobals, makePuzzle, makeRng, makeSeeder, randomCandidates, fixpoint, compareStrength, fuzzSoundness } from '../_shared/harness-lib.mjs'
-import { shipped, varied } from './fixture.mjs'
+import { pinned, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { baseline, incremental } = loadVariants(HERE)
@@ -68,7 +68,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // guard on the shared rules; the soundness fuzz below is what witnesses an
 // unsound check.
 {
-  const { truth, width, height, cap } = shipped
+  const { truth, width, height, cap } = pinned
   installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const { rnd } = makeRng(327)
@@ -94,7 +94,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 // candidate a real solution needs.
 {
   const { rnd } = makeRng(328)
-  for (const [name, { truth, width, height, cap }] of [['shipped', shipped], ['varied', varied]]) {
+  for (const [name, { truth, width, height, cap }] of [['pinned', pinned], ['varied', varied]]) {
     installGlobals(1, cap)
     const CELLS = Array.from({ length: width * height }, (_, i) => i)
     const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))

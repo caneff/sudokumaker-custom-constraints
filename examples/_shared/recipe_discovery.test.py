@@ -27,7 +27,14 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from gate_lib import commands, gate_tree, just_executable
 
 # Recipes `just check-full` does not reach, each run by hand.
-UNGATED = {"fmt", "time", "time-link", "verify-isofill", "verify-skyscraper"}
+UNGATED = {
+    "fmt",
+    "time",
+    "time-link",
+    "verify-fillomino",
+    "verify-isofill",
+    "verify-skyscraper",
+}
 
 
 def recipes():

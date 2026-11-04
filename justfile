@@ -51,9 +51,9 @@ test:
     JUST="{{just_executable()}}" bash tests/all.sh --group test
 
 # The heavy tests `test` skips, run by `check-full`, as two CI-sized groups:
-# the fillomino pipeline (about 65 s) and the two recovery probes plus the embedded
+# the fillomino pipeline and generator (about 30 s) and the two recovery probes plus the embedded
 # squishdoku's house proof (about 40s).
-[doc("Heavy group 1: the fillomino pipeline and generator tests, about 65 s.")]
+[doc("Heavy group 1: the fillomino pipeline and generator tests, about 30 s.")]
 test-heavy-fillomino:
     bash tests/all.sh --group heavy-fillomino
 
@@ -74,6 +74,13 @@ test-heavy: test-heavy-fillomino test-heavy-recovery
 [doc("Prove a shipped Skyscrapers board still decodes, solves and is unique.")]
 verify-skyscraper size="9":
     uv run examples/skyscraper/verify.py {{size}}
+
+# Manual uniqueness proof of the shipped fillomino board (CP-SAT, about 90 s): the
+# board's proof and its link's givens. Not part of check/test/CI; run by hand
+# after a change to gen.json or PUZZLE_LINK.txt. See examples/fillomino/README.md.
+[doc("Prove the shipped fillomino board unique and its link's givens (slow CP-SAT solve), by hand.")]
+verify-fillomino:
+    uv run examples/fillomino/verify.py
 
 # Manual, occasional uniqueness proof for isofill puzzles (slow CP-SAT solve).
 # Not part of check/test/CI; run by hand after a puzzle change. Every

@@ -4,19 +4,15 @@
 // deduce exactly what it does from a fresh instance. Same check as the isofill
 // one in pooling.test.mjs, on the fillomino fixture.
 
-import { join } from 'path'
-import { readFileSync } from 'fs'
 import assert from 'assert'
+import { pinned } from './fixture.mjs'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const mod = makeIo(HERE).load('FillominoComponent.js', ['setParams', 'update'])
 
-const { grid: rows, cap } = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8'))
-const n = rows.length
+const { truth, width: n, cap } = pinned
 const CELLS = Array.from({ length: n * n }, (_, i) => i)
-const truth = {}
-rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
 installGlobals(1, cap)
 
 // `stamp` is where the search number starts. A wrapped run's marks are

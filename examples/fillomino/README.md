@@ -271,9 +271,9 @@ uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/g
 unique
 ```
 
-(About 95 s on a loaded box, 2026-11-04.) `update-strength.test.mjs` reads this same `gen.json` for its
-`shipped`-grid check, so that test's own fuzz now runs against the shipped
-instance's grid too.
+(About 95 s on a loaded box, 2026-11-04.) No gate suite reads this `gen.json`
+but the harness's small shipped-board fuzz: `update-strength.test.mjs` and the
+rest run on the pinned 9x9 grid, so a new board changes no gate time.
 
 Rebuild the link:
 
@@ -290,15 +290,17 @@ the board or the rules text changes. Last walked against the 12x12 board,
 
 **Free gate** — `just check-full` green: layout, lint, probe goldens, soundness
 at zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
-the CP-SAT proof and the link decode on this board, and adds the component's
-offline solve on the 7 x 5, and fails if any of them disagree.
+the CP-SAT proof, the link decode and the component's offline solve on the
+7 x 5, and fails if any of them disagree. This board's own proof is not in the
+gate: **`just verify-fillomino`** (about 90 s) proves `gen.json` unique and
+checks `PUZZLE_LINK.txt`'s givens; run it before each walk.
 
 The three mechanical criteria, checked by `check_layout.py` on every committed
 link in the example (all 53: this board, its annotated twin, the 7 x 5
 `PUZZLE_LINK_15g.txt`, 19 `-rung1` + 19 `-rung25` + 9 `-base` frozen
 fixtures, the three hunt records):
 
-- **Opens clean** ✓ — 103 non-given cells, every one `{}`. `pipeline.test.py`
+- **Opens clean** ✓ — 103 non-given cells, every one `{}`. `just verify-fillomino`
   asserts it cell by cell as well.
 - **Ring not filled end to end** ✓ — 14 of 44 ring cells hold a given. See
   criterion 3 below for what the ring means on this board.
@@ -308,8 +310,9 @@ fixtures, the three hunt records):
 
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
    exact `gen.json`, about 95 s, no timeout; the run is recorded under *The board*
-   above. It is not only a recorded run: `pipeline.test.py`
-   re-proves it on every `just check-full`, so the board cannot outlive its proof.
+   above. The gate does not re-prove it:
+   `just verify-fillomino` does, by hand, so a changed `gen.json` carries a
+   stale proof until that recipe is run.
 2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-16 in every
    cell. Orthogonally connected cells with the same digit are regions; the
    number of cells in a region has to equal its digit. Two regions of the same
@@ -385,13 +388,17 @@ minimal clue set in the live app; the generator itself carries no strip step.
 ## Tests
 
 - `soundness-harness.mjs` — the invariant: `update` never removes a cell's true
-  value. Two fixtures, 20,000 fuzzed states each, plus one directed check per
+  value. Three fixtures (a pinned 9x9 grid, a 6x6 and the 7x5), 20,000 fuzzed
+  states each, plus a 200-state fuzz of the shipped board, so digits above its
+  side stay covered; the gate's time does not follow `gen.json`. One directed check per
   rule. The setup pass then `update` on one instance, 200 states per fixture, once as
   shipped and once with the call limit at 25, so the limit lands inside tests.
+  About 55 s (53 s and 56 s, 2026-11-04, load average 25), against 49 s before the
+  12x12 board and 215 s with it in the gate.
   `FUZZ=80000` for a deep run before a ship.
 - `setup-pass.test.mjs` — the setup pass driven as the app drives it, a change
   doing nothing until it is yielded: it solves the 7x5 board to the generator's
-  grid, solves 83 of the shipped board's 144 cells and keeps every true digit,
+  grid, solves all 81 cells of the pinned 9x9 board (`fixture-9x9.json`, a 9x9 grid with digits 1-29) and keeps every true digit,
   yields only after the search ends, stops at both limits, tests
   largest digit first, and leaves a board with broken clues with an empty cell.
 - `update-strength.test.mjs` — both halves of the strength gate: on any state
@@ -428,16 +435,16 @@ minimal clue set in the live app; the generator itself carries no strip step.
   `OPTIMIZATION_LOG.md`.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
-- `pipeline.test.py` — the chain: CP-SAT proves the clue set; the link decodes
-  with every non-given cell empty; on the 7x5 only, the shipped component solves
-  that clue set offline out of the link and must land on the grid. The offline
-  scorer has no setup pass and spends 3,000,000 nodes on the shipped board with no
-  verdict, so that step does not run there. Each step is covered on its own
-  elsewhere — what only this test covers is that they agree on one board: the proof
-  and the link on both boards, the component as well on the 7x5. No gate solves
-  the shipped board end to end; only the app does, outside the gate. About 60-90 s,
-  so `check-full` only. The generator arm
-  (a sampled 9x9 grid proved unique) is `generate.self_check()`'s.
+- `fixture.test.mjs` — the gate's fixtures are pinned: `fixture-9x9.json` is the
+  9x9 grid with digits 1-29, and only a listed few files read `gen.json`.
+- `pipeline.test.py` — the chain on the 7x5: CP-SAT proves the clue set; the link
+  decodes with every non-given cell empty; the component solves that clue set
+  offline out of the link and must land on the grid. What only this test covers
+  is that the three agree on one board. About a second. The shipped board's proof
+  and link check are `verify.py`, **`just verify-fillomino`** (about 90 s, by
+  hand): the offline scorer has no setup pass and spends 3,000,000 nodes on that
+  board with no verdict, so no gate solves it end to end; only the app does. The
+  generator arm (a sampled 9x9 grid proved unique) is `generate.self_check()`'s.
 - `generate.test.py` — the generator's acceptance criteria, including that a
   dropped grid (no solution, striped, or a uniqueness solve that timed out)
   logs its seed and clue set instead of vanishing.

@@ -5,7 +5,7 @@
 // removals and never yielded them would pass on it. Soundness over fuzzed
 // states is in soundness-harness.mjs.
 //
-// The expected grids are the generator's, from gen.json and gen_15g.json. The
+// The expected grids are the generator's, from fixture-9x9.json and gen_15g.json. The
 // expected counts on the cap12-seed11 board are the ones the README records from
 // a scratch prototype, which shared no code with this component.
 
@@ -80,13 +80,15 @@ const assertSolved = (p, { grid }) => {
   assert.deepStrictEqual(p.candidates, want, 'the pass did not leave exactly the solution')
 }
 
-// The shipped board is built to leave the search work: the pass solves 83 of its
-// 144 cells and keeps the true digit in every cell. It holds every change back
-// until the search on its private copy has finished.
+// The pinned 9x9 board (so the gate's time does not follow `gen.json`) falls to
+// the pass entirely: it solves all 81 cells and keeps the true digit in every
+// cell. It holds every change back until the search on its private copy has
+// finished. A partial solve is the cap12-seed11 block's; a cut-short pass keeping
+// every true digit is the call-limit block's.
 {
-  const board = boardFrom('gen.json')
+  const board = boardFrom('fixture-9x9.json')
   const { p, calls: spent, callsAtFirstChange } = runPass(shipped, board)
-  assert.strictEqual(singles(p), 83, 'the pass solved a different share of the shipped board')
+  assert.strictEqual(singles(p), 81, 'the pass solved a different share of the pinned board')
   board.grid.flat().forEach((d, cell) => assert.ok(p.candidates[cell] & (1 << d), `the pass removed the true digit of cell ${cell}`))
   assert.strictEqual(callsAtFirstChange, spent, 'a change came out before the pass finished')
 }
@@ -125,7 +127,7 @@ const assertSolved = (p, { grid }) => {
 // every limit the pass keeps the solution; the limit lands inside a test of a
 // false digit and of a true one somewhere in this range.
 {
-  const board = boardFrom('gen.json')
+  const board = boardFrom('fixture-9x9.json')
   const truth = board.grid.flat().map(d => 1 << d)
   for (let limit = 1; limit <= 400; limit++) {
     const capped = loadWith(src => patchSource(src, CALL_LIMIT, `const SETUP_CALL_LIMIT = ${limit}`))
