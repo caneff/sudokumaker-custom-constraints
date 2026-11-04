@@ -4,6 +4,7 @@ unit(
         "hunt_offline.test.py",
         "hunt-lib.test.mjs",
         "bound-screen-lib.test.mjs",
+        "fixture.test.mjs",
         "stamp-wrap.test.mjs",
         "equivalence.test.mjs",
         "update-strength.test.mjs",
@@ -21,7 +22,7 @@ unit(
             "examples/_shared/stamp.js:js",
         ],
     },
-    # One core, 2026-11-04, a loaded box: the 12x12 board's CP-SAT proof puts
-    # pipeline.test.py at 60-90 s, the 65 s through Pants with generate.test.py.
-    timeouts={"pipeline.test.py": 400, "generate.test.py": 120},
+    # generate.test.py runs about 30 s; pipeline.test.py proves the 7x5 board in
+    # about a second. The shipped board's proof is `just verify-fillomino`.
+    timeouts={"pipeline.test.py": 120, "generate.test.py": 120},
 )
