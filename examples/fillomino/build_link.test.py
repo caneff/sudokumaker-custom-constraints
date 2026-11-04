@@ -25,12 +25,15 @@ if __name__ == "__main__":
         "the committed component must reproduce PUZZLE_LINK.txt exactly"
     )
 
-    # The shipped board runs past single digits, up to the highest the app's
-    # solver can run; one digit more is refused rather than built.
-    assert doc["puzzle"]["maxDigit"] == MAX_DIGIT, "the shipped board's digit range"
+    # The shipped board offers the digits its proof ran on. The highest range the
+    # app's solver can run builds; one digit more is refused rather than built.
+    spec = json.loads((HERE / "gen.json").read_text())
+    assert doc["puzzle"]["maxDigit"] == spec["cap"], "the shipped board's digit range"
     with tempfile.TemporaryDirectory() as tmp:
         over = pathlib.Path(tmp) / "gen.json"
-        spec = json.loads((HERE / "gen.json").read_text())
+        over.write_text(json.dumps({**spec, "cap": MAX_DIGIT}))
+        widest = build(HERE / f"{TIMED_COMPONENT}.js", over)[1]
+        assert widest["puzzle"]["maxDigit"] == MAX_DIGIT
         over.write_text(json.dumps({**spec, "cap": MAX_DIGIT + 1}))
         try:
             build(HERE / f"{TIMED_COMPONENT}.js", over)
