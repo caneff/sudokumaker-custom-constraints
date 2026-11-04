@@ -23,13 +23,13 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 
 ## Include closure
 
-The burn clumper (`~/.agents/skills/burndown/closure.py`) reads this section
-to find which files a change really regenerates; `docs/example-layout.md` § The shared
+`~/.agents/skills/implement-spec/closure.py` reads this section for the hold
+`loop.py dispatch` puts on files in flight, to find which files a change really regenerates; `docs/example-layout.md` § The shared
 frame reader explains the directive itself.
 
 - **Directive**: `// #include <path>`
 - **Paths**: relative to the including file
-- **Generator**: each example's own `build_link.py` or `build_size.py` (reported by the clumper, never run by it)
+- **Generator**: each example's own `build_link.py` or `build_size.py` (reported by `closure.py`, never run by it)
 
 ## Regeneration and timing runs (always on)
 
