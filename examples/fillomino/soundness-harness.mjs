@@ -45,7 +45,6 @@ const FUZZ = Number(process.env.FUZZ) || 20000
 // not change its time. The shipped board gets a small fuzz of its own, enough to
 // cover digits above its side.
 const SHIPPED = [['shipped board', shipped]]
-const SHIPPED_DIVISOR = 100
 
 // Fuzz one component on every fixture, a fresh instance per state. Returns the
 // failures.
@@ -68,7 +67,7 @@ function fuzzFixtures (labelOf, iters, part, fixtures = FIXTURES) {
 }
 
 bad += fuzzFixtures(name => `fillomino ${name} fixture`, FUZZ, mod)
-bad += fuzzFixtures(name => `fillomino ${name}`, Math.ceil(FUZZ / SHIPPED_DIVISOR), mod, SHIPPED)
+bad += fuzzFixtures(name => `fillomino ${name}`, Math.ceil(FUZZ / 100), mod, SHIPPED)
 
 const N = 6
 installGlobals(1, N)

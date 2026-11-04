@@ -80,10 +80,11 @@ const assertSolved = (p, { grid }) => {
   assert.deepStrictEqual(p.candidates, want, 'the pass did not leave exactly the solution')
 }
 
-// The pinned 9x9 board (the old shipped one, so the gate's time does not follow
-// `gen.json`) is built to leave the search work: the pass solves all 81 of its
-// cells and keeps the true digit in every cell. It holds every change back until
-// the search on its private copy has finished.
+// The pinned 9x9 board (so the gate's time does not follow `gen.json`) falls to
+// the pass entirely: it solves all 81 cells and keeps the true digit in every
+// cell. It holds every change back until the search on its private copy has
+// finished. A partial solve is the cap12-seed11 block's; a cut-short pass keeping
+// every true digit is the call-limit block's.
 {
   const board = boardFrom('fixture-9x9.json')
   const { p, calls: spent, callsAtFirstChange } = runPass(shipped, board)

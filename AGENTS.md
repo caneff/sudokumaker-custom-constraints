@@ -128,8 +128,8 @@ repo 2026-10-11).
 - **Build loop:** `just check` — lint and every test but the heavy ones, about
   1¾ min on one core (104 s measured 2026-10-12). Run it before each commit.
 - **Full gate — run before opening a PR or calling a task done:**
-  `just check-full` — `check` plus the heavy tests (the fillomino pipeline on the 7x5 and
-  generator, the skyscraper and hit-counts recovery probes, the embedded
+  `just check-full` — `check` plus the heavy tests (the fillomino 7x5 pipeline and
+  generator tests, the skyscraper and hit-counts recovery probes, the embedded
   squishdoku house proof) and the soundness fuzz. CI runs it nightly and on `workflow_dispatch`; a push or pull request runs the narrowed seam.
 - Lint + auto-fix: `just fmt` (StandardJS on `.js`/`.mjs`, ruff on `examples/`)
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`

@@ -75,7 +75,7 @@ test-heavy: test-heavy-fillomino test-heavy-recovery
 verify-skyscraper size="9":
     uv run examples/skyscraper/verify.py {{size}}
 
-# Manual uniqueness proof of the shipped fillomino board (CP-SAT, minutes): the
+# Manual uniqueness proof of the shipped fillomino board (CP-SAT, about 90 s): the
 # board's proof and its link's givens. Not part of check/test/CI; run by hand
 # after a change to gen.json or PUZZLE_LINK.txt. See examples/fillomino/README.md.
 [doc("Prove the shipped fillomino board unique and its link's givens (slow CP-SAT solve), by hand.")]

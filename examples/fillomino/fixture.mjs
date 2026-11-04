@@ -11,8 +11,9 @@ export const gridOf = (rows, cap = Math.max(rows.length, rows[0].length)) => {
 }
 
 const read = file => JSON.parse(readFileSync(join(import.meta.dirname, file), 'utf8'))
-// The gate's board: the old 9x9 grid (`gen.json` at a374280), committed on its
-// own so changing the shipped board changes no gate time. Its digits run to 29.
+// The gate's board: a 9x9 grid with digits 1-29, the widest range the app's
+// solver runs, committed on its own so changing the shipped board changes no
+// gate time.
 const pin = read('fixture-9x9.json')
 export const pinned = gridOf(pin.grid, pin.cap)
 // The shipped board follows `gen.json`. Its digits run past its side, so it

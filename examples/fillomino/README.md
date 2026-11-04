@@ -271,9 +271,9 @@ uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/g
 unique
 ```
 
-(About 95 s on a loaded box, 2026-11-04.) `update-strength.test.mjs` reads this same `gen.json` for its
-`shipped`-grid check, so that test's own fuzz now runs against the shipped
-instance's grid too.
+(About 95 s on a loaded box, 2026-11-04.) No gate suite reads this `gen.json`
+but the harness's small shipped-board fuzz: `update-strength.test.mjs` and the
+rest run on the pinned 9x9 grid, so a new board changes no gate time.
 
 Rebuild the link:
 
@@ -396,7 +396,7 @@ minimal clue set in the live app; the generator itself carries no strip step.
   `FUZZ=80000` for a deep run before a ship.
 - `setup-pass.test.mjs` — the setup pass driven as the app drives it, a change
   doing nothing until it is yielded: it solves the 7x5 board to the generator's
-  grid, solves all 81 cells of the pinned 9x9 board (`fixture-9x9.json`, the old shipped grid) and keeps every true digit,
+  grid, solves all 81 cells of the pinned 9x9 board (`fixture-9x9.json`, a 9x9 grid with digits 1-29) and keeps every true digit,
   yields only after the search ends, stops at both limits, tests
   largest digit first, and leaves a board with broken clues with an empty cell.
 - `update-strength.test.mjs` — both halves of the strength gate: on any state
@@ -434,7 +434,7 @@ minimal clue set in the live app; the generator itself carries no strip step.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
 - `fixture.test.mjs` — the gate's fixtures are pinned: `fixture-9x9.json` is the
-  old shipped 9x9 grid, and no other suite reads `gen.json`.
+  9x9 grid with digits 1-29, and only a listed few files read `gen.json`.
 - `pipeline.test.py` — the chain on the 7x5: CP-SAT proves the clue set; the link
   decodes with every non-given cell empty; the component solves that clue set
   offline out of the link and must land on the grid. What only this test covers

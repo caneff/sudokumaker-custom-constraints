@@ -1,7 +1,7 @@
 """The shipped board's proof, by hand: `just verify-fillomino`.
 
 CP-SAT proves `gen.json`'s clue set unique, and `PUZZLE_LINK.txt` decodes with
-exactly those givens and every other cell empty. The proof takes minutes on a
+exactly those givens and every other cell empty. The proof takes about 90 s on a
 board this size, so the gate does not run it (`pipeline.test.py` runs the same
 `prove` on the 7x5 board); run it after every change to `gen.json` or its link,
 and record the run in the README before sharing. See `docs/share-checklist.md`
@@ -25,7 +25,7 @@ import generate
 from sudoku_kit.link_codec import decode_puzzle
 
 
-def prove(spec, link_text, tmp, offline_solve=True):
+def prove(spec, link_text, tmp, *, offline_solve):
     height, width = len(spec["grid"]), len(spec["grid"][0])
     cap = spec.get("cap", max(width, height))
     clues = [tuple(p) for p in spec["clues"]]
@@ -34,7 +34,7 @@ def prove(spec, link_text, tmp, offline_solve=True):
     assert generate.unique(board, board.givens(spec)) is True
 
     if offline_solve:
-        # Run from outside the repo and without the VIRTUAL_ENV this test's own
+        # Run from outside the repo and without the VIRTUAL_ENV the caller's own
         # `uv run` exports, the way a user launches it, so hunt.mjs's Python half
         # has to find the project environment from its own path.
         link_path = pathlib.Path(tmp) / "link.txt"
