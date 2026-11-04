@@ -393,6 +393,8 @@ minimal clue set in the live app; the generator itself carries no strip step.
   side stay covered; the gate's time does not follow `gen.json`. One directed check per
   rule. The setup pass then `update` on one instance, 200 states per fixture, once as
   shipped and once with the call limit at 25, so the limit lands inside tests.
+  About 55 s (53 s and 56 s, 2026-11-04, load average 25), against 49 s before the
+  12x12 board and 215 s with it in the gate.
   `FUZZ=80000` for a deep run before a ship.
 - `setup-pass.test.mjs` — the setup pass driven as the app drives it, a change
   doing nothing until it is yielded: it solves the 7x5 board to the generator's
