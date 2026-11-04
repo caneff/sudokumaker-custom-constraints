@@ -237,18 +237,32 @@ planned. See #284 for each parked rule and its admission bar.
 
 ## The board
 
-`gen.json` holds the shipped instance (#310): a 9x9, digits 1-29 board, 28
-givens. It ships as high as the app's solver can run, the closest a board can
-get to fillomino with no cap on a region: the app accepts 30, then crashes on it
-(`docs/puzzle-api.md`, `helpers.digits`). The clues were hunted at 1-9, and no
-region in the solution is bigger than 8. Sampled by `generate.py sample 3`, stripped in the live app under the
-**shipped** component (`app-strip.mjs`), and picked as the slowest board the
-app still closes out of a hunt that ran a blind 18-seed live batch, a 300-board
-offline hunt (#317's scorer) across both digit ranges, and an offline
-hill-climb of the two live-stripped outliers — none of the offline-hunted or
-climbed boards beat the live strip's own two hardest boards, and one of the
-two (this one) beat the other in a live 3-rep timing. Full record:
-`PROGRESS.md`.
+`gen.json` holds the shipped instance: a 12x12, digits 1-16 board, 41 givens, chosen
+by Chris on 2026-11-04 to replace the 9x9 digits 1-29 board of #310, whose solution
+never used a digit above 8 and which the setup pass solved outright. It is
+`gen.json` at `a374280` if you want it back; `PROGRESS.md` holds how it was found.
+Here the big digits are real: 78 of the 144 cells sit in regions of 15 or 16.
+
+**The app gives no verdict at its default settings.** With non-deterministic solve
+on, which is the default a viewer gets, all 10 reps stopped at the app's time limit
+with no first solution. With it off, the app closes the board in about 50 s, close
+to that limit, and a loaded box can miss it (*The 12x12 board* under *Timing*). Chris shipped it knowing this: the
+uniqueness claim rests on CP-SAT, which shares no code with the component.
+
+How it was made, all at digits 1-16:
+
+- **Grid.** `generate.sample` at side 12, cap 16, seed 4, on one worker with a 120 s
+  limit per solve. A cap above the side forces a pin above the side, so a region of
+  13-16 cells has to exist. 2 of 8 seeds gave a grid; 22 of 24 solves timed out.
+- **Offline strip.** `stripOffline` from the full grid in nine orders gave 42-52
+  clues. Tightening the best set at 300,000 nodes a trial gave 41.
+- **CP-SAT walk.** `generate.unique` on that set less each clue, 300 s a solve: 1
+  clue cut, to 40; 28 proved needed; 12 no verdict, so kept.
+- **The 41st clue.** The app reaches no verdict on the 40, so one clue went back.
+  The setup pass's solved count ranked the 104 possible clues and the app judged 35
+  of them. Chris chose cell 74, the only one between the 400 ms boards and the
+  timeouts, as the hardest board the app still closes. See the table under *The
+  12x12 board*.
 
 CP-SAT proves the clue set has exactly one solution, no timeout:
 
@@ -257,7 +271,7 @@ uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/g
 unique
 ```
 
-(2.7s.) `update-strength.test.mjs` reads this same `gen.json` for its
+(About 95 s on a loaded box, 2026-11-04.) `update-strength.test.mjs` reads this same `gen.json` for its
 `shipped`-grid check, so that test's own fuzz now runs against the shipped
 instance's grid too.
 
@@ -271,33 +285,32 @@ uv run --with lzstring examples/fillomino/build_link.py
 
 `docs/share-checklist.md`, criterion by criterion, against `PUZZLE_LINK.txt`
 as it ships. This is the record the checklist asks for; re-walk it whenever
-the board or the rules text changes. Last walked against the link rebuilt
-with the setup pass (#882, 2026-11-03): same board, same 28 givens, same rules
-text, new embedded code.
+the board or the rules text changes. Last walked against the 12x12 board,
+2026-11-04.
 
 **Free gate** — `just check-full` green: layout, lint, probe goldens, soundness
 at zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
-CP-SAT proof → the shipped component solving this clue set offline → the link
-decode, and fails if any two of them disagree.
+the CP-SAT proof and the link decode on this board, and adds the component's
+offline solve on the 7 x 5, and fails if any of them disagree.
 
 The three mechanical criteria, checked by `check_layout.py` on every committed
 link in the example (all 53: this board, its annotated twin, the 7 x 5
 `PUZZLE_LINK_15g.txt`, 19 `-rung1` + 19 `-rung25` + 9 `-base` frozen
 fixtures, the three hunt records):
 
-- **Opens clean** ✓ — 53 non-given cells, every one `{}`. `pipeline.test.py`
+- **Opens clean** ✓ — 103 non-given cells, every one `{}`. `pipeline.test.py`
   asserts it cell by cell as well.
-- **Ring not filled end to end** ✓ — 14 of 32 ring cells hold a given. See
+- **Ring not filled end to end** ✓ — 14 of 44 ring cells hold a given. See
   criterion 3 below for what the ring means on this board.
 - **Rules prefix** — **exempt**, and deliberately: fillomino is not sudoku, so
   its `example.toml` says `rules_prefix = "none"` and `build_link.test.py` asserts the
   rules text does *not* open with the sudoku sentence.
 
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
-   exact `gen.json`, 2.7 s, no timeout; the run is recorded under *The board*
-   above. Since this ticket it is not only a recorded run: `pipeline.test.py`
+   exact `gen.json`, about 95 s, no timeout; the run is recorded under *The board*
+   above. It is not only a recorded run: `pipeline.test.py`
    re-proves it on every `just check-full`, so the board cannot outlive its proof.
-2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-29 in every
+2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-16 in every
    cell. Orthogonally connected cells with the same digit are regions; the
    number of cells in a region has to equal its digit. Two regions of the same
    size may not touch orthogonally." Three sentences, no repo jargon, no
@@ -305,13 +318,12 @@ fixtures, the three hunt records):
    this repo has the whole rule.
 3. **Clue set curated** ✓, read the way the criterion says to read it. There is
    no outside-clue ring on this board: fillomino is a whole-grid constraint, so
-   the "ring" is just the grid's outer cells and 14 of 32 filled is the clue
-   set falling where it falls, not a ring handed over. 28 givens on 81 cells is
-   sane for a 9x9. The carve is recorded: a live-app strip under the shipped
-   component (`app-strip.mjs`), one greedy pass that keeps a removal only while
-   the app still closes the board — so no given in it is known-droppable by
-   that walk. It is a greedy strip, not a CP-SAT minimality proof, and the
-   README says so where the board is described.
+   the "ring" is just the grid's outer cells and 14 of 44 filled is the clue
+   set falling where it falls, not a ring handed over. 41 givens on 144 cells is
+   sane for a 12x12. The carve is recorded under *The board*. One given is known
+   droppable, on purpose: without the clue at cell 74 the board is still unique, and
+   the app reaches no verdict even with non-deterministic solve off. It is a
+   strip with a CP-SAT walk, not a minimality proof: 12 clues gave no verdict.
 4. **Component reads well at its source** ✓ — rewritten for a setter who
    reads some JavaScript (#870). `FillominoComponent.js` opens with the rules,
    defines **island** and **region** once, and lists the eight things it tells
@@ -378,8 +390,9 @@ minimal clue set in the live app; the generator itself carries no strip step.
   shipped and once with the call limit at 25, so the limit lands inside tests.
   `FUZZ=80000` for a deep run before a ship.
 - `setup-pass.test.mjs` — the setup pass driven as the app drives it, a change
-  doing nothing until it is yielded: it solves the shipped and 7x5 boards to the
-  generator's grids, yields only after the search ends, stops at both limits, tests
+  doing nothing until it is yielded: it solves the 7x5 board to the generator's
+  grid, solves 83 of the shipped board's 144 cells and keeps every true digit,
+  yields only after the search ends, stops at both limits, tests
   largest digit first, and leaves a board with broken clues with an empty cell.
 - `update-strength.test.mjs` — both halves of the strength gate: on any state
   the component never keeps a candidate the vendored baseline removed, and on
@@ -415,12 +428,15 @@ minimal clue set in the live app; the generator itself carries no strip step.
   `OPTIMIZATION_LOG.md`.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
-- `pipeline.test.py` — the chain on the shipped board: CP-SAT proves the
-  shipped clue set; the shipped component solves that clue set offline out of
-  `PUZZLE_LINK.txt` and must land on `gen.json`'s grid; the link decodes with
-  every non-given cell empty. Each step is covered on its own elsewhere — what
-  only this test covers is that the proof, the component and the link cannot
-  drift apart quietly. About 17 s, so `check-full` only. The generator arm
+- `pipeline.test.py` — the chain: CP-SAT proves the clue set; the link decodes
+  with every non-given cell empty; on the 7x5 only, the shipped component solves
+  that clue set offline out of the link and must land on the grid. The offline
+  scorer has no setup pass and spends 3,000,000 nodes on the shipped board with no
+  verdict, so that step does not run there. Each step is covered on its own
+  elsewhere — what only this test covers is that they agree on one board: the proof
+  and the link on both boards, the component as well on the 7x5. No gate solves
+  the shipped board end to end; only the app does, outside the gate. About 60-90 s,
+  so `check-full` only. The generator arm
   (a sampled 9x9 grid proved unique) is `generate.self_check()`'s.
 - `generate.test.py` — the generator's acceptance criteria, including that a
   dropped grid (no solution, striped, or a uniqueness solve that timed out)
@@ -449,11 +465,49 @@ the board HUNT.md already names: it spends the scorer's default 200,000-node
 budget and scores `capped`, so the strip has no verdict to strip against and
 refuses to start. A spent budget is not an answer.
 
-For reference, the shipped instance (`gen.json`) carries **28** givens, cut by
+For reference, the 9x9 that shipped until 2026-11-04 carried **28** givens, cut by
 the *live* strip under the same component — the same neighbourhood, from a
 different grid and a different stripper.
 
 ## Timing
+
+From *The setup pass* to the end of this file, every record was measured on the 9x9
+digits 1-29 board that shipped until 2026-11-04 (`gen.json` at `a374280`), so "the
+shipped board" there means that board. *The board*, the checklist walk and *The
+12x12 board* mean the board in `gen.json` now.
+
+### The 12x12 board (2026-11-04)
+
+The shipped board, recorded app v2026.10.05-a3aef4c, `app-solve.mjs`, unique wherever
+a verdict came. CP-SAT reads `unique` on this exact `gen.json`.
+
+| settings | reps | result |
+| --- | --- | --- |
+| non-deterministic solve off, cold | 6 | 5 closed, 51-58 s; 1 stopped at the app's limit, load about 15 |
+| non-deterministic solve off, after logical | 3 | about 50 s |
+| non-deterministic solve on, the viewer's default | 10 | stopped at the app's limit, no first solution |
+
+The limit is about 60 s, so there is little margin, and a loaded box can tip even
+the first row: `just time fillomino` may read a DNF rather than a number. Load was
+7-16 on the first two rows and about 20-27 on the third, so the third is not a clean
+comparison, though 10 of 10 is more than load is likely to explain.
+
+**The choice of clue moves the time a long way.** The setup pass on the same 40 clues
+plus each possible 41st, one cold rep, non-deterministic off, 35 of the 104 boards.
+The other 69 sit at 63-64 cells:
+
+| cells the pass solves, of 144 | boards | app |
+| --- | --- | --- |
+| 98-101 | 3 | 300-400 ms |
+| 83 | 2 | cell 74 (shipped) about 51 s; the other stopped at the limit |
+| 63-82 | 30 | stopped at the limit |
+
+Nothing landed between 400 ms and 50 s. No clue here makes the pass solve 84-97
+cells. On the 40 clues alone the pass solves 63 cells and the app stops at its limit
+in all 6 reps. Turning off the pass's dry-test and call limits does not change 63, or
+the 98 of the fastest 41, so the limits are not what stop it. A 41-clue set with
+cell 73 instead reads 300-400 ms cold and 200 ms after logical, and is what to take if
+a viewer needs a verdict at any cost in hardness.
 
 ### The setup pass (#882)
 

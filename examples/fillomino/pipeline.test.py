@@ -3,13 +3,15 @@ unique, the shipped component solves it offline from its link through
 `hunt.mjs board`, and the link decodes with exactly the gen's givens and every
 other cell empty.
 
-It runs on two boards: the shipped one (`gen.json`, `PUZZLE_LINK.txt`) and a
-rectangular one (`gen_15g.json`, `PUZZLE_LINK_15g.txt`, seven wide and five
-high).
+It runs on two boards. The rectangular one (`gen_15g.json`, `PUZZLE_LINK_15g.txt`,
+seven wide and five high) goes through all three steps. The shipped one (`gen.json`,
+`PUZZLE_LINK.txt`) goes through the proof and the link: it is built to make a solver
+work, and the offline scorer, which has no setup pass, spends 3,000,000 nodes on it
+with no verdict. The app is what solves it, in about 50 s (`README.md`).
 
 Each step is covered elsewhere on its own; what only this test covers is that
-the three agree on ONE board -- the proof, the component and the link cannot
-drift apart quietly.
+they agree on one board: the proof and the link on both, the component as well
+on the rectangular one.
 """
 
 import json
@@ -27,7 +29,7 @@ import generate
 from sudoku_kit.link_codec import decode_puzzle
 
 
-def run(spec, link_text, tmp):
+def run(spec, link_text, tmp, offline_solve=True):
     height, width = len(spec["grid"]), len(spec["grid"][0])
     cap = spec.get("cap", max(width, height))
     clues = [tuple(p) for p in spec["clues"]]
@@ -35,27 +37,30 @@ def run(spec, link_text, tmp):
 
     assert generate.unique(board, board.givens(spec)) is True
 
-    # Run from outside the repo and without the VIRTUAL_ENV this test's own
-    # `uv run` exports, the way a user launches it, so hunt.mjs's Python half
-    # has to find the project environment from its own path.
-    link_path = pathlib.Path(tmp) / "link.txt"
-    link_path.write_text(link_text + "\n")
-    out = pathlib.Path(tmp) / "solved.json"
-    r = subprocess.run(
-        ["node", str(HERE / "hunt.mjs"), "board", str(link_path), str(out)],
-        capture_output=True,
-        text=True,
-        cwd=tmp,
-        env={k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"},
-    )
-    assert r.returncode == 0, r.stderr
-    assert "\tunique\t" in r.stdout, r.stdout
-    solved = json.loads(out.read_text())
+    if offline_solve:
+        # Run from outside the repo and without the VIRTUAL_ENV this test's own
+        # `uv run` exports, the way a user launches it, so hunt.mjs's Python half
+        # has to find the project environment from its own path.
+        link_path = pathlib.Path(tmp) / "link.txt"
+        link_path.write_text(link_text + "\n")
+        out = pathlib.Path(tmp) / "solved.json"
+        r = subprocess.run(
+            ["node", str(HERE / "hunt.mjs"), "board", str(link_path), str(out)],
+            capture_output=True,
+            text=True,
+            cwd=tmp,
+            env={k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"},
+        )
+        assert r.returncode == 0, r.stderr
+        assert "\tunique\t" in r.stdout, r.stdout
+        solved = json.loads(out.read_text())
 
-    assert solved["grid"] == spec["grid"], "the component solved to a different grid"
-    assert sorted(map(tuple, solved["clues"])) == sorted(clues), (
-        "the link's givens are not the gen's clue set"
-    )
+        assert solved["grid"] == spec["grid"], (
+            "the component solved to a different grid"
+        )
+        assert sorted(map(tuple, solved["clues"])) == sorted(clues), (
+            "the link's givens are not the gen's clue set"
+        )
 
     puzzle = decode_puzzle(link_text.strip())["puzzle"]
     assert (puzzle["width"], puzzle["height"]) == (width, height)
@@ -74,10 +79,17 @@ def run(spec, link_text, tmp):
 
 with tempfile.TemporaryDirectory() as tmp:
     shipped = json.loads((HERE / "gen.json").read_text())
-    run(shipped, (HERE / "PUZZLE_LINK.txt").read_text().strip(), tmp)
+    run(
+        shipped,
+        (HERE / "PUZZLE_LINK.txt").read_text().strip(),
+        tmp,
+        offline_solve=False,
+    )
 
     rect = json.loads((HERE / "gen_15g.json").read_text())
     assert len(rect["grid"]) != len(rect["grid"][0]), "gen_15g.json must not be square"
     run(rect, (HERE / "PUZZLE_LINK_15g.txt").read_text().strip(), tmp)
 
-print("pipeline.test.py: proof -> component -> link all agree, square and rectangular")
+print(
+    "pipeline.test.py: the proof and the link agree on both boards, the component on the rectangular one"
+)

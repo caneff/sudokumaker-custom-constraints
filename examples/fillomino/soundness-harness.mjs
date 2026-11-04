@@ -12,7 +12,7 @@ import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, f
 import { gridOf, shipped, FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
-const SHIPPED_CAP = 29
+const WIDEST_CAP = 29
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
@@ -41,15 +41,15 @@ const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.
 let bad = 0
 
 const FUZZ = Number(process.env.FUZZ) || 20000
-// The shipped board offers more digits than its side, and the cell count reads
-// the whole range.
-const SHIPPED_RANGE = ['shipped at its digit range', { ...shipped, cap: SHIPPED_CAP }]
+// The widest range the app's solver runs, past the shipped board's own: the cell
+// count reads the whole range.
+const WIDEST_RANGE = ['shipped at the widest digit range', { ...shipped, cap: WIDEST_CAP }]
 
 // Fuzz one component on every fixture, a fresh instance per state. Returns the
 // failures.
 function fuzzFixtures (labelOf, iters, part) {
   let failures = 0
-  for (const [name, { truth, width, height, cap }] of [...FIXTURES, SHIPPED_RANGE]) {
+  for (const [name, { truth, width, height, cap }] of [...FIXTURES, WIDEST_RANGE]) {
     installGlobals(1, cap)
     const cells = Array.from({ length: width * height }, (_, i) => i)
     const seed = makeSeeder(rnd, Array.from({ length: cap }, (_, d) => d + 1))

@@ -80,16 +80,19 @@ const assertSolved = (p, { grid }) => {
   assert.deepStrictEqual(p.candidates, want, 'the pass did not leave exactly the solution')
 }
 
-// The whole of the shipped board falls to the pass, and it holds every change
-// back until the search on its private copy has finished.
+// The shipped board is built to leave the search work: the pass solves 83 of its
+// 144 cells and keeps the true digit in every cell. It holds every change back
+// until the search on its private copy has finished.
 {
   const board = boardFrom('gen.json')
   const { p, calls: spent, callsAtFirstChange } = runPass(shipped, board)
-  assertSolved(p, board)
+  assert.strictEqual(singles(p), 83, 'the pass solved a different share of the shipped board')
+  board.grid.flat().forEach((d, cell) => assert.ok(p.candidates[cell] & (1 << d), `the pass removed the true digit of cell ${cell}`))
   assert.strictEqual(callsAtFirstChange, spent, 'a change came out before the pass finished')
 }
 
-// A board that is not square reads its neighbours through the same copy.
+// The whole of a board that is not square falls to the pass, which reads its
+// neighbours through the same copy.
 {
   const board = boardFrom('gen_15g.json')
   assertSolved(runPass(shipped, board).p, board)
@@ -108,8 +111,8 @@ const assertSolved = (p, { grid }) => {
   assert.deepStrictEqual(tested, Array.from({ length: 29 }, (_, k) => 29 - k), 'cell 0 was not tested largest digit first')
 }
 
-// The one committed board the pass does not finish. Its longest dry run, 235
-// tests, is past the limit, so the pass stops early at 48 cells; with no dry
+// A board the dry limit stops short of what the pass would solve. Its longest dry
+// run, 235 tests, is past the limit, so the pass stops early at 48 cells; with no dry
 // limit it reaches 49.
 {
   const board = fixtureBoard(HERE, 'timing-fixture-9x9-cap12-seed11-rung25.txt')

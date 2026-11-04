@@ -222,4 +222,5 @@ than a board found by simpler means. In the end, the shipped instance
 is one of the two outliers from the blind 18-seed live-strip calibration
 batch that predates #317 — the live app's own strip order, run without any
 offline pre-ranking, found the hardest board that still closes. Full record
-in `PROGRESS.md`'s `#310` section.
+in `PROGRESS.md`'s `#310` section. That was the 9x9 shipped until 2026-11-04;
+`README.md` § The board has how the 12x12 that replaced it was made.
