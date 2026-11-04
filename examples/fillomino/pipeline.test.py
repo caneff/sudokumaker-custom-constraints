@@ -10,8 +10,8 @@ work, and the offline scorer, which has no setup pass, spends 3,000,000 nodes on
 with no verdict. The app is what solves it, in about 50 s (`README.md`).
 
 Each step is covered elsewhere on its own; what only this test covers is that
-the three agree on ONE board -- the proof, the component and the link cannot
-drift apart quietly.
+they agree on one board: the proof and the link on both, the component as well
+on the rectangular one.
 """
 
 import json

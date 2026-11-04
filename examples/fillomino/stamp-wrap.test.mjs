@@ -12,12 +12,12 @@ import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates
 const HERE = import.meta.dirname
 const mod = makeIo(HERE).load('FillominoComponent.js', ['setParams', 'update'])
 
-const rows = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid
+const { grid: rows, cap } = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8'))
 const n = rows.length
 const CELLS = Array.from({ length: n * n }, (_, i) => i)
 const truth = {}
 rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
-installGlobals(1, n)
+installGlobals(1, cap)
 
 // `stamp` is where the search number starts. A wrapped run's marks are
 // pre-filled with small numbers, the values the restarted count walks through:
@@ -35,7 +35,7 @@ const run = (stamp, reps) => {
   const out = []
   for (let rep = 0; rep < reps; rep++) {
     const r = makeRng(2000 + rep).rnd
-    const p = makePuzzle(truth, (c, v) => randomCandidates(r, 1, n, v))
+    const p = makePuzzle(truth, (c, v) => randomCandidates(r, 1, cap, v))
     const inst = {}
     mod.setParams(inst, CELLS, n, n)
     if (stamp) {

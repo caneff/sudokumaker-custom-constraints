@@ -111,8 +111,8 @@ const assertSolved = (p, { grid }) => {
   assert.deepStrictEqual(tested, Array.from({ length: 29 }, (_, k) => 29 - k), 'cell 0 was not tested largest digit first')
 }
 
-// The one committed board the pass does not finish. Its longest dry run, 235
-// tests, is past the limit, so the pass stops early at 48 cells; with no dry
+// A board the dry limit stops short of what the pass would solve. Its longest dry
+// run, 235 tests, is past the limit, so the pass stops early at 48 cells; with no dry
 // limit it reaches 49.
 {
   const board = fixtureBoard(HERE, 'timing-fixture-9x9-cap12-seed11-rung25.txt')

@@ -51,9 +51,9 @@ test:
     JUST="{{just_executable()}}" bash tests/all.sh --group test
 
 # The heavy tests `test` skips, run by `check-full`, as two CI-sized groups:
-# the fillomino pipeline (37s) and the two recovery probes plus the embedded
+# the fillomino pipeline (about 65 s) and the two recovery probes plus the embedded
 # squishdoku's house proof (about 40s).
-[doc("Heavy group 1: the fillomino pipeline and generator tests, about 37 s.")]
+[doc("Heavy group 1: the fillomino pipeline and generator tests, about 65 s.")]
 test-heavy-fillomino:
     bash tests/all.sh --group heavy-fillomino
 

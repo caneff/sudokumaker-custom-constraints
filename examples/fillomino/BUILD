@@ -21,8 +21,7 @@ unit(
             "examples/_shared/stamp.js:js",
         ],
     },
-    # Measured through Pants on 2026-10-13, one core: 19.6 s and 21.0 s. The 12x12
-    # board's CP-SAT proof took pipeline.test.py to about 90 s on 2026-11-04, on a
-    # loaded box.
+    # One core, 2026-11-04, a loaded box: the 12x12 board's CP-SAT proof puts
+    # pipeline.test.py at 60-90 s, the 65 s through Pants with generate.test.py.
     timeouts={"pipeline.test.py": 400, "generate.test.py": 120},
 )

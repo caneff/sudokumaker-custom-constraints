@@ -246,7 +246,7 @@ Here the big digits are real: 78 of the 144 cells sit in regions of 15 or 16.
 **The app gives no verdict at its default settings.** With non-deterministic solve
 on, which is the default a viewer gets, all 10 reps stopped at the app's time limit
 with no first solution. With it off, the app closes the board in about 50 s, close
-to that limit (*The 12x12 board* under *Timing*). Chris shipped it knowing this: the
+to that limit, and a loaded box can miss it (*The 12x12 board* under *Timing*). Chris shipped it knowing this: the
 uniqueness claim rests on CP-SAT, which shares no code with the component.
 
 How it was made, all at digits 1-16:
@@ -258,9 +258,11 @@ How it was made, all at digits 1-16:
   clues. Tightening the best set at 300,000 nodes a trial gave 41.
 - **CP-SAT walk.** `generate.unique` on that set less each clue, 300 s a solve: 1
   clue cut, to 40; 28 proved needed; 12 no verdict, so kept.
-- **The 41st clue.** The app reaches no verdict on the 40, so one clue went back,
-  chosen from the 104 possible by what the setup pass then solves. See the table
-  under *The 12x12 board*.
+- **The 41st clue.** The app reaches no verdict on the 40, so one clue went back.
+  The setup pass's solved count ranked the 104 possible clues and the app judged 35
+  of them. Chris chose cell 74, the only one between the 400 ms boards and the
+  timeouts, as the hardest board the app still closes. See the table under *The
+  12x12 board*.
 
 CP-SAT proves the clue set has exactly one solution, no timeout:
 
@@ -431,8 +433,10 @@ minimal clue set in the live app; the generator itself carries no strip step.
   that clue set offline out of the link and must land on the grid. The offline
   scorer has no setup pass and spends 3,000,000 nodes on the shipped board with no
   verdict, so that step does not run there. Each step is covered on its own
-  elsewhere — what only this test covers is that the proof, the component and the
-  link cannot drift apart quietly. About 90 s, so `check-full` only. The generator arm
+  elsewhere — what only this test covers is that they agree on one board: the proof
+  and the link on both boards, the component as well on the 7x5. No gate solves
+  the shipped board end to end; only the app does, outside the gate. About 60-90 s,
+  so `check-full` only. The generator arm
   (a sampled 9x9 grid proved unique) is `generate.self_check()`'s.
 - `generate.test.py` — the generator's acceptance criteria, including that a
   dropped grid (no solution, striped, or a uniqueness solve that timed out)
@@ -467,8 +471,10 @@ different grid and a different stripper.
 
 ## Timing
 
-From *The setup pass* down, "the shipped board" means the 9x9 digits 1-29 board that
-shipped until 2026-11-04 (`gen.json` at `a374280`), unless a row says otherwise.
+From *The setup pass* to the end of this file, every record was measured on the 9x9
+digits 1-29 board that shipped until 2026-11-04 (`gen.json` at `a374280`), so "the
+shipped board" there means that board. *The board*, the checklist walk and *The
+12x12 board* mean the board in `gen.json` now.
 
 ### The 12x12 board (2026-11-04)
 
@@ -477,12 +483,14 @@ a verdict came. CP-SAT reads `unique` on this exact `gen.json`.
 
 | settings | reps | result |
 | --- | --- | --- |
-| non-deterministic solve off, cold | 3, plus 1 at higher load | about 51 s, the other 58 s |
+| non-deterministic solve off, cold | 6 | 5 closed, 51-58 s; 1 stopped at the app's limit, load about 15 |
 | non-deterministic solve off, after logical | 3 | about 50 s |
 | non-deterministic solve on, the viewer's default | 10 | stopped at the app's limit, no first solution |
 
-Load was 7-16 on the first two rows and about 20-27 on the third, so the third is not
-a clean comparison, though 10 of 10 is more than load is likely to explain.
+The limit is about 60 s, so there is little margin, and a loaded box can tip even
+the first row: `just time fillomino` may read a DNF rather than a number. Load was
+7-16 on the first two rows and about 20-27 on the third, so the third is not a clean
+comparison, though 10 of 10 is more than load is likely to explain.
 
 **The choice of clue moves the time a long way.** The setup pass on the same 40 clues
 plus each possible 41st, one cold rep, non-deterministic off, 35 of the 104 boards.
