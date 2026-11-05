@@ -237,19 +237,36 @@ planned. See #284 for each parked rule and its admission bar.
 
 ## The board
 
-`gen.json` holds the shipped instance: a 12x12, digits 1-16 board, 41 givens, chosen
-by Chris on 2026-11-04 to replace the 9x9 digits 1-29 board of #310, whose solution
+`gen.json` holds the shipped instance: a 12x12, digits 1-29 board, 41 givens. Chris
+chose the grid and clues on 2026-11-04 at cap 16; the cap is 29 since 2026-11-05.
+It replaced the 9x9 digits 1-29 board of #310, whose solution
 never used a digit above 8 and which the setup pass solved outright. It is
 `gen.json` at `a374280` if you want it back; `PROGRESS.md` holds how it was found.
 Here the big digits are real: 78 of the 144 cells sit in regions of 15 or 16.
 
+**The cap is 29, and it stays 29.** Chris, 2026-11-05 (#893): "for a normal user to
+use SM they cannot through the UI edit the max digit size beyond 9". The link is the
+only way a user gets digits above 9, so the cap it carries is the limit they
+inherit. Do not lower it to speed up a proof or a timing. The solution is the same
+at cap 16 and cap 29 (top digit 16); only the digits the app offers and the proof's
+range change. CP-SAT (`generate.solutions`, one worker) finds exactly one solution at
+cap 29 in 35 s, and `just verify-fillomino` proves it (38 s, 2026-11-05) and checks
+the link's `maxDigit` is 29. Cost of the wider cap, measured 2026-11-05: the setup
+pass solves 70 of 144 cells (83 at cap 16, same driver) and stays sound; `just
+time-link` of cap 16 against cap 29 refused the cap-29 link: all 3 cold reps timed out
+(`app-solve.mjs: all 3 reps hit the 300s per-rep timeout`), and no cap-16 row printed;
+box load 19, so the number is not a clean reading. The cap-16 reading on record is
+5 of 6 cold reps closed at 51-58 s. Reported, not gated.
+
 **The app gives no verdict at its default settings.** With non-deterministic solve
 on, which is the default a viewer gets, all 10 reps stopped at the app's time limit
-with no first solution. With it off, the app closes the board in about 50 s, close
-to that limit, and a loaded box can miss it (*The 12x12 board* under *Timing*). Chris shipped it knowing this: the
+with no first solution. With it off, the app closed the cap-16 board in about 50 s, close
+to that limit, and a loaded box can miss it (*The 12x12 board* under *Timing*). At
+cap 29 the only reading is the 2026-11-05 timeout under *The board*, so the cap-29
+app time is not known. Chris shipped it knowing this: the
 uniqueness claim rests on CP-SAT, which shares no code with the component.
 
-How it was made, all at digits 1-16:
+How it was made, all at digits 1-16 (the board then moved to cap 29, above):
 
 - **Grid.** `generate.sample` at side 12, cap 16, seed 4, on one worker with a 120 s
   limit per solve. A cap above the side forces a pin above the side, so a region of
@@ -271,7 +288,7 @@ uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/g
 unique
 ```
 
-(About 95 s on a loaded box, 2026-11-04.) No gate suite reads this `gen.json`
+(About 95 s on a loaded box, 2026-11-04, at cap 16; 35 s at cap 29, 2026-11-05.) No gate suite reads this `gen.json`
 but the harness's small shipped-board fuzz: `update-strength.test.mjs` and the
 rest run on the pinned 9x9 grid, so a new board changes no gate time.
 
@@ -286,13 +303,14 @@ uv run --with lzstring examples/fillomino/build_link.py
 `docs/share-checklist.md`, criterion by criterion, against `PUZZLE_LINK.txt`
 as it ships. This is the record the checklist asks for; re-walk it whenever
 the board or the rules text changes. Last walked against the 12x12 board,
-2026-11-04.
+2026-11-04; re-walked at cap 29, 2026-11-05 (rules text, uniqueness and the link's
+`maxDigit` changed; the clue set did not).
 
 **Free gate** — `just check-full` green: layout, lint, probe goldens, soundness
 at zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
 the CP-SAT proof, the link decode and the component's offline solve on the
 7 x 5, and fails if any of them disagree. This board's own proof is not in the
-gate: **`just verify-fillomino`** (about 90 s) proves `gen.json` unique and
+gate: **`just verify-fillomino`** (38 s at cap 29) proves `gen.json` unique and
 checks `PUZZLE_LINK.txt`'s givens; run it before each walk.
 
 The three mechanical criteria, checked by `check_layout.py` on every committed
@@ -309,11 +327,11 @@ fixtures, the three hunt records):
   rules text does *not* open with the sudoku sentence.
 
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
-   exact `gen.json`, about 95 s, no timeout; the run is recorded under *The board*
+   exact `gen.json`, 35 s at cap 29 (about 95 s at cap 16), no timeout; the run is recorded under *The board*
    above. The gate does not re-prove it:
    `just verify-fillomino` does, by hand, so a changed `gen.json` carries a
    stale proof until that recipe is run.
-2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-16 in every
+2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-29 in every
    cell. Orthogonally connected cells with the same digit are regions; the
    number of cells in a region has to equal its digit. Two regions of the same
    size may not touch orthogonally." Three sentences, no repo jargon, no
@@ -324,7 +342,7 @@ fixtures, the three hunt records):
    the "ring" is just the grid's outer cells and 14 of 44 filled is the clue
    set falling where it falls, not a ring handed over. 41 givens on 144 cells is
    sane for a 12x12. The carve is recorded under *The board*. One given is known
-   droppable, on purpose: without the clue at cell 74 the board is still unique, and
+   droppable, on purpose: without the clue at cell 74 the board is still unique (shown at cap 16), and
    the app reaches no verdict even with non-deterministic solve off. It is a
    strip with a CP-SAT walk, not a minimality proof: 12 clues gave no verdict.
 4. **Component reads well at its source** ✓ — rewritten for a setter who
@@ -441,7 +459,7 @@ minimal clue set in the live app; the generator itself carries no strip step.
   decodes with every non-given cell empty; the component solves that clue set
   offline out of the link and must land on the grid. What only this test covers
   is that the three agree on one board. About a second. The shipped board's proof
-  and link check are `verify.py`, **`just verify-fillomino`** (about 90 s, by
+  and link check are `verify.py`, **`just verify-fillomino`** (38 s at cap 29, by
   hand): the offline scorer has no setup pass and spends 3,000,000 nodes on that
   board with no verdict, so no gate solves it end to end; only the app does. The
   generator arm (a sampled 9x9 grid proved unique) is `generate.self_check()`'s.
@@ -480,12 +498,13 @@ different grid and a different stripper.
 
 From *The setup pass* to the end of this file, every record was measured on the 9x9
 digits 1-29 board that shipped until 2026-11-04 (`gen.json` at `a374280`), so "the
-shipped board" there means that board. *The board*, the checklist walk and *The
-12x12 board* mean the board in `gen.json` now.
+shipped board" there means that board. *The board* and the checklist walk mean the board in `gen.json` now; *The 12x12
+board* is its cap-16 record.
 
 ### The 12x12 board (2026-11-04)
 
-The shipped board, recorded app v2026.10.05-a3aef4c, `app-solve.mjs`, unique wherever
+The shipped board at cap 16 (it ships at cap 29 since 2026-11-05, *The board*; this
+table is the cap-16 record), recorded app v2026.10.05-a3aef4c, `app-solve.mjs`, unique wherever
 a verdict came. CP-SAT reads `unique` on this exact `gen.json`.
 
 | settings | reps | result |

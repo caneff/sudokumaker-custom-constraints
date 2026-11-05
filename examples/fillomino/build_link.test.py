@@ -29,6 +29,9 @@ if __name__ == "__main__":
     # app's solver can run builds; one digit more is refused rather than built.
     spec = json.loads((HERE / "gen.json").read_text())
     assert doc["puzzle"]["maxDigit"] == spec["cap"], "the shipped board's digit range"
+    # Chris, 2026-11-05 (#893): a user cannot raise the max digit past 9 in the UI,
+    # so the link's cap is the limit they inherit. Do not lower it to speed up a proof.
+    assert spec["cap"] == 29, "the shipped board ships with cap 29"
     with tempfile.TemporaryDirectory() as tmp:
         over = pathlib.Path(tmp) / "gen.json"
         over.write_text(json.dumps({**spec, "cap": MAX_DIGIT}))
