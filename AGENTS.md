@@ -61,10 +61,10 @@ others. If no step is forced from that state, say so.
 ## Puzzle links (always on)
 
 - **A link is only ever a short link** (`https://sudokumaker.app/p/<id>`),
-  printed bare, in chat, a PR, a ticket or a README (sudoku-kit#53 adds the
-  minting command). No full link is kept: an example's builder is its source
-  of truth and rebuilds the full link when needed (Chris, 2026-10-23,
-  replacing his 2026-10-22 rule that kept `PUZZLE_LINK*.txt` as full links).
+  printed bare, in chat, a PR, a ticket or a README; the `sm-link` skill
+  mints one (sudoku-kit#53). No full link is kept: an example's builder is
+  its source of truth and rebuilds the full link when needed (Chris,
+  2026-10-23).
   Until the builders mint, `PUZZLE_LINK*.txt` files still hold full links; a
   full link never appears in chat: it is a 10 KB blob.
 - **A full link must not leak into the transcript.** The trap that has broken
@@ -115,11 +115,12 @@ others. If no step is forced from that state, say so.
 - **Blind to**: the app — solve time (`just time`), how a link renders and solves in sudokumaker.app, and anything a browser probe checks rather than a Node or Python test asserts
 
 The controller re-runs it on a PR merged into current `main` before every
-merge, whether or not `main` has moved past the PR's merge base (about
-3½ min measured before fillomino's 12x12 board; the gate pins its fillomino
-fixtures to a 9x9 grid, so the shipped board adds only a small fuzz, and its
-proof is `just verify-fillomino`, outside the gate, 2026-11-04; 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
-repo 2026-10-11).
+merge, whether or not `main` has moved past the PR's merge base (Chris's
+ruling 6a, agent-skills #1496, confirmed for this repo 2026-10-11). A run
+takes about 3½ min on 1 core, measured before fillomino's 12x12 board. The
+gate pins its fillomino fixtures to a 9x9 grid, so the shipped board adds
+only a small fuzz; that board's proof is `just verify-fillomino`, outside
+the gate (2026-11-04).
 
 - **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the tests on `tests/sandbox-exceptions.txt`, and each suite Pants lists among the dependents of a file the diff changed, shared tests included; no directory decides, and a changed path Pants cannot place widens the run to the whole seam; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 

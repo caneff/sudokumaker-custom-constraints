@@ -34,7 +34,10 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
 - **Reuse the shared helper; never write a second copy.** A copy drifts the
   first time the original is fixed, and nothing flags the stale one. When
   `examples/_shared/` already does the job, call it; when it almost does,
-  extend it.
+  extend it. Two kinds of copy are deliberate. A checker re-derives what its
+  builder computes, because a check built from the builder's own code passes
+  when that code breaks (`framebuild.Lane.check`). Each frame backend's JS
+  stands alone, because the app runs every backend with no shared scope.
 
 ## Fail loud, never silently no-op
 
@@ -108,8 +111,7 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
 - **Name things with `GLOSSARY.md`'s terms.** A synonym splits one concept
   into two in the reader's head, and a name that shadows another misleads
   every grep.
-- **No parameter, flag or function that nothing calls.** Most of the code
-  holds to this; a few defaulted parameters still have no caller. An unused
+- **No parameter, flag or function that nothing calls.** An unused
   option is a promise nobody tests, and it rots the first time the code
   around it changes.
 
