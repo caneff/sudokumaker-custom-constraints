@@ -25,7 +25,7 @@ KNOWN_EDGES = [
         ["node examples/outside-sudoku/update-strength.test.mjs"],
     ),
     (
-        "examples/_shared/no_ring.py",
+        "examples/_shared/document.py",
         "house-gac's build_link.py imports it",
         ["uv run examples/house-gac/build_link.test.py"],
         ["uv run examples/count-digits-gac/build_required_digits.test.py"],
