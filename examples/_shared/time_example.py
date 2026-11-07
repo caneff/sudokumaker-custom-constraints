@@ -9,7 +9,7 @@
 # across both. When the candidate's constraint code is byte-equal to the
 # baseline's, times the baseline only and prints baseline rows.
 #
-#   uv run --with lzstring examples/_shared/time_example.py <example>
+#   uv run examples/_shared/time_example.py <example>
 #
 # Stays out of `just check`: it drives the recorded app, a HAR replay that
 # `SM_LIVE=1` re-records (docs/real-app-timing.md).
@@ -23,6 +23,7 @@ import json
 import pathlib
 import re
 import shutil
+import statistics
 import subprocess
 import sys
 import tarfile
@@ -32,11 +33,11 @@ HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from link_swap import replace_constraint_code
+from link_swap import swap_build
 from manifest import load_manifest
 from minify import minify_file
 from probe_link import empty_link_file
-from sm_document import find_constraint, registering_constraint_name, write_link
+from sm_document import find_constraint, registering_constraint_name
 from sudoku_kit.link_codec import decode_puzzle
 
 APP_SOLVE = HERE / "app-solve.mjs"
@@ -223,58 +224,30 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
 
 
 def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=None):
-    """Build the candidate link (build_candidate), overlay the working-tree
-    backend if it differs, and return byte_equal: True only when neither the
-    timed component nor the constraint's backend differs from base_doc.
+    """Build the candidate link at out_path and return byte_equal: True only
+    when neither the timed component nor the constraint's backend differs from
+    base_doc.
 
-    A build_link.py's --component swap touches only the named component's
-    code -- the backend stays whatever PUZZLE_LINK.txt already shipped, even
-    when the working-tree backend file has changed. This overlays
-    resolve_backend_file's minified working-tree content onto the candidate
-    (link_swap.replace_constraint_code) before the byte-equal decision, so
-    both the decision and the timed candidate at out_path cover the backend,
-    not just components."""
-    build_candidate(example_dir, component_file, out_path, board=board)
-    candidate_doc = decode_puzzle(out_path.read_text().strip())
-
+    The swap runs in-process through link_swap.swap_build -- the same call
+    every build_link.py's --component path ends in -- with the working-tree
+    backend (resolve_backend_file's file) overlaid, so both the decision and the
+    timed candidate at out_path cover the backend, not just components. A
+    --component swap alone leaves the backend whatever PUZZLE_LINK.txt already
+    shipped, even when its working-tree file has changed. `board` (None = the
+    example's PUZZLE_LINK.txt) is the committed link swapped into."""
     constraint_name = registering_constraint_name(base_doc, component_file.stem)
     backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
-    if backend_file is not None:
-        backend_code = minify_file(backend_file)
-        candidate_doc = replace_constraint_code(
-            candidate_doc, constraint_name, backend_code=backend_code
-        )
-        write_link(candidate_doc, out_path)
-
+    swap_build(
+        example_dir / (board or "PUZZLE_LINK.txt"),
+        component_file,
+        out_path,
+        backend=backend_file,
+    )
+    candidate_doc = decode_puzzle(out_path.read_text().strip())
     return shipped_component_code(candidate_doc) == shipped_component_code(
         base_doc
     ) and registered_backend(candidate_doc, constraint_name) == registered_backend(
         base_doc, constraint_name
-    )
-
-
-def build_candidate(example_dir, component_file, out_path, board=None):
-    """Build the candidate link via the example's build_link.py. `board`
-    (None = the example's PUZZLE_LINK.txt) is passed as --board, which every
-    build_link.py takes through link_swap.swap_main."""
-    cmd = [
-        "uv",
-        "run",
-        "--with",
-        "lzstring",
-        str(example_dir / "build_link.py"),
-        "--component",
-        str(component_file),
-        "--out",
-        str(out_path),
-    ]
-    if board:
-        cmd += ["--board", str(example_dir / board)]
-    subprocess.run(
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
     )
 
 
@@ -289,8 +262,8 @@ def read_app_solve_json(stdout):
 def check_app_solve_result(link_path, data):
     """`data` back, or a loud failure naming link_path: every rep timed out
     (median null), or the app version could not be read. The one owner of the
-    timeout verdict, for both the driver's own aggregate (parse_app_solve_output)
-    and one built from interleaved one-rep calls (combine_reps)."""
+    timeout verdict: combine_reps's aggregate of interleaved one-rep calls,
+    and the one-rep caller path."""
     if data["median"] is None:
         # Name app-solve.mjs's fixed 300s per-rep wait (solveInApp's default
         # timeoutMs in app-session.mjs) and the rep counts, so a reader learns
@@ -304,13 +277,6 @@ def check_app_solve_result(link_path, data):
             f"app-solve.mjs could not read the app version for {link_path}"
         )
     return data
-
-
-def parse_app_solve_output(link_path, stdout):
-    """Parse app-solve.mjs's JSON line and return its {median, version,
-    repsRun, repsTimedOut}, or raise per read_app_solve_json and
-    check_app_solve_result."""
-    return check_app_solve_result(link_path, read_app_solve_json(stdout))
 
 
 def app_solve(link_path, reps, ring_clues=False, after_logical=False):
@@ -365,15 +331,14 @@ def combine_reps(link_path, reps):
     """One link's {median, version, repsRun, repsTimedOut} from its one-rep
     driver results, judged by check_app_solve_result: every rep that finished
     must carry the app version, and a link with none finished is a timeout. The
-    median is app-solve.mjs's own (`median` in app-solve-lib.mjs, the upper
-    middle of the reps that finished), recomputed here because the driver only
-    ever sees one rep per call."""
+    median is the upper middle, matching `median` in app-solve-lib.mjs,
+    recomputed here because the driver only ever sees one rep per call."""
     finished = [r for r in reps if r["median"] is not None]
     for r in finished:
         check_app_solve_result(link_path, r)
-    done = sorted(r["median"] for r in finished)
+    done = [r["median"] for r in finished]
     data = {
-        "median": done[len(done) // 2] if done else None,
+        "median": statistics.median_high(done) if done else None,
         "version": finished[0]["version"] if finished else None,
         "repsRun": len(reps),
         "repsTimedOut": len(reps) - len(finished),
