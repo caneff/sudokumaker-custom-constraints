@@ -7,7 +7,7 @@
 // pays for itself in solve time (`just time dutch-flatmates`).
 
 import { join } from 'path'
-import { existsSync, readFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import assert from 'assert'
 import { decodeLinkFile, solveDocument } from '../_shared/bundle-solve-lib.mjs'
 
@@ -100,11 +100,6 @@ for (const [link, gen, givenCount] of BOARDS) {
 {
   const flatmates = link => decodeLinkFile(join(HERE, link)).puzzle.constraints.find(c => c.definition?.name === 'Dutch Flatmates')
   assert.deepStrictEqual(flatmates(BOARDS[1][0]), flatmates(BOARDS[0][0]), 'PUZZLE_LINK_18g.txt drifted from PUZZLE_LINK.txt')
-}
-
-// No local lane: one whole-grid constraint has no drawn groups to split.
-for (const f of ['main-global.js', 'PUZZLE_LINK_local.txt', 'gen_local.json']) {
-  assert.ok(!existsSync(join(HERE, f)), `${f} should not exist`)
 }
 
 console.log('PASS')

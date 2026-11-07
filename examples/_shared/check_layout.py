@@ -791,6 +791,21 @@ def check_example(example_dir):
             if not (example_dir / required).is_file()
         )
 
+    # A single-lane example ships main.js alone and a global-lane one ships
+    # main-global.js in its place; neither carries the local board (the
+    # comment above REQUIRED_LOCAL_FILES). A stray file is a lane the
+    # manifest says does not exist.
+    strays = {
+        "single": ["main-global.js", *REQUIRED_LOCAL_FILES],
+        "global": REQUIRED_LOCAL_FILES,
+    }.get(manifest.lanes, [])
+    violations.extend(
+        f"{name}: {manifest.lanes}-lane example carries {stray}, a file of a lane "
+        f"its manifest says it does not have"
+        for stray in strays
+        if (example_dir / stray).is_file()
+    )
+
     violations.extend(check_lanes(example_dir))
     violations.extend(check_gen_link_pairing(example_dir, manifest))
     violations.extend(check_gen_json_parses(example_dir))

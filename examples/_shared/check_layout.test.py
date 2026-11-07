@@ -31,6 +31,7 @@ from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
+LOCAL_FILES = ("PUZZLE_LINK_local.txt", "gen_local.json")
 
 
 def _link(
@@ -231,7 +232,7 @@ def manifest_text(traits):
 
 @contextlib.contextmanager
 def example(
-    files=REQUIRED,
+    files=None,
     extra_links=(),
     extra_gens=(),
     name="widget",
@@ -249,6 +250,15 @@ def example(
     defaults, and a `contents` entry for "example.toml" replaces the text.
     """
     contents = contents or {}
+    if files is None:
+        # The default file set is a split example's; a single- or global-lane
+        # manifest drops the files its lane does not carry.
+        lane = (manifest or {}).get("lanes", "split")
+        strays = {
+            "single": {"main-global.js", *LOCAL_FILES},
+            "global": set(LOCAL_FILES),
+        }.get(lane, set())
+        files = [f for f in REQUIRED if f not in strays]
     # A ringless board's links open on the plain sentence, not the inner-grid
     # one.
     traits = manifest or {}
@@ -303,8 +313,16 @@ if __name__ == "__main__":
         assert "widget" in violations[0]
         assert "main-global.js" in violations[0]
 
-    # a `lanes = "single"` example needs no main-global.js
-    with example(files=missing, name="whole-grid", manifest=WHOLE_GRID) as (root, _):
+    # a `lanes = "single"` example needs no main-global.js and no local board
+    no_lane_files = [
+        f
+        for f in REQUIRED
+        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=no_lane_files, name="whole-grid", manifest=WHOLE_GRID) as (
+        root,
+        _,
+    ):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -323,6 +341,45 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 1, violations
         assert "missing required file main-global.js" in violations[0]
+
+    # a `lanes = "single"` example ships main.js alone: a main-global.js, or
+    # the local board pair, is a stray lane file and is named
+    single_files = [
+        f
+        for f in REQUIRED
+        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=single_files, manifest=SINGLE_LANE) as (root, _):
+        assert check_tree(root) == []
+    with example(files=[*single_files, "main-global.js"], manifest=SINGLE_LANE) as (
+        root,
+        _,
+    ):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "single-lane" in violations[0] and "main-global.js" in violations[0]
+    with example(
+        files=[*single_files, "PUZZLE_LINK_local.txt", "gen_local.json"],
+        manifest=SINGLE_LANE,
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 2, violations
+        for stray in ("PUZZLE_LINK_local.txt", "gen_local.json"):
+            assert any(
+                "single-lane" in v and stray in v for v in violations
+            ), violations
+
+    # a `lanes = "global"` example carries neither local file either
+    with example(
+        files=[*global_only, "PUZZLE_LINK_local.txt", "gen_local.json"],
+        manifest={"lanes": "global"},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 2, violations
+        for stray in ("PUZZLE_LINK_local.txt", "gen_local.json"):
+            assert any(
+                "global-lane" in v and stray in v for v in violations
+            ), violations
 
     # a split example ships a local board: both halves of the pair are
     # required, and each is named on its own. Dropping one half also
@@ -347,9 +404,7 @@ if __name__ == "__main__":
 
     # the no-local-global-split example needs neither half of the local pair,
     # and ships neither in reality -- dropping both leaves nothing unpaired
-    iso_missing = [
-        f for f in REQUIRED if f not in ("PUZZLE_LINK_local.txt", "gen_local.json")
-    ]
+    iso_missing = no_lane_files
     with example(files=iso_missing, name="whole-grid", manifest=WHOLE_GRID) as (
         root,
         _,
@@ -549,7 +604,7 @@ if __name__ == "__main__":
 
     # `rules_prefix = "none"` exempts the rules-prefix check -- the example is
     # not sudoku, and its rules text must not mention sudoku
-    missing = [f for f in REQUIRED if f != "main-global.js"]
+    missing = fillomino_files
     with example(
         files=missing,
         name="whole-grid",
