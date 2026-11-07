@@ -138,7 +138,7 @@ assert.strictEqual(floorStates, FIXTURES.length * 100, 'a state built around a s
 assert.ok(pastRung2 > 0, `rung 3 must remove a candidate rung 2 (${SHIPPED}) keeps`)
 console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', SHIPPED + ',', pastRung2, 'stronger')
 
-// The reused instance. The component bound caches the allowed-digit row it
+// The reused instance. The pocket rule caches the allowed-digit row it
 // last finished on and re-floods only what moved since -- the one thing the
 // component carries between calls. The solver never says it backtracked, so
 // the same instance sees states that jump around: a candidate it watched
@@ -193,7 +193,7 @@ console.log('fillomino silent-region demo: baseline keeps 6 at r0c0, the growth 
 // closes again at r1c1 and then runs on alone. The walk out of the island
 // covers six cells for a region of five, so the force is idle, and the
 // island has two doors, so the one-door rule is idle too; the merge rules
-// and the component bound find nothing. Drop r1c1 from the walk and it
+// and the pocket rule find nothing. Drop r1c1 from the walk and it
 // starves at three cells, drop r2c1 and it starves at four: both are in the
 // region, so both hold 5. Nothing in rung 2 reaches either, at a fixpoint or
 // otherwise.

@@ -7,6 +7,7 @@ unit(
         "build_sparse_count_digits.test.py",
         "build_sparse_required_digits.test.py",
         "count-digits.test.mjs",
+        "required-digits-wrapper.test.mjs",
         "soundness-harness.mjs",
     ],
     js_edges={

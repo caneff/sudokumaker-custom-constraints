@@ -6,6 +6,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from bareboard import BareBoard
+from generate import Board
 from manifest import load_manifest
 
 MANIFEST = load_manifest(pathlib.Path(__file__).parent)
@@ -21,16 +22,15 @@ RULE = (
 
 
 def digit_range(spec, n):
-    """No cap means the longer side, as in generate.Board.of; `n` is the width.
+    """The range is generate.Board.of_doc's (no cap means the longer side); `n`
+    is the width.
     A board that is not square ships its range, so the app offers the digits
     the rules text names and the proof ran on, and so does a board with a
     cap. A square board with no cap ships none and the app offers its default
     1-9."""
-    cap = spec.get("cap")
-    height = len(spec["grid"])
-    if cap is None and n == height:
-        return 1, n, {}
-    hi = max(n, height) if cap is None else cap
+    hi = Board.of_doc(spec).cap
+    if spec.get("cap") is None and n == len(spec["grid"]):
+        return 1, hi, {}
     return 1, hi, {"minDigit": 1, "maxDigit": hi}
 
 

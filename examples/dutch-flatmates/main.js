@@ -4,8 +4,9 @@
 // the cells listed row by row (top row first, left to right). We build that list
 // by position instead of trusting the order the app hands cells out in.
 
-// Above and below only make sense on a square grid, so stop here on any other
-// shape, before anything has been added.
+// The component takes the board's side as Math.sqrt(cells.length), so any shape
+// but a square would give it the wrong side. Stop here on one, before anything
+// has been added.
 const side = puzzle.spec.size.width
 if (puzzle.spec.size.height !== side) {
   throw new Error(`DUTCH FLATMATES: needs a square board, got ${side} x ${puzzle.spec.size.height}`)

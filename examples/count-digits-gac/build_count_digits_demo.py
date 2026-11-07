@@ -27,14 +27,13 @@
 #       the counter-outside board (counters outside their targets); a link is
 #       written beside its own gen, so it never overwrites the shipped link
 
-import argparse
 import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from board_kit import N, board_doc
+from board_kit import N, board_doc, draw_groups, search_parser, write_gen
 from board_kit import search as search_board
 from count_board import (
     BASELINE_NAME,
@@ -42,6 +41,7 @@ from count_board import (
     COMPONENT,
     cage_constraints,
     demo_backend_code,
+    finish_group,
     groups_input,
     grow_group,
     model,
@@ -92,38 +92,21 @@ def draw_group(rng, grid, taken, index, n_targets, n_digits):
     if cells is None:
         return None
     values = sorted(rng.sample(range(1, N + 1), n_digits))
-    count = sum(1 for r, c in cells if grid[r][c] in values)
-    if not 1 <= count <= N:
-        return None
-    blocked = taken | set(cells)
-    outside = [
-        (r, c)
-        for r in range(N)
-        for c in range(N)
-        if grid[r][c] == count and (r, c) not in blocked
-    ]
-    if not outside:
-        return None
-    return {
-        "name": f"group {index + 1}",
-        "values": values,
-        "counter": list(rng.choice(outside)),
-        "cells": [list(p) for p in cells],
-    }
+    return finish_group(rng, grid, cells, values, taken | set(cells), index)
+
+
+def claimed(g):
+    """The targets and the counter: this board keeps both off later groups."""
+    return {tuple(p) for p in g["cells"]} | {tuple(g["counter"])}
 
 
 def make_groups(rng, grid, n_groups, n_targets, n_digits):
-    groups, taken = [], set()
-    for _attempt in range(5000):
-        if len(groups) == n_groups:
-            break
-        g = draw_group(rng, grid, taken, len(groups), n_targets, n_digits)
-        if g is not None:
-            groups.append(g)
-            taken |= {tuple(p) for p in g["cells"]} | {tuple(g["counter"])}
-    if len(groups) != n_groups:
-        raise RuntimeError(f"only drew {len(groups)} of {n_groups} groups")
-    return groups
+    return draw_groups(
+        n_groups,
+        lambda taken, index: draw_group(rng, grid, taken, index, n_targets, n_digits),
+        claimed,
+        5000,
+    )
 
 
 def search(seed, n_groups, n_targets, n_digits):
@@ -185,21 +168,13 @@ def build(out_dir=None, gen_path=GEN, enabled=SHIPPED):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--search", type=int, metavar="SEED")
-    p.add_argument("--gen", default=GEN)
-    p.add_argument("--groups", type=int, default=3)
+    p = search_parser(GEN, 3)
     p.add_argument("--targets", type=int, default=10)
     p.add_argument("--digits", type=int, default=3)
     p.add_argument("--enabled", choices=sorted(VARIANTS), default=SHIPPED)
-    p.add_argument("--out")
     args = p.parse_args()
     if args.search is not None:
-        pathlib.Path(args.gen).write_text(
-            json.dumps(search(args.search, args.groups, args.targets, args.digits))
-            + "\n"
-        )
-        print(f"wrote {args.gen}")
+        write_gen(args.gen, search(args.search, args.groups, args.targets, args.digits))
     else:
         out = build(
             pathlib.Path(args.out) if args.out else None,

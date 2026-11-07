@@ -48,8 +48,8 @@ function setParams (instance, cells, width, height) {
   instance.nbrs = cells.map((_, i) => neighbours(i, width, height))
   instance.mask = newVisitMarks(Uint32Array, cells.length)
   instance.targets = newVisitMarks(Uint32Array, cells.length)
-  instance.stamp = 0
-  instance.targetStamp = 0
+  instance.visit = 0
+  instance.targetVisit = 0
   instance.holds = new Uint8Array(cells.length)
   instance.budget = null // sized on first update, once the digit range is known
   // Per-call scratch, reused so update allocates almost nothing: GC was 12%
@@ -87,64 +87,64 @@ function perimeter (width, height) {
 // #include ../_shared/stamp.js
 
 // The visit marks: `instance.mask` holds them for every walk, and
-// `instance.stamp` is the current walk's visit number; `instance.targets` and
-// `instance.targetStamp` are a second set that marks a walk's target cells.
-function nextStamp (instance) {
-  return (instance.stamp = nextVisit(instance.mask, instance.stamp))
+// `instance.visit` is the current walk's visit number; `instance.targets` and
+// `instance.targetVisit` are a second set that marks a walk's target cells.
+function nextWalkVisit (instance) {
+  return (instance.visit = nextVisit(instance.mask, instance.visit))
 }
 
 // A stale target visit number reads as "no targets" and reports a cut that is
 // not there.
-function nextTargetStamp (instance) {
-  return (instance.targetStamp = nextVisit(instance.targets, instance.targetStamp))
+function nextTargetVisit (instance) {
+  return (instance.targetVisit = nextVisit(instance.targets, instance.targetVisit))
 }
 
 // The cells reachable from `starts` in at most `depth` steps through
-// `allowed`, stopping once it holds `limit` cells. Returns { size, stamp }:
-// `instance.mask[i] === stamp` is the visit mark of a cell this walk reached,
+// `allowed`, stopping once it holds `limit` cells. Returns { size, visit }:
+// `instance.mask[i] === visit` is the visit mark of a cell this walk reached,
 // until the next walk.
 function reachSize (instance, starts, depth, allowed, limit = Infinity) {
   const { nbrs, mask } = instance
-  const stamp = nextStamp(instance)
+  const visit = nextWalkVisit(instance)
   let size = 0
   let [frontier, next] = instance.frontier
   let len = 0
   for (const i of starts) {
-    if (mask[i] === stamp) continue
-    mask[i] = stamp; size++; frontier[len++] = i
+    if (mask[i] === visit) continue
+    mask[i] = visit; size++; frontier[len++] = i
   }
   for (let step = 0; step < depth && len && size < limit; step++) {
     let nextLen = 0
     for (let f = 0; f < len; f++) {
       for (const n of nbrs[frontier[f]]) {
-        if (allowed[n] && mask[n] !== stamp) {
-          mask[n] = stamp; size++; next[nextLen++] = n
-          if (size >= limit) return { size, stamp }
+        if (allowed[n] && mask[n] !== visit) {
+          mask[n] = visit; size++; next[nextLen++] = n
+          if (size >= limit) return { size, visit }
         }
       }
     }
     [frontier, next, len] = [next, frontier, nextLen]
   }
-  return { size, stamp }
+  return { size, visit }
 }
 
 // Does a walk from `start`, at most `depth` steps through `allowed`, reach all
 // `want` cells marked in the target set `instance.targets`?
 function reachesAll (instance, start, depth, allowed, want) {
-  const { nbrs, mask, targets, targetStamp } = instance
-  const stamp = nextStamp(instance)
+  const { nbrs, mask, targets, targetVisit } = instance
+  const visit = nextWalkVisit(instance)
   let [frontier, next] = instance.frontier
-  mask[start] = stamp
+  mask[start] = visit
   frontier[0] = start
   let len = 1
-  if (targets[start] === targetStamp && --want <= 0) return true
+  if (targets[start] === targetVisit && --want <= 0) return true
   for (let step = 0; step < depth && len; step++) {
     let nextLen = 0
     for (let f = 0; f < len; f++) {
       for (const n of nbrs[frontier[f]]) {
-        if (allowed[n] && mask[n] !== stamp) {
-          mask[n] = stamp; next[nextLen++] = n
-          if (targets[n] === targetStamp && --want === 0) return true
+        if (allowed[n] && mask[n] !== visit) {
+          mask[n] = visit; next[nextLen++] = n
+          if (targets[n] === targetVisit && --want === 0) return true
         }
       }
     }
@@ -156,34 +156,34 @@ function reachesAll (instance, start, depth, allowed, want) {
 // The seed walk from `start`, one placed cell of digit `d`, with `budget`
 // open cells to spend. Every cell of the region is inside the walk: the region
 // is connected and holds `start`, so a path inside it from `start` to any
-// region cell crosses at most `budget` open cells. Returns { size, stamp }
+// region cell crosses at most `budget` open cells. Returns { size, visit }
 // as reachSize does.
 function seedWalk (instance, start, budget, allowed, value, d) {
   const { nbrs, mask } = instance
-  const stamp = nextStamp(instance)
+  const visit = nextWalkVisit(instance)
   let size = 1
   let [frontier, next] = instance.frontier
   let len = 1
-  mask[start] = stamp
+  mask[start] = visit
   frontier[0] = start
   for (let step = 0; len; step++) {
     // Free closure: placed cells of this digit cost nothing, so they join the
     // current step. The loop reads cells it appends, which is the point.
     for (let f = 0; f < len; f++) {
       for (const n of nbrs[frontier[f]]) {
-        if (value[n] === d && mask[n] !== stamp) { mask[n] = stamp; size++; frontier[len++] = n }
+        if (value[n] === d && mask[n] !== visit) { mask[n] = visit; size++; frontier[len++] = n }
       }
     }
     if (step >= budget) break
     let nextLen = 0
     for (let f = 0; f < len; f++) {
       for (const n of nbrs[frontier[f]]) {
-        if (allowed[n] && value[n] < 0 && mask[n] !== stamp) { mask[n] = stamp; size++; next[nextLen++] = n }
+        if (allowed[n] && value[n] < 0 && mask[n] !== visit) { mask[n] = visit; size++; next[nextLen++] = n }
       }
     }
     [frontier, next, len] = [next, frontier, nextLen]
   }
-  return { size, stamp }
+  return { size, visit }
 }
 
 // Unreachable cells read as 999, so any bound they enter fails.
@@ -297,7 +297,7 @@ function scanBoard (instance, puzzle, lo, hi) {
 
 function seedIsDead (instance, placed, walk, size) {
   if (walk.size < size) return true
-  for (const i of placed) if (instance.mask[i] !== walk.stamp) return true
+  for (const i of placed) if (instance.mask[i] !== walk.visit) return true
   return false
 }
 
@@ -349,8 +349,8 @@ function * cutRule (instance, puzzle, state, d, size, near) {
   const { placed, open, allowed } = state[d]
   const others = instance.others[d]
   const depth = size - placed.length
-  const targetStamp = nextTargetStamp(instance)
-  for (const i of placed) instance.targets[i] = targetStamp
+  const targetVisit = nextTargetVisit(instance)
+  for (const i of placed) instance.targets[i] = targetVisit
   const notNeeded = cutFilter(instance, placed, open, allowed, size, depth)
   const held = []
   for (const x of open) {
@@ -365,7 +365,7 @@ function * seededRule (instance, puzzle, state, d, size, walk) {
   const { placed, open, allowed } = state[d]
   // Own copy: later walks reuse instance.mask.
   const near = { size: walk.size, mask: instance.near[d] || (instance.near[d] = new Uint8Array(cells.length)) }
-  for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
+  for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.visit ? 1 : 0
   if (placed.length > 1 && tourBoundIsDead(instance, placed, open, allowed, near, size)) {
     yield puzzle.removeCandidateFromCell(d, cells[placed[0]])
     return null
@@ -387,7 +387,7 @@ function * silentDigitRule (instance, puzzle, state, d, size) {
   for (const start of open) {
     if (near[start]) continue
     const comp = reachSize(instance, [start], Infinity, allowed)
-    for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) { small.push(i); smallCells.push(cells[i]) } }
+    for (const i of open) if (instance.mask[i] === comp.visit) { near[i] = 1; if (comp.size < size) { small.push(i); smallCells.push(cells[i]) } }
     if (comp.size >= size) big = true
   }
   if (!big) { yield puzzle.removeCandidatesFromCell(instance.allMask, cells[open[0]]); return null }
@@ -514,7 +514,7 @@ function budget (instance, state, near, lo, hi, size) {
     takenLen: new Uint8Array(D),
     matched: new Int8Array(n),
     seen: newVisitMarks(Uint32Array, D),
-    seenStamp: 0,
+    seenVisit: 0,
     adjStart: new Int32Array(n + D + 1),
     adjFill: new Int32Array(n + D),
     adjList: new Int32Array(n * D),
@@ -552,7 +552,7 @@ function budget (instance, state, near, lo, hi, size) {
   for (let x = 0; x < n; x++) {
     if (!b.isOpen[x]) continue
     open++
-    b.seenStamp = nextVisit(b.seen, b.seenStamp)
+    b.seenVisit = nextVisit(b.seen, b.seenVisit)
     if (!augment(b, x)) { b.dead = x; return b }
   }
   if (open !== slots) return b // an emptied cell: not perfect, prune unsound
@@ -591,8 +591,8 @@ function augment (b, x) {
   const { D, size, state, taken, takenLen, seen } = b
   for (let k = 0; k < b.optCount[x]; k++) {
     const d = b.optList[x * D + k]
-    if (seen[d] === b.seenStamp) continue
-    seen[d] = b.seenStamp
+    if (seen[d] === b.seenVisit) continue
+    seen[d] = b.seenVisit
     if (takenLen[d] < size - state[d].placed.length) { taken[d * size + takenLen[d]++] = x; b.matched[x] = d; return true }
     for (let j = 0; j < takenLen[d]; j++) {
       if (augment(b, taken[d * size + j])) { taken[d * size + j] = x; b.matched[x] = d; return true }

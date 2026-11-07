@@ -4,6 +4,9 @@
 # `model(groups, givens) -> (m, x)` and a `make_groups(rng, grid)`; nothing
 # here knows what a group means.
 
+import argparse
+import json
+import pathlib
 import random
 
 from sm_document import puzzle_doc
@@ -78,6 +81,41 @@ def carve(rng, grid, unique):
             givens = trial
             carve_order.append(cell)
     return carve_order
+
+
+def draw_groups(n_groups, draw_group, claimed, attempts):
+    """`n_groups` groups, each from `draw_group(taken, index)`,
+    which returns a group or None for a failed draw. `claimed(group)` is the
+    set of cells the group takes from later draws: a builder says here
+    whether the counter is one of them. Raises when `attempts` draws were not
+    enough, so a board never ships short."""
+    groups, taken = [], set()
+    for _attempt in range(attempts):
+        if len(groups) == n_groups:
+            break
+        g = draw_group(taken, len(groups))
+        if g is not None:
+            groups.append(g)
+            taken |= claimed(g)
+    if len(groups) != n_groups:
+        raise RuntimeError(f"only drew {len(groups)} of {n_groups} groups")
+    return groups
+
+
+def search_parser(gen, groups, out_help=None):
+    """The argparse every builder's CLI starts from: --search SEED, --gen,
+    --groups and --out. A builder adds its own flags to the parser."""
+    p = argparse.ArgumentParser()
+    p.add_argument("--search", type=int, metavar="SEED")
+    p.add_argument("--gen", default=gen)
+    p.add_argument("--groups", type=int, default=groups)
+    p.add_argument("--out", help=out_help)
+    return p
+
+
+def write_gen(path, gen):
+    pathlib.Path(path).write_text(json.dumps(gen) + "\n")
+    print(f"wrote {path}")
 
 
 def search(seed, make_groups, model, limit=60):

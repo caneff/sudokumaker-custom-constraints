@@ -26,7 +26,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   assert.match(p.stopMessage(), /evenly/)
 }
 
-// The constructor allocates both stamped arrays through newVisitMarks (#736):
+// The constructor allocates both visit-marked arrays through newVisitMarks (#736):
 // the cap it records is what nextVisit wraps at, and a bare Uint32Array would
 // never wrap.
 {
@@ -44,30 +44,33 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   Array.from(mod.update(inst, p))
 }
 
-// Stamps sitting at the top of their range: the same deductions as fresh.
+// Visit numbers sitting at the top of their range: the same deductions as fresh.
 {
-  const run = stamp => {
+  const run = visit => {
     const p = makePuzzle(truth, (c, v) => (c % 3 === 0 ? [v] : randomCandidates(makeRng(c).rnd, 0, 9, v)))
     const inst = {}
     mod.setParams(inst, CELLS, N, N)
-    if (stamp) { inst.stamp = stamp; inst.targetStamp = stamp }
+    // A field the component does not read would make the assignment a silent no-op.
+    assert.ok('visit' in inst && 'targetVisit' in inst, 'setParams must create instance.visit and instance.targetVisit')
+    if (visit) { inst.visit = visit; inst.targetVisit = visit }
     fixpoint(mod, inst, p)
     return CELLS.map(c => [...p._cand.get(c)].join(''))
   }
   assert.deepStrictEqual(run(0xFFFFFFF0), run(0))
 }
 
-// The target stamp too: a stale one reads as "no targets" and reports a cut
+// The target visit too: a stale one reads as "no targets" and reports a cut
 // that is not there. Many random states, so the cut rule's re-walk is reached.
 {
-  const run = stamp => {
+  const run = visit => {
     const out = []
     for (let rep = 0; rep < 200; rep++) {
       const r = makeRng(1000 + rep).rnd
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
       const inst = {}
       mod.setParams(inst, CELLS, N, N)
-      if (stamp) inst.targetStamp = stamp
+      assert.ok('targetVisit' in inst, 'setParams must create instance.targetVisit')
+      if (visit) inst.targetVisit = visit
       Array.from(mod.update(inst, p))
       out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
     }
@@ -76,7 +79,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   assert.deepStrictEqual(run(0xFFFFFFFF), run(0))
 }
 
-// The budget matcher's own stamp (`seen`, a Uint32Array): started near the
+// The budget matcher's own visit number (`seen`, a Uint32Array): started near the
 // top of its range after the first call has built the matcher, same deductions.
 {
   const run = below => {
@@ -86,7 +89,8 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
       const inst = {}
       mod.setParams(inst, CELLS, N, N)
       Array.from(mod.update(inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))))
-      if (below !== null) inst.budget.seenStamp = 0xFFFFFFFF - below
+      assert.ok('seenVisit' in inst.budget, 'the budget matcher must keep seenVisit')
+      if (below !== null) inst.budget.seenVisit = 0xFFFFFFFF - below
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
       Array.from(mod.update(inst, p))
       out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
@@ -94,6 +98,6 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
     return out
   }
   const fresh = run(null)
-  for (let below = 0; below < 40; below++) assert.deepStrictEqual(run(below), fresh, `seen stamp ${below} below the cap changed what update deduces`)
+  for (let below = 0; below < 40; below++) assert.deepStrictEqual(run(below), fresh, `seen visit ${below} below the cap changed what update deduces`)
 }
 console.log('PASS')
