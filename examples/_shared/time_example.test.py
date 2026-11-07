@@ -27,8 +27,9 @@ from time_example import (
     app_solve,
     build_candidate_doc,
     build_row,
+    check_app_solve_result,
     find_component_file,
-    parse_app_solve_output,
+    read_app_solve_json,
     resolve_backend_file,
     row_ratio,
     run,
@@ -37,37 +38,10 @@ from time_example import (
 
 WIDGET_MANIFEST = 'timed_component = "WidgetComponent"\n'
 
-STUB_BUILD_LINK_PY = f"""\
-import argparse
-import pathlib
-import sys
-
-sys.path.insert(0, {str(HERE)!r})
-from sudoku_kit.link_codec import decode_puzzle
-from link_swap import check_and_write, swap_component_code
-from minify import minify_file, minify_js
-
-HERE = pathlib.Path(__file__).parent
-CONSTRAINT_NAME = "Widget Lines"
-
-
-def build(component_path, out_path, board=None):
-    component_path = pathlib.Path(component_path)
-    board_path = pathlib.Path(board) if board else HERE / "PUZZLE_LINK.txt"
-    code = minify_file(component_path)
-    base = decode_puzzle(board_path.read_text().strip())
-    doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
-    return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--component", required=True)
-    p.add_argument("--out", required=True)
-    p.add_argument("--board")
-    a = p.parse_args()
-    build(a.component, a.out, board=a.board)
-"""
+# `just time` swaps the candidate in-process (link_swap.swap_build), so an
+# example's build_link.py is never run for the build: this one fails loudly if
+# a subprocess ever calls it again.
+STUB_BUILD_LINK_PY = "raise SystemExit('build_link.py must not run')\n"
 
 
 def _widget_doc(backend_code, component_code):
@@ -650,7 +624,7 @@ if __name__ == "__main__":
         '"repsRun": 3, "repsTimedOut": 3}\n'
     )
     try:
-        parse_app_solve_output("PUZZLE_LINK_local.txt", stdout)
+        check_app_solve_result("PUZZLE_LINK_local.txt", read_app_solve_json(stdout))
         raise AssertionError("expected an all-reps-timed-out failure")
     except RuntimeError as e:
         assert str(e) == (
@@ -663,13 +637,13 @@ if __name__ == "__main__":
         'JSON: {"median": 220, "version": "v2026.08.14-d47fc4b", '
         '"repsRun": 3, "repsTimedOut": 1}\n'
     )
-    data = parse_app_solve_output("PUZZLE_LINK.txt", stdout)
+    data = check_app_solve_result("PUZZLE_LINK.txt", read_app_solve_json(stdout))
     assert data["median"] == 220
     assert data["repsTimedOut"] == 1
 
     # no JSON line at all -- loud failure
     try:
-        parse_app_solve_output("PUZZLE_LINK.txt", "no json here\n")
+        check_app_solve_result("PUZZLE_LINK.txt", read_app_solve_json("no json here\n"))
         raise AssertionError("expected a no-JSON-line failure")
     except RuntimeError as e:
         assert "printed no JSON line" in str(e)
@@ -677,7 +651,7 @@ if __name__ == "__main__":
     # unreadable app version -- loud failure
     stdout = 'JSON: {"median": 100, "version": null, "repsRun": 3, "repsTimedOut": 0}\n'
     try:
-        parse_app_solve_output("PUZZLE_LINK.txt", stdout)
+        check_app_solve_result("PUZZLE_LINK.txt", read_app_solve_json(stdout))
         raise AssertionError("expected a could-not-read-version failure")
     except RuntimeError as e:
         assert "could not read the app version" in str(e)
@@ -745,6 +719,18 @@ if __name__ == "__main__":
         time_example.combine_reps("b.txt", [{"median": 5, "version": "v1"}])["busy"]
         is False
     )
+
+    # combine_reps's median is the upper middle (app-solve-lib.mjs `median`):
+    # two reps -> the larger, four reps -> the third smallest, a timed-out rep
+    # left out
+    def medians(*values):
+        reps = [{"median": v, "version": "v1"} for v in values]
+        return time_example.combine_reps("b.txt", reps)["median"]
+
+    assert medians(300, 100) == 300
+    assert medians(400, 100, 300, 200) == 300
+    assert medians(100, 300, 200) == 200
+    assert medians(None, 300, 100) == 300
 
     # run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the
