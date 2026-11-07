@@ -4,7 +4,7 @@
 // Driven here on the real tree, in the order the spec states its decisions:
 //
 //   1. backend-runner is the one board mock and backend evaluator (ARCH-2):
-//      no hand-built registrar is left anywhere a backend runs, no other
+//      no hand-built registrar is left in examples/, no other
 //      `new Function` takes a `puzzle`, and a backend run through it reads
 //      the board column first;
 //   2. the mock puzzle answers for its own outcome (ARCH-6): no file outside
@@ -23,6 +23,9 @@
 //     not re-run here: every soundness harness at zero violations (the
 //     soundness fuzz in `just check-full`) and the skyscraper and hit-counts
 //     recovery-probe goldens byte-identical (their recovery-probe tests).
+//   - docs/research/: examples/ code never loads research records
+//     (check_research_loads.py), so the research scripts are not scanned
+//     here; check_backend.mjs was moved onto runBackend by hand.
 //   - the outcome-assert slice (#915's TEST-8, TEST-11, TEST-14): each
 //     tightened test's mutation is recorded on its PR and the spec review.
 //
@@ -38,7 +41,7 @@ const ROOT = join(import.meta.dirname, '..', '..')
 const scripts = dir => readdirSync(join(ROOT, dir), { recursive: true })
   .filter(f => /\.m?js$/.test(f) && !f.split('/').some(s => s === 'node_modules' || s.startsWith('.')))
   .map(f => join(dir, f))
-const CODE = [...scripts('examples'), ...scripts('docs/research')]
+const CODE = scripts('examples')
   .filter(f => !f.includes('/vendor/') && !f.endsWith('spec_897_closing.test.mjs'))
 const text = f => readFileSync(join(ROOT, f), 'utf8')
 const where = (pattern, except) => CODE.filter(f => !except.includes(f) && pattern.test(text(f)))
