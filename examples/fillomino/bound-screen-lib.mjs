@@ -76,14 +76,21 @@ export function loadVariants (here) {
 // reader. The rung25 links are one of three committed copies of the same
 // boards; the givens are what the offline scorer needs.
 export function fixtureBoards (here) {
-  return readdirSync(here).filter(f => /^timing-fixture-.*-rung25\.txt$/.test(f)).sort().map(f => fixtureBoard(here, f))
+  return fixtureBoardsOf(here, readdirSync(here).filter(f => /^timing-fixture-.*-rung25\.txt$/.test(f)).sort())
 }
 
 export function fixtureBoard (here, file) {
-  return {
-    name: file.replace(/^timing-fixture-/, '').replace(/-rung25\.txt$/, ''),
-    ...JSON.parse(execFileSync('uv', ['run', '--project', join(here, '..', '..'), join(here, 'hunt_link.py'), join(here, file)], { encoding: 'utf8' }))
-  }
+  return fixtureBoardsOf(here, [file])[0]
+}
+
+// One hunt_link.py process reads every file: a spawn per fixture was most of
+// the 19-board load.
+function fixtureBoardsOf (here, files) {
+  const read = JSON.parse(execFileSync('uv', ['run', '--project', join(here, '..', '..'), join(here, 'hunt_link.py'), ...files.map(f => join(here, f))], { encoding: 'utf8' }))
+  return files.map(f => ({
+    name: f.replace(/^timing-fixture-/, '').replace(/-rung25\.txt$/, ''),
+    ...read[join(here, f)]
+  }))
 }
 
 // Best of `reps` whole solves. A run that solved nothing has no verdict.
