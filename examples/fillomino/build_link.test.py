@@ -9,7 +9,14 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from bareboard import MAX_DIGIT
-from build_link import CONSTRAINT_NAME, RULE, TIMED_COMPONENT, build, check
+from build_link import (
+    CONSTRAINT_NAME,
+    RULE,
+    TIMED_COMPONENT,
+    build,
+    check,
+    digit_range,
+)
 from minify import minify_js
 from sm_document import find_constraint
 from sudoku_kit.link_codec import encode_link
@@ -51,6 +58,10 @@ if __name__ == "__main__":
         assert "go past" in str(refused), refused
     else:
         raise SystemExit("check must refuse a digit range past the app's solver")
+
+    # An uncapped board taller than it is wide offers digits up to its height.
+    tall = {"grid": [[0] * 3 for _ in range(5)]}
+    assert digit_range(tall, 3) == (1, 5, {"minDigit": 1, "maxDigit": 5})
 
     rect, rect_doc, rect_clues = build(
         HERE / f"{TIMED_COMPONENT}.js", HERE / "gen_15g.json"

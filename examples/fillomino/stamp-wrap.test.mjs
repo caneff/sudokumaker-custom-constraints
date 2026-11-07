@@ -45,7 +45,7 @@ const run = (visit, reps) => {
   }
   return out
 }
-// Every distance below the cap: each of the visit counter's call sites is, for some
+// Every distance below the cap: each of the visit number's call sites is, for some
 // distance, the one that wraps.
 const fresh = run(0, 4)
 for (let below = 0; below < 600; below++) {

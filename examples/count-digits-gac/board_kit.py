@@ -83,8 +83,8 @@ def carve(rng, grid, unique):
     return carve_order
 
 
-def draw_groups(rng, grid, n_groups, draw_group, claimed, attempts):
-    """`n_groups` groups, each from `draw_group(rng, grid, taken, index)`,
+def draw_groups(n_groups, draw_group, claimed, attempts):
+    """`n_groups` groups, each from `draw_group(taken, index)`,
     which returns a group or None for a failed draw. `claimed(group)` is the
     set of cells the group takes from later draws: a builder says here
     whether the counter is one of them. Raises when `attempts` draws were not
@@ -93,7 +93,7 @@ def draw_groups(rng, grid, n_groups, draw_group, claimed, attempts):
     for _attempt in range(attempts):
         if len(groups) == n_groups:
             break
-        g = draw_group(rng, grid, taken, len(groups))
+        g = draw_group(taken, len(groups))
         if g is not None:
             groups.append(g)
             taken |= claimed(g)

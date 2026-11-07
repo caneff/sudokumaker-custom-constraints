@@ -71,12 +71,8 @@ def draw_group(rng, grid, index, n_targets, n_digits):
 def make_groups(rng, grid, n_groups, n_targets, n_digits):
     """Groups may overlap here, so a group claims nothing from later draws."""
     return draw_groups(
-        rng,
-        grid,
         n_groups,
-        lambda rng, grid, taken, index: draw_group(
-            rng, grid, index, n_targets, n_digits
-        ),
+        lambda taken, index: draw_group(rng, grid, index, n_targets, n_digits),
         lambda g: set(),
         2000,
     )

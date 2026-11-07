@@ -101,6 +101,7 @@ for file in [
     "spec_865_closing.test.py",
     "spec_896_closing.test.py",
     "spec_897_closing.test.mjs",
+    "spec_898_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 

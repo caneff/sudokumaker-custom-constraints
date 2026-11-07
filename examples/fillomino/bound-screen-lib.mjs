@@ -83,14 +83,15 @@ export function fixtureBoard (here, file) {
   return fixtureBoardsOf(here, [file])[0]
 }
 
-// One hunt_link.py process reads every file: a spawn per fixture was most of
-// the 19-board load.
+// One hunt_link.py process reads every file, so the 19 boards cost one uv
+// start-up, not 19.
 function fixtureBoardsOf (here, files) {
   const read = JSON.parse(execFileSync('uv', ['run', '--project', join(here, '..', '..'), join(here, 'hunt_link.py'), ...files.map(f => join(here, f))], { encoding: 'utf8' }))
-  return files.map(f => ({
-    name: f.replace(/^timing-fixture-/, '').replace(/-rung25\.txt$/, ''),
-    ...read[join(here, f)]
-  }))
+  return files.map(f => {
+    const board = read[join(here, f)]
+    if (!board) throw new Error(`hunt_link.py returned no board for ${f}`)
+    return { name: f.replace(/^timing-fixture-/, '').replace(/-rung25\.txt$/, ''), ...board }
+  })
 }
 
 // Best of `reps` whole solves. A run that solved nothing has no verdict.

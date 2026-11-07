@@ -1,6 +1,8 @@
 # Helpers the count-digits builders' tests share: the solution grid as an
 # all-givens board, and `count_solutions` bound to a builder's own model.
 
+import functools
+
 from board_kit import count_solutions
 
 
@@ -11,8 +13,4 @@ def full_givens(gen):
 
 def counter_for(model):
     """`count_solutions(groups, givens)` under `model`."""
-
-    def count(groups, givens):
-        return count_solutions(model, groups, givens)
-
-    return count
+    return functools.partial(count_solutions, model)

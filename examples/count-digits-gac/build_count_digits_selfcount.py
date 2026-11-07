@@ -84,10 +84,8 @@ def claimed(g):
 
 def make_groups(rng, grid, n_groups, size):
     return draw_groups(
-        rng,
-        grid,
         n_groups,
-        lambda rng, grid, taken, index: draw_group(rng, grid, taken, index, size),
+        lambda taken, index: draw_group(rng, grid, taken, index, size),
         claimed,
         5000,
     )

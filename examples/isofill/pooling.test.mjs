@@ -50,7 +50,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
     const p = makePuzzle(truth, (c, v) => (c % 3 === 0 ? [v] : randomCandidates(makeRng(c).rnd, 0, 9, v)))
     const inst = {}
     mod.setParams(inst, CELLS, N, N)
-    // A field the component no longer reads would make the assignment a silent no-op.
+    // A field the component does not read would make the assignment a silent no-op.
     assert.ok('visit' in inst && 'targetVisit' in inst, 'setParams must create instance.visit and instance.targetVisit')
     if (visit) { inst.visit = visit; inst.targetVisit = visit }
     fixpoint(mod, inst, p)

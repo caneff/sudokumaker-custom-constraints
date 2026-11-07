@@ -138,7 +138,7 @@ assert.strictEqual(floorStates, FIXTURES.length * 100, 'a state built around a s
 assert.ok(pastRung2 > 0, `rung 3 must remove a candidate rung 2 (${SHIPPED}) keeps`)
 console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', SHIPPED + ',', pastRung2, 'stronger')
 
-// The reused instance. The component bound caches the allowed-digit row it
+// The reused instance. The pocket rule caches the allowed-digit row it
 // last finished on and re-floods only what moved since -- the one thing the
 // component carries between calls. The solver never says it backtracked, so
 // the same instance sees states that jump around: a candidate it watched

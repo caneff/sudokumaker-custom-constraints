@@ -24,9 +24,10 @@ RULE = (
 
 
 def digit_range(spec, n):
-    """`n` is the width; a gen JSON names `digits` when the digit count is not
-    the width (a rectangle). The app's top digit is 9, so any top digit other
-    than 9 ships `maxDigit`."""
+    """The range is isofill_model.Board.of_doc's: a gen JSON names `digits`
+    when the digit count is not the width (a rectangle). `n`, the width, is
+    BareBoard's argument and goes unread here. The app's top digit is 9, so any
+    top digit other than 9 ships `maxDigit`."""
     board = Board.of_doc(spec)
     lo = board.lo
     hi = lo + board.digits - 1
