@@ -2,7 +2,7 @@
 # the recorded app, no repo example needed. One link prints two paste-ready
 # rows (cold, then after-logical), each the median of 3 reps with
 # non-deterministic solve off. Two links are interleaved one rep per link per
-# round, the lead alternating (time_example.run_app_solve), and each row carries
+# round, the lead alternating (app_timing.run_app_solve), and each row carries
 # both medians and the b/a ratio. The link is timed as given: nothing is
 # stripped (probe_link.py is the tool for that), and a link that carries entered
 # digits in the ring needs --ring-clues, as for app-solve.mjs. No ship verdict
@@ -18,7 +18,7 @@ import sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from time_example import build_link_row, busy_note, run_app_solve
+from app_timing import build_link_row, busy_note, run_app_solve
 
 
 def run(link_a, link_b=None, ring_clues=False):

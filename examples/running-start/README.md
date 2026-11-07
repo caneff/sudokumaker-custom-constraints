@@ -64,27 +64,27 @@ about, because `frame-corners.js` pins them instead of a given.
   to play the example.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` from `main-global.js` and the
   component files. Run it after changing any of them:
-  `uv run --with lzstring examples/running-start/build_link.py`.
+  `uv run examples/running-start/build_link.py`.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt` — smaller Running Start puzzles.
 - `PUZZLE_LINK_local.txt` — the **local** board: 36 bent paths drawn as groups,
   running `main.js`. Every path turns a corner, so the app reads it as a bare
   line and its digits may repeat — the board that exercises the rules a drawn
   line gets. Built by
-  `uv run --with ortools --with lzstring examples/running-start/build_size.py 9 3 3 --paths`,
+  `uv run examples/running-start/build_size.py 9 3 3 --paths`,
   with its geometry recorded in `gen_local.json`.
 - `build_size.py --rebuild <n>` — re-encodes a committed board (`gen_4x4.json`,
   `gen_6x6.json`, `gen_local.json`) with the current component code and rule
   text, no fresh CP-SAT search, so a sized link never ships a stale component
   snapshot:
-  `uv run --with ortools --with lzstring examples/running-start/build_size.py --rebuild 4`.
+  `uv run examples/running-start/build_size.py --rebuild 4`.
   The shipped 9x9 global board is not a framebuild board, so `build_link.py`
   rebuilds that one.
 - `build_size.py` — builds the whole document from scratch for any grid size,
   no template needed. It generates a grid, derives every line's clue, carves a
   unique puzzle (OR-Tools), and encodes the link. It shares `main-global.js`
   and the component files, so a fix there flows to every size on the next run:
-  `uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2`
-  `uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3`
+  `uv run examples/running-start/build_size.py 4 2 2`
+  `uv run examples/running-start/build_size.py 6 2 3`
   The three args are the grid size and the box height and width (`box_height *
   box_width == size`).
 - `gen.json` — the puzzle frame (grid, clue ring, groups, regions,

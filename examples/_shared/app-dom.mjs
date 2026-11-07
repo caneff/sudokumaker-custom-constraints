@@ -5,6 +5,7 @@
 // solveLogically, which app-dom.test.mjs drives against a stub page.
 
 import fs from 'fs'
+import { cellCenter, gridRows, parseCells } from './app-solve-lib.mjs'
 
 // Serve the app from a recorded HAR so repeated runs stay off the network.
 // No HAR yet, or SM_LIVE=1: load live and record it (written when the
@@ -28,24 +29,40 @@ export async function useRecordedApp (context) {
   console.error(update ? `app: live, recording ${har}` : `app: replay from ${har}`)
 }
 
-// The digits the app draws on a 9x9 grid, as nine strings ('.' for a cell with
-// none). Each cell's digit sits in a group translated to the cell's centre at
-// scale 25, 50 px per cell; a constraint's own decoration is never at that
-// transform (CELL_TRANSFORM in app-solve-lib.mjs).
-export const readGrid = page => page.evaluate(() => {
-  const re = /^translate\((\d+) (\d+)\) scale\(25\)$/
-  const rows = Array.from({ length: 9 }, () => Array(9).fill('.'))
-  for (const t of document.querySelectorAll('svg text')) {
-    const g = t.closest('g[transform]')
-    const m = g && re.exec(g.getAttribute('transform'))
-    const v = t.textContent.trim()
-    if (!m || !/^[1-9]$/.test(v)) continue
-    const col = Math.round((+m[1] - 25) / 50)
-    const row = Math.round((+m[2] - 25) / 50)
-    if (col >= 0 && col < 9 && row >= 0 && row < 9) rows[row][col] = v
-  }
-  return rows.map(r => r.join(''))
-})
+// Every cell the app draws, as parseCells (app-solve-lib.mjs) returns them:
+// { row, col, transform, content, fill } per <svg text> at a cell transform.
+// `fill` is the text's own attribute, else its computed style. The one reader
+// behind readGrid, cellScreenPoint's callers and the searchable-link check.
+export async function readCells (page) {
+  const raw = await page.evaluate(() =>
+    [...document.querySelectorAll('svg text')].map(t => {
+      const cellGroup = t.closest('g[transform]')
+      return {
+        content: t.textContent,
+        fill: t.getAttribute('fill') || window.getComputedStyle(t).fill,
+        transform: cellGroup ? cellGroup.getAttribute('transform') : null
+      }
+    }))
+  return parseCells(raw)
+}
+
+// The digits the app draws on a `size`-wide board, as one string per row ('.'
+// for a cell with none). The caller gives the size: see gridRows.
+export const readGrid = async (page, size) => gridRows(await readCells(page), size)
+
+// Screen point of cell (row, col)'s center, via the grid <g>'s own CTM: this
+// survives the app's zoom and pan, which hardcoded pixel offsets would not.
+export function cellScreenPoint (page, row, col) {
+  const { x, y } = cellCenter(row, col)
+  return page.evaluate(({ x, y }) => {
+    const svg = [...document.querySelectorAll('svg')].find(s => s.getAttribute('class') === 'SudokuSvg')
+    const pt = svg.createSVGPoint()
+    pt.x = x
+    pt.y = y
+    const screenPt = pt.matrixTransform(svg.querySelector('g').getScreenCTM())
+    return { x: screenPt.x, y: screenPt.y }
+  }, { x, y })
+}
 
 // Click the innermost element whose exact trimmed text equals `t`.
 export const clickText = (page, t) => page.evaluate((t) => {

@@ -84,13 +84,13 @@ per-line component below carries the whole example.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` —
   share-ready boards of each size, built by `build_size.py` on the shared
   interactive-outside frame (`gen_<n>x<n>.json` records each seed):
-  `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3`
+  `uv run examples/numbered-rooms/build_size.py 9 3 3`
   (args: `n box_height box_width`). Every one is unique with no interior
   givens — the real app's verdict on each is "unique" — and only the shown
   clues are stored; the rest of the board is empty. Not timing boards: over
   half the ring is shown. After a `main.js` or `NumberedRoomsComponent.js`
   change, re-encode from the recorded seed instead of a fresh search:
-  `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py --rebuild 9`
+  `uv run examples/numbered-rooms/build_size.py --rebuild 9`
   (`framebuild.Lane.rebuild`) loads `gen_<n>x<n>.json` and calls the shared frame's
   `build_doc` directly, so the link's grid, givens, and shown clues stay
   exactly what the seed produced and only the embedded code changes.
@@ -108,7 +108,7 @@ per-line component below carries the whole example.
   stand down. Carved to CP-SAT minimality (1 interior given, 16 interactive
   clues), which puts it past what SudokuMaker's own search closes — a stress
   board, proven unique by OR-Tools, not a board to sit down with. Built by
-  `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3 3 --paths`.
+  `uv run examples/numbered-rooms/build_size.py 9 3 3 3 --paths`.
 - `PUZZLE_LINK_6x6_local.txt`, `gen_6x6_local.json` — the 6x6 local twin
   (24 bent paths, 22 of them repeating a digit, 0 interior givens): the local
   board the app finishes, so it is the one to play and the one that carries the
@@ -143,10 +143,10 @@ per-line component below carries the whole example.
   `PUZZLE_LINK_clued_original.txt` from `PUZZLE_LINK.txt`, filling the 36
   clues from the board's own solution and checking that solution against the
   sudoku and Numbered Rooms rules before writing anything:
-  `uv run --with lzstring examples/numbered-rooms/build_clued.py`.
+  `uv run examples/numbered-rooms/build_clued.py`.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one named component's code
   swapped for a candidate file, board and clues unchanged:
-  `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
+  `uv run examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
   Add `--backend main-global.js` to swap the main code in as well (the
   committed link carries both, and `build_link.test.py` checks both
   round-trip). Add `--board PUZZLE_LINK_local.txt` to swap against the local
@@ -179,7 +179,7 @@ and its `distinct=false` behaviour by the bare-line rules, which
 ## Run
 
     node examples/numbered-rooms/soundness-harness.mjs
-    uv run --with lzstring examples/numbered-rooms/build_original.py   # rebuild the original-code link
+    uv run examples/numbered-rooms/build_original.py   # rebuild the original-code link
 
 ## Why the stronger component wins
 

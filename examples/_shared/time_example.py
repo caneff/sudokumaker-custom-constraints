@@ -1,15 +1,16 @@
 # `just time <example>` -- the shared real-app timing driver. Builds a
 # same-board pair (docs/real-app-timing.md): the committed PUZZLE_LINK.txt is
-# the baseline, and the example's build_link.py rebuilds a candidate from the
-# working-tree component. Both become searchable links (probe_link.py) and are
-# timed (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
+# the baseline, and the candidate is that link with the working-tree component
+# and backend swapped in, in-process (link_swap.swap_build). Both become
+# searchable links (probe_link.py) and are timed through app_timing
+# (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
 # paste-ready row per mode -- cold, then after the app's own logical pass --
 # with date, app version, board, baseline median, candidate median, ratio and
 # that row's PASS/FAIL at 0.9x, then a SHIP line applying the two-row rule
 # across both. When the candidate's constraint code is byte-equal to the
 # baseline's, times the baseline only and prints baseline rows.
 #
-#   uv run --with lzstring examples/_shared/time_example.py <example>
+#   uv run examples/_shared/time_example.py <example>
 #
 # Stays out of `just check`: it drives the recorded app, a HAR replay that
 # `SM_LIVE=1` re-records (docs/real-app-timing.md).
@@ -19,9 +20,7 @@ import atexit
 import datetime
 import functools
 import io
-import json
 import pathlib
-import re
 import shutil
 import subprocess
 import sys
@@ -32,16 +31,20 @@ HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from link_swap import replace_constraint_code
+import app_timing
+from link_swap import swap_build
 from manifest import load_manifest
 from minify import minify_file
 from probe_link import empty_link_file
-from sm_document import find_constraint, registering_constraint_name, write_link
+from sm_document import find_constraint, registering_constraint_name
 from sudoku_kit.link_codec import decode_puzzle
 
-APP_SOLVE = HERE / "app-solve.mjs"
-JSON_LINE = re.compile(r"^JSON: (.+)$", re.MULTILINE)
-REPS = 3
+
+def board_link(example_dir, board=None):
+    """The link file a run times: `board` (a file name in example_dir), or the
+    example's shipped PUZZLE_LINK.txt when None. The one place that default
+    is written, for `just time` and count_calls.py alike."""
+    return example_dir / (board or "PUZZLE_LINK.txt")
 
 
 def shipped_component_code(doc):
@@ -223,29 +226,26 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
 
 
 def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=None):
-    """Build the candidate link (build_candidate), overlay the working-tree
-    backend if it differs, and return byte_equal: True only when neither the
-    timed component nor the constraint's backend differs from base_doc.
+    """Build the candidate link at out_path and return byte_equal: True only
+    when neither the timed component nor the constraint's backend differs from
+    base_doc.
 
-    A build_link.py's --component swap touches only the named component's
-    code -- the backend stays whatever PUZZLE_LINK.txt already shipped, even
-    when the working-tree backend file has changed. This overlays
-    resolve_backend_file's minified working-tree content onto the candidate
-    (link_swap.replace_constraint_code) before the byte-equal decision, so
-    both the decision and the timed candidate at out_path cover the backend,
-    not just components."""
-    build_candidate(example_dir, component_file, out_path, board=board)
-    candidate_doc = decode_puzzle(out_path.read_text().strip())
-
+    The swap runs in-process through link_swap.swap_build -- the same call
+    every build_link.py's --component path ends in -- with the working-tree
+    backend (resolve_backend_file's file) overlaid, so both the decision and the
+    timed candidate at out_path cover the backend, not just components. A
+    --component swap alone leaves the backend whatever PUZZLE_LINK.txt already
+    shipped, even when its working-tree file has changed. `board` (None = the
+    example's PUZZLE_LINK.txt) is the committed link swapped into."""
     constraint_name = registering_constraint_name(base_doc, component_file.stem)
     backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
-    if backend_file is not None:
-        backend_code = minify_file(backend_file)
-        candidate_doc = replace_constraint_code(
-            candidate_doc, constraint_name, backend_code=backend_code
-        )
-        write_link(candidate_doc, out_path)
-
+    swap_build(
+        board_link(example_dir, board),
+        component_file,
+        out_path,
+        backend=backend_file,
+    )
+    candidate_doc = decode_puzzle(out_path.read_text().strip())
     return shipped_component_code(candidate_doc) == shipped_component_code(
         base_doc
     ) and registered_backend(candidate_doc, constraint_name) == registered_backend(
@@ -253,240 +253,9 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
     )
 
 
-def build_candidate(example_dir, component_file, out_path, board=None):
-    """Build the candidate link via the example's build_link.py. `board`
-    (None = the example's PUZZLE_LINK.txt) is passed as --board, which every
-    build_link.py takes through link_swap.swap_main."""
-    cmd = [
-        "uv",
-        "run",
-        "--with",
-        "lzstring",
-        str(example_dir / "build_link.py"),
-        "--component",
-        str(component_file),
-        "--out",
-        str(out_path),
-    ]
-    if board:
-        cmd += ["--board", str(example_dir / board)]
-    subprocess.run(
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-
-def read_app_solve_json(stdout):
-    """app-solve.mjs's JSON line, parsed. Raises when there is none."""
-    m = JSON_LINE.search(stdout)
-    if not m:
-        raise RuntimeError(f"app-solve.mjs printed no JSON line:\n{stdout}")
-    return json.loads(m.group(1))
-
-
-def check_app_solve_result(link_path, data):
-    """`data` back, or a loud failure naming link_path: every rep timed out
-    (median null), or the app version could not be read. The one owner of the
-    timeout verdict, for both the driver's own aggregate (parse_app_solve_output)
-    and one built from interleaved one-rep calls (combine_reps)."""
-    if data["median"] is None:
-        # Name app-solve.mjs's fixed 300s per-rep wait (solveInApp's default
-        # timeoutMs in app-session.mjs) and the rep counts, so a reader learns
-        # the app never finished a solve without opening the harness.
-        raise RuntimeError(
-            f"app-solve.mjs: {link_path}: all {data['repsRun']} reps hit the "
-            f"300s per-rep timeout ({data['repsTimedOut']} timed out)"
-        )
-    if data["version"] is None:
-        raise RuntimeError(
-            f"app-solve.mjs could not read the app version for {link_path}"
-        )
-    return data
-
-
-def parse_app_solve_output(link_path, stdout):
-    """Parse app-solve.mjs's JSON line and return its {median, version,
-    repsRun, repsTimedOut}, or raise per read_app_solve_json and
-    check_app_solve_result."""
-    return check_app_solve_result(link_path, read_app_solve_json(stdout))
-
-
-def app_solve(link_path, reps, ring_clues=False, after_logical=False):
-    """Run app-solve.mjs on `link_path` and return its stdout: the one place
-    the Python tools build the driver's argv (count_calls, run_app_solve).
-    after_logical runs the app's logical solver to its fixpoint first. Raises
-    RuntimeError naming the link when the driver exits non-zero."""
-    cmd = ["node", str(APP_SOLVE), str(link_path), str(reps)]
-    if ring_clues:
-        cmd.append("--ring-clues")
-    if after_logical:
-        cmd.append("--after-logical")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"app-solve.mjs failed on {link_path}:\n"
-            f"{result.stdout[-800:]}{result.stderr[-800:]}"
-        )
-    # The driver's busy-machine warning (#387) goes to stderr; a success must
-    # not swallow it, or `just time` prints a row with no sign the box was busy.
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
-    return result.stdout
-
-
-def rep_order(links, rnd):
-    """The order one round times `links` in: the lead alternates by round
-    (first link first in round 0), so neither always gets the colder slot."""
-    return links if rnd % 2 == 0 else links[::-1]
-
-
-def run_app_solve(
-    baseline_link, candidate_link=None, ring_clues=False, after_logical=False
-):
-    """Time the links REPS times each, interleaved as docs/real-app-timing.md
-    requires: every round times one rep of each link, and the lead alternates
-    (baseline first in round 1) so neither always gets the colder slot. Returns
-    (baseline, candidate): each combine_reps's result over that link's own reps,
-    candidate None when `candidate_link` is None. A rep that times out is left
-    out of its link's median, and a link whose every rep timed out raises."""
-    links = [baseline_link] + ([candidate_link] if candidate_link else [])
-    data = {link: [] for link in links}
-    for rnd in range(REPS):
-        for link in rep_order(links, rnd):
-            stdout = app_solve(link, 1, ring_clues, after_logical)
-            data[link].append(read_app_solve_json(stdout))
-    timed = [combine_reps(link, data[link]) for link in links]
-    return timed[0], (timed[1] if candidate_link else None)
-
-
-def combine_reps(link_path, reps):
-    """One link's {median, version, repsRun, repsTimedOut} from its one-rep
-    driver results, judged by check_app_solve_result: every rep that finished
-    must carry the app version, and a link with none finished is a timeout. The
-    median is app-solve.mjs's own (`median` in app-solve-lib.mjs, the upper
-    middle of the reps that finished), recomputed here because the driver only
-    ever sees one rep per call."""
-    finished = [r for r in reps if r["median"] is not None]
-    for r in finished:
-        check_app_solve_result(link_path, r)
-    done = sorted(r["median"] for r in finished)
-    data = {
-        "median": done[len(done) // 2] if done else None,
-        "version": finished[0]["version"] if finished else None,
-        "repsRun": len(reps),
-        "repsTimedOut": len(reps) - len(finished),
-        # The driver's machine-load verdict (#387): any rep read busy, and the
-        # worst reading, so the pasted row can say the box was not quiet.
-        "busy": any(r.get("busy") for r in reps),
-        "maxLoad": max(
-            (
-                v
-                for r in reps
-                for pair in r.get("loads", [])
-                for v in (pair.get("before"), pair.get("after"))
-                if v is not None
-            ),
-            default=None,
-        ),
-        "loadThreshold": next(
-            (r["loadThreshold"] for r in reps if "loadThreshold" in r), None
-        ),
-    }
-    return check_app_solve_result(link_path, data)
-
-
-def busy_note(*timed):
-    """` (BUSY load 27.7 > 16)` when any of the timed links' reps read a busy
-    machine, else ''. It goes on the pasted row's verdict cell, so a row taken
-    on a loaded box says so after the terminal is gone (#387)."""
-    hot = [t for t in timed if t and t.get("busy")]
-    if not hot:
-        return ""
-    worst = max(t["maxLoad"] for t in hot if t.get("maxLoad") is not None)
-    return f" (BUSY load {worst:.1f} > {hot[0]['loadThreshold']:g})"
-
-
 def _flag_busy(row, verdict, note):
     """`row` with `note` after its verdict cell; the verdict itself is unchanged."""
     return row.replace(f"| {verdict} |", f"| {verdict}{note} |") if note else row
-
-
-def _row(date, version, board, baseline, candidate, ratio, verdict):
-    """The one 7-column paste-ready row, shared by build_row and
-    build_link_row so the two cannot drift apart."""
-    return f"| {date} | {version} | {board} | {baseline} | {candidate} | {ratio} | {verdict} |"
-
-
-def build_row(date, version, board, baseline_ms, candidate_ms=None):
-    """The paste-ready row and its verdict. candidate_ms=None means
-    byte-equal code: baseline-only row, verdict BASELINE. PASS means
-    candidate_ms <= 0.9 x baseline_ms on this row alone; the two-row ship
-    rule is ship_verdict's job. A 0ms baseline has no ratio: NO TIME when the
-    candidate is 0ms too, FAIL when it is not."""
-    if candidate_ms is None:
-        row = _row(date, version, board, f"{baseline_ms}ms", "—", "—", "BASELINE")
-        return row, "BASELINE"
-    ratio = row_ratio(baseline_ms, candidate_ms)
-    if ratio is None:
-        row = _row(date, version, board, "0ms", "0ms", "—", "NO TIME")
-        return row, "NO TIME"
-    if ratio == INF:
-        row = _row(date, version, board, "0ms", f"{candidate_ms}ms", "∞", "FAIL")
-        return row, "FAIL"
-    verdict = "PASS" if ratio <= 0.9 else "FAIL"
-    row = _row(
-        date,
-        version,
-        board,
-        f"{baseline_ms}ms",
-        f"{candidate_ms}ms",
-        f"{ratio:.2f}",
-        verdict,
-    )
-    return row, verdict
-
-
-def build_link_row(date, version, board, a_ms, b_ms, note):
-    """`just time-link`'s paste-ready row, same columns as build_row. The
-    verdict cell holds no ship verdict -- no candidate component is involved,
-    so the two-row rule does not apply. With one link (b_ms None) the
-    candidate and ratio cells are empty; with two, the ratio is b/a
-    (row_ratio: a 0ms `a` has none, or INF). `note` (busy_note, "" when the
-    box was quiet) follows the verdict cell."""
-    if b_ms is None:
-        b_cell, cell = "—", "—"
-    else:
-        b_cell = f"{b_ms}ms"
-        ratio = row_ratio(a_ms, b_ms)
-        cell = "—" if ratio is None else "∞" if ratio == INF else f"{ratio:.2f}"
-    return _row(date, version, board, f"{a_ms}ms", b_cell, cell, f"—{note}")
-
-
-INF = float("inf")
-
-
-def row_ratio(baseline_ms, candidate_ms):
-    """One row's candidate/baseline ratio. A 0ms baseline has no ratio: None
-    when the candidate is 0ms too (nothing was timed on this row), INF when it
-    is not -- the app used to finish this board without searching and now does
-    not, which is the regression the row exists to catch, not a free pass."""
-    if baseline_ms:
-        return candidate_ms / baseline_ms
-    return None if candidate_ms == 0 else INF
-
-
-def ship_verdict(ratios):
-    """The two-row rule (docs/real-app-timing.md): a change ships when it
-    clears 0.9x on one of the two rows and stays within 1.1x on the other.
-    A None ratio (see row_ratio) places no constraint, so the other row
-    decides; INF is past 1.1x and sinks the change. All None means nothing
-    was timed."""
-    real = [r for r in ratios if r is not None]
-    if not real:
-        return "NO TIME"
-    return "SHIP" if min(real) <= 0.9 and max(real) <= 1.1 else "NO SHIP"
 
 
 def check_backend_current(board, base_doc):
@@ -512,8 +281,8 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     ([(row, verdict), ...], ship) -- one entry per row (cold, then
     after-logical) and the two-row rule's verdict, or None when the code is
     byte-equal and there is nothing to judge. Raises
-    FileNotFoundError naming the file when the board link or build_link.py
-    is missing. Links become searchable links before timing; ring_clues
+    FileNotFoundError naming the board link when it is missing. Links become
+    searchable links before timing; ring_clues
     keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
     `board` names a link file (relative to example_dir) other than
     PUZZLE_LINK.txt to time; the printed row's board label then names it.
@@ -522,15 +291,12 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     to say. A houses_only example has no component: `component` is refused, and
     the rows are the baseline's alone (check_backend_current)."""
     mode = "empty" if ring_clues else "strip"
-    baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
+    baseline_link = board_link(example_dir, board)
     if not baseline_link.exists():
         raise FileNotFoundError(f"missing {baseline_link}")
-    build_link_py = example_dir / "build_link.py"
-    if not build_link_py.exists():
-        raise FileNotFoundError(f"missing {build_link_py}")
 
-    # The working-tree link, which is also what build_link.py bases the
-    # candidate on and what empty_link_file turns into the baseline's
+    # The working-tree link, which is also what build_candidate_doc swaps the
+    # candidate into and what empty_link_file turns into the baseline's
     # searchable link -- every link this function times comes from one tree.
     # Reading it from HEAD instead would leave the two TIMED searchable links
     # here in the working tree while only the decisions moved, and a
@@ -584,24 +350,26 @@ def run(example_dir, ring_clues=False, board=None, component=None):
         # own logical pass.
         for after_logical in (False, True):
             label = board_label + (" after-logical" if after_logical else "")
-            base, cand = run_app_solve(
+            base, cand = app_timing.run_app_solve(
                 baseline_probe,
                 None if baseline_only else candidate_probe,
                 ring_clues,
                 after_logical,
             )
-            note = busy_note(base, cand)
+            note = app_timing.busy_note(base, cand)
             if baseline_only:
-                row, verdict = build_row(date, base["version"], label, base["median"])
+                row, verdict = app_timing.build_row(
+                    date, base["version"], label, base["median"]
+                )
                 rows.append((_flag_busy(row, verdict, note), verdict))
                 continue
-            row, verdict = build_row(
+            row, verdict = app_timing.build_row(
                 date, base["version"], label, base["median"], cand["median"]
             )
             rows.append((_flag_busy(row, verdict, note), verdict))
-            ratios.append(row_ratio(base["median"], cand["median"]))
+            ratios.append(app_timing.row_ratio(base["median"], cand["median"]))
 
-        return rows, (ship_verdict(ratios) if ratios else None)
+        return rows, (app_timing.ship_verdict(ratios) if ratios else None)
 
 
 if __name__ == "__main__":

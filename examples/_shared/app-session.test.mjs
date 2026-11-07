@@ -8,7 +8,41 @@
 
 import assert from 'assert'
 import fs from 'fs'
-import { withApp, solveInApp } from './app-session.mjs'
+import { withApp, solveInApp, readVerdict } from './app-session.mjs'
+import { readTrialVerdict } from './app-strip.mjs'
+
+// readVerdict against a stub page: it waits for the verdict pattern (plus an
+// extra pattern when given), then reads the readout and refuses a verdict the
+// app judged from marks unless marks are expected, with the caller's message.
+// app-strip's trial read refuses one too, with its own diagnosis.
+{
+  const stub = text => {
+    const waits = []
+    return {
+      waits,
+      waitForFunction: async (fn, arg, opts) => { waits.push({ arg, opts }) },
+      waitForTimeout: async () => {},
+      evaluate: async () => text
+    }
+  }
+  const ok = 'Solved took 1.0s\nThis is a unique solution. Solutions took 2.0s'
+  const page = stub(ok)
+  const r = await readVerdict(page, { refusal: 'unused', timeout: 1234, alsoWaitFor: /rejected/ })
+  assert.strictEqual(r.verdict, 'unique')
+  assert.strictEqual(r.text, ok)
+  assert.strictEqual(page.waits[0].opts.timeout, 1234)
+  assert.match(page.waits[0].arg[0], /\|rejected$/)
+
+  const marked = stub(ok + ' (based on already entered values and pencil marks.)')
+  await assert.rejects(readVerdict(marked, { refusal: 'cell (1,2): refused' }), /^Error: cell \(1,2\): refused$/)
+  assert.strictEqual((await readVerdict(marked, { refusal: 'unused', marksExpected: true })).verdict, 'unique')
+  await assert.rejects(readTrialVerdict(marked, 1, 2), /^Error: \(1,2\): verdict was judged "based on already entered values and pencil marks" -- .*settleAfterSolve should have caught this$/)
+  assert.strictEqual((await readTrialVerdict(stub(ok), 1, 2)).verdict, 'unique')
+
+  // a wait that times out reads '?', never throws
+  const slow = { ...stub('nothing yet'), waitForFunction: async () => { throw new Error('timeout') } }
+  assert.strictEqual((await readVerdict(slow, { refusal: 'unused' })).verdict, '?')
+}
 
 const link = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8').trim()
 
@@ -45,7 +79,8 @@ await withApp({ live: false }, async app => {
       }
     }, 50)
   })
-  await assert.rejects(solveInApp(marked, link('up-to-n/PUZZLE_LINK_4x4.txt')), /based on already entered values/)
+  await assert.rejects(solveInApp(marked, link('up-to-n/PUZZLE_LINK_4x4.txt'), { name: '4x4' }),
+    /^Error: 4x4: the app judged "based on already entered values" -- .*so it is no timing; strip the link first$/)
 })
 
 console.log('app-session.test.mjs: all seams pass')

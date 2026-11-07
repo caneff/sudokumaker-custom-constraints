@@ -160,6 +160,15 @@ suite(
 # its own in a temporary directory.
 suite("time_example.test.py", needs=["//:tree"], tools=["git"])
 
+# Row building, verdicts and rep aggregation, with the browser call faked.
+suite("app_timing.test.py")
+
+# Spec #895's closing check: copies the real up-to-n example and the shared .js
+# it includes into a git repository of its own, builds and times its candidate
+# with the browser call faked, and reads pyproject.toml. Blind to the app: `just
+# time`'s real timing and app-strip.mjs in a browser (the test's own docstring).
+suite("spec_895_closing.test.py", needs=["//:tree"], tools=["git"])
+
 # Row building and argument handling for `just time-link`; the browser call is
 # faked.
 suite("time_link.test.py")

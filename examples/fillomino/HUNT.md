@@ -153,7 +153,7 @@ board's label, the `rngSeed`, the freed cells and the scores before and after
 
 **CP-SAT proves the winner unique**, in 4.6 s, no timeout:
 
-    uv run --with ortools examples/fillomino/generate.py unique \
+    uv run examples/fillomino/generate.py unique \
         examples/fillomino/hunt-climb-cap12-seed13-best.json
     unique
 

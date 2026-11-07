@@ -293,7 +293,7 @@ the next section and `../../docs/real-app-timing.md`.
 
 The shipped link stores the full solution as entered values (35 black givens,
 65 blue entries). Strip it before you time or play it:
-`uv run --with lzstring examples/_shared/probe_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
+`uv run examples/_shared/probe_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
 
 On the stripped grid the app's "Find all solutions" reads **"This is a unique
 solution" in 0.2 s** (live app v2026.08.14-d47fc4b, 2026-08-27, `app-solve.mjs`,
@@ -399,9 +399,9 @@ split one.
 Uniqueness (needs Python; `uv` fetches OR-Tools):
 
 ```
-uv run --with ortools examples/isofill/verify.py                              # self-check
-uv run --with ortools examples/isofill/verify.py examples/isofill/gen.json     # -> unique
-uv run --with ortools examples/isofill/verify.py examples/isofill/gen_44g.json # -> unique
+uv run examples/isofill/verify.py                              # self-check
+uv run examples/isofill/verify.py examples/isofill/gen.json     # -> unique
+uv run examples/isofill/verify.py examples/isofill/gen_44g.json # -> unique
 ```
 
 `verify.py` models the rule (`examples/_shared/isofill_model.py`, shared with
@@ -646,7 +646,7 @@ if (++_probeUpd % 200 === 0) console.log(`[probe] cut=${_probeCut} in ${_probeUp
 and `_probeCut++` beside the cut rule's `yield`. Then, per fixture:
 
 ```sh
-uv run --with lzstring examples/_shared/count_calls.py isofill \
+uv run examples/_shared/count_calls.py isofill \
     <patched copy>/IsofillComponent.js --board PUZZLE_LINK_28g.txt
 ```
 

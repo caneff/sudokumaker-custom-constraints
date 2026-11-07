@@ -2,7 +2,7 @@
 # filled, so the app's "Find all solutions" reads it unique (#835; why the
 # shipped boards read not-unique: docs/research/398-outside-sudoku-not-unique.md).
 #
-#   uv run --with lzstring --with ortools examples/outside-sudoku/build_clued.py
+#   uv run examples/outside-sudoku/build_clued.py
 #
 # A blank clue is free within its window, so the app counts each filling as a
 # solution. The twin gives every clue the digit its window's first cell holds

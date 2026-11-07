@@ -6,7 +6,6 @@ name = "sudokumaker-custom-constraints"
 version = "0"
 requires-python = ">=3.11"
 dependencies = [
-    "lzstring",
     "ortools",
     "sudoku-kit",
 ]

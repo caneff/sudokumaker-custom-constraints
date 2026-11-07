@@ -284,7 +284,7 @@ How it was made, all at digits 1-16 (the board then moved to cap 29, above):
 CP-SAT proves the clue set has exactly one solution, no timeout:
 
 ```
-uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
+uv run examples/fillomino/generate.py unique examples/fillomino/gen.json
 unique
 ```
 
@@ -295,7 +295,7 @@ rest run on the pinned 9x9 grid, so a new board changes no gate time.
 Rebuild the link:
 
 ```
-uv run --with lzstring examples/fillomino/build_link.py
+uv run examples/fillomino/build_link.py
 ```
 
 ## Share checklist, walked
@@ -373,11 +373,11 @@ component file's contents. Enter the givens.
 `docs/research/fillomino-cpsat.md` records (#280/#288):
 
 ```
-uv run --with ortools examples/fillomino/generate.py               # self-check
-uv run --with ortools examples/fillomino/generate.py sample 7      # seed 7, 9x9, digits 1-9
-uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # seed 7, side 9, cap 12
-uv run --with ortools examples/fillomino/generate.py sample 7 7 7 5  # seed 7, 7 wide, 5 high, cap 7
-uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
+uv run examples/fillomino/generate.py               # self-check
+uv run examples/fillomino/generate.py sample 7      # seed 7, 9x9, digits 1-9
+uv run examples/fillomino/generate.py sample 7 9 12 # seed 7, side 9, cap 12
+uv run examples/fillomino/generate.py sample 7 7 7 5  # seed 7, 7 wide, 5 high, cap 7
+uv run examples/fillomino/generate.py unique examples/fillomino/gen.json
 ```
 
 Every function takes the `Board` it works on — `Board.of(width,

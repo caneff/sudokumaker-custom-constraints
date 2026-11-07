@@ -178,19 +178,19 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   unique solution (OR-Tools), and the encoded link. Blank clues are the
   interactive ones. It shares `main-global.js` and the component files, so a
   fix there flows to every size on the next run:
-  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 4 2 2`
-  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 6 2 3`
-  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3`
+  `uv run examples/skyscraper/build_size.py 4 2 2`
+  `uv run examples/skyscraper/build_size.py 6 2 3`
+  `uv run examples/skyscraper/build_size.py 9 3 3`
   The three args are the grid size, the box height, and the box width
   (`box_height * box_width == size`). An optional fourth arg caps the seed count.
   `--paths` builds the local board instead: bent paths in place of the straight
   frame lines, shipped as drawn groups on the `main.js` lane, so the one-sided
   DP has a board to play and to time:
-  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3 3 --paths`
+  `uv run examples/skyscraper/build_size.py 9 3 3 3 --paths`
 - `build_size.py --rebuild <n>` — re-encodes a committed board from its
   `gen_*.json` with the current component and backend code, no fresh search, so
   a shipped link never carries a stale snapshot:
-  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py --rebuild 9`
+  `uv run examples/skyscraper/build_size.py --rebuild 9`
   (`--paths` for the local board).
 - `PUZZLE_LINK_local.txt` / `gen_local.json` — the 9x9 local board: 36 bent
   paths, 35 of them repeating a digit, drawn as groups. It is carved to CP-SAT
@@ -208,7 +208,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   (9x9) and `PUZZLE_LINK_4x4_original.txt`/`PUZZLE_LINK_6x6_original.txt` are the
   same grid, givens, and clues as the improved links, so you can compare the two
   solve experiences directly:
-  `uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9`
+  `uv run examples/skyscraper/build_original.py 9`
 - `verify.py` (+ test) — proves a shipped global board still matches its
   `gen_<n>x<n>.json`, that the solution recorded there really solves it, and
   that it still has exactly one solution, under the CP-SAT model
@@ -217,7 +217,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   verify-skyscraper [size]`.
 - `build_link.py` — rebuilds a committed board link with one named
   component's code swapped for a candidate file, board and clues unchanged:
-  `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperPairComponent.js --out /tmp/candidate.txt`.
+  `uv run examples/skyscraper/build_link.py --component SkyscraperPairComponent.js --out /tmp/candidate.txt`.
   Defaults to `PUZZLE_LINK.txt`; `--board <file>` swaps against another
   committed link instead. See `docs/real-app-timing.md`.
 

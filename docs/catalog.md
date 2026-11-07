@@ -17,13 +17,12 @@ https://docs.google.com/spreadsheets/d/1C5rQaYlDJb3HVzHJSp5UibgM9uo57fwRdxgUOl8t
 
 The catalog's links are `tinyurl.com` redirects to `sudokumaker.app/?puzzle=...`.
 The puzzle JSON — including every constraint's JavaScript — is LZString-compressed
-in the `puzzle=` parameter. Resolve the redirect, then decompress:
+in the `puzzle=` parameter. Resolve the redirect, then decode it with the repo's
+codec, `sudoku_kit.link_codec`:
 
 ```python
-import urllib.parse
-from lzstring import LZString   # uv run --with lzstring
-raw = LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(link.split("puzzle=")[-1]))
-doc = json.loads(raw)
+from sudoku_kit.link_codec import decode_puzzle
+doc = decode_puzzle(link)
 # code lives at doc["puzzle"]["constraints"][*]["definition"]["backend"]["code"]
 #            and doc["puzzle"]["constraints"][*]["definition"]["components"][*]["code"]
 ```

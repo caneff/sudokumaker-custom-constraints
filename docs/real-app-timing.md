@@ -74,13 +74,21 @@ The rest of this doc is the mechanics behind that command: how the driver
 reads the app's readout, how to strip a link so the solver searches, and how
 the offline recording works.
 
-For an example with a `build_link.py` (every example; each one's command line
-is `examples/_shared/link_swap.swap_main`), `just time <example>` runs the whole loop below in
-one command: it builds a candidate link from the working-tree component,
-times baseline and candidate 3 reps each in both modes (one rep per variant per round, the lead alternating), and prints one
+`just time <example>` runs the whole loop below in one command: it builds a
+candidate link in-process (`link_swap.swap_build`, the call every
+`build_link.py --component` ends in), the committed link with the
+working-tree component and backend swapped in, times baseline and candidate 3 reps each in both modes (one rep per variant per round, the lead alternating), and prints one
 paste-ready row per mode (date, app version, board, both medians, ratio, and
 that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
 `two-row rule:` line. Byte-equal candidate code prints baseline-only rows.
+
+Two modules own that loop. `examples/_shared/app_timing.py` is the driver:
+`app_solve` runs `app-solve.mjs`, `run_app_solve` and `combine_reps` interleave
+and aggregate the reps, and `build_row`, `build_link_row` and `ship_verdict`
+pin the row format and the two-row rule; `just time-link` and `count_calls.py`
+import it directly. `examples/_shared/time_example.py` resolves the candidate
+(component file, backend file, the swapped link) and calls the driver. Their
+offline tests are `app_timing.test.py` and `time_example.test.py`.
 
 The baseline is the link file on disk, and the paste target that built it is
 identified at git HEAD. So **time before you regenerate**: a `PUZZLE_LINK*.txt`
@@ -91,8 +99,7 @@ and rebuild after.
 `--board <file>` times a different committed link in the example dir instead
 of `PUZZLE_LINK.txt` (`link_swap.swap_build` swaps the candidate into it),
 and the row's board column then names the file. The
-manual steps below are what it automates, and still apply to an example with
-no `build_link.py` yet.
+manual steps below are what it automates.
 
 An example that registers more than one component (hit-counts and
 running-start each register a `Pair` component alongside the main one)
@@ -162,11 +169,11 @@ ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
 `build_original.py`. Empty each and time them.
 
 To count how often the app calls a component's `update` on one run:
-`uv run --with lzstring examples/_shared/count_calls.py skyscraper
+`uv run examples/_shared/count_calls.py skyscraper
 examples/skyscraper/SkyscraperPairComponent.js --ring-clues`. It makes a probe
 copy of the component that `console.log('[probe] calls=...')` every 500
-calls, builds a link from it with `build_link.py --component`, and runs
-`app-solve.mjs` on the emptied link; the driver relays every browser console
+calls, swaps it into the example's link in-process (`link_swap.swap_build`),
+and runs `app-solve.mjs` on the emptied link; the driver relays every browser console
 line that starts with `[probe]` and drops the rest. To count anything else
 (how often a branch fires), patch the probe copy by hand the same way. Worked
 example: `docs/research/133-skip-unchanged.md`.
@@ -254,9 +261,9 @@ node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK.txt 3
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original.txt 3
 
 # Skyscraper: the shipped same-board pairs, emptied first so the solver searches.
-uv run --with lzstring examples/_shared/probe_link.py empty \
+uv run examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK.txt /tmp/sky_ours.txt
-uv run --with lzstring examples/_shared/probe_link.py empty \
+uv run examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK_original.txt /tmp/sky_orig.txt
 node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3 --ring-clues
 node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
@@ -264,9 +271,9 @@ node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
 # ISOFILL: no ring clues, so STRIP (givens only), never `empty`. "Original" is
 # the count-floor-only component before #79; take its link from history.
 git show c5569cd~1:examples/isofill/PUZZLE_LINK.txt > /tmp/iso_orig_full.txt
-uv run --with lzstring examples/_shared/probe_link.py strip \
+uv run examples/_shared/probe_link.py strip \
   examples/isofill/PUZZLE_LINK.txt /tmp/iso_strip.txt
-uv run --with lzstring examples/_shared/probe_link.py strip \
+uv run examples/_shared/probe_link.py strip \
   /tmp/iso_orig_full.txt /tmp/iso_orig_strip.txt
 node examples/_shared/app-solve.mjs /tmp/iso_strip.txt 3
 node examples/_shared/app-solve.mjs /tmp/iso_orig_strip.txt 3

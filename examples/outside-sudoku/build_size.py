@@ -3,12 +3,12 @@
 # fresh grid, the true clue for every line, minimal interior givens and a
 # minimal shown-clue set carved to a unique solution (OR-Tools).
 #
-#   uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 4 2 2
-#   uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 6 2 3
-#   uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 9 3 3
-#   uv run --with ortools --with lzstring \
+#   uv run examples/outside-sudoku/build_size.py 4 2 2
+#   uv run examples/outside-sudoku/build_size.py 6 2 3
+#   uv run examples/outside-sudoku/build_size.py 9 3 3
+#   uv run \
 #       examples/outside-sudoku/build_size.py 9 3 3 1 --local
-#   uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 6
+#   uv run examples/outside-sudoku/build_size.py --rebuild 6
 
 import pathlib
 import sys

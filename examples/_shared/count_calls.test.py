@@ -1,11 +1,11 @@
 # count_calls.py: the two pure seams -- splicing the call counter into a
 # component's `update`, and turning the driver's stdout into the one report
-# line -- plus main()'s orchestration, run against stubbed `build_candidate`,
+# line -- plus main()'s orchestration, run against stubbed `swap_build`,
 # `empty_link_file` and the `app_solve` adapter. Only a real Chromium against the
 # live sudokumaker.app is out of reach here; every decision main() makes
 # about what to build and what argv to hand the driver is not.
 #
-#   uv run --with lzstring examples/_shared/count_calls.test.py
+#   uv run examples/_shared/count_calls.test.py
 
 import contextlib
 import io
@@ -24,20 +24,20 @@ WIDGET = f"class Widget {{\n  {HOOK}\n    yield 1\n  }}\n}}\n"
 def _stubbed(stdout, returncode=0):
     """Replace main's three impure dependencies and record how it called them.
 
-    Yields a dict with the `build_candidate`, `empty_link_file` and
+    Yields a dict with the `swap_build`, `empty_link_file` and
     `app_solve` argument tuples, so a case can assert on what main decided
-    rather than on a browser it cannot run. `build_candidate` writes the file
+    rather than on a browser it cannot run. `swap_build` writes the file
     main hands it, because main goes on to read that path.
     """
     real = (
-        count_calls.build_candidate,
+        count_calls.swap_build,
         count_calls.empty_link_file,
         count_calls.app_solve,
     )
     seen = {}
 
-    def fake_build(example_dir, probe, link, board=None):
-        seen["build"] = (example_dir, pathlib.Path(probe).read_text(), board)
+    def fake_build(board, probe, link, backend=None):
+        seen["build"] = (board, pathlib.Path(probe).read_text())
         # a component's `// #include ../_shared/...` must resolve from the probe
         seen["include_root"] = (
             pathlib.Path(probe).parent / "../_shared/line-kind.js"
@@ -54,14 +54,14 @@ def _stubbed(stdout, returncode=0):
             raise RuntimeError(f"app-solve.mjs failed on {link}:\nboom")
         return stdout
 
-    count_calls.build_candidate = fake_build
+    count_calls.swap_build = fake_build
     count_calls.empty_link_file = fake_empty
     count_calls.app_solve = fake_solve
     try:
         yield seen
     finally:
         (
-            count_calls.build_candidate,
+            count_calls.swap_build,
             count_calls.empty_link_file,
             count_calls.app_solve,
         ) = real
@@ -143,11 +143,10 @@ if __name__ == "__main__":
         assert "[probe] calls=1500" in report and "median 900ms" in report, report
         # the link is built from the HOOKED copy, not the file on disk: an
         # unhooked probe would time the component and count nothing
-        example_dir, probe_src, board = seen["build"]
+        board, probe_src = seen["build"]
         assert COUNTER in probe_src, "main must build from the hooked source"
         assert seen["include_root"], "the probe copy must still resolve its includes"
-        assert example_dir == count_calls.EXAMPLES / "widget"
-        assert board is None
+        assert board == count_calls.EXAMPLES / "widget" / "PUZZLE_LINK.txt"
         # the built link is what gets emptied, and no ring clues means `strip`
         assert seen["empty"] == ("LINK", "strip")
         # the driver is handed the EMPTIED link, one rep, cold, no ring flag
@@ -161,7 +160,9 @@ if __name__ == "__main__":
         assert " on PUZZLE_LINK_28g.txt: " in printed.getvalue(), printed.getvalue()
         assert seen["empty"][1] == "empty", "--ring-clues must keep the ring"
         assert seen["solve"][2] is True, "--ring-clues must reach the driver"
-        assert seen["build"][2] == "PUZZLE_LINK_28g.txt", "--board must reach the build"
+        assert seen["build"][0].name == "PUZZLE_LINK_28g.txt", (
+            "--board must reach the build"
+        )
 
         # a driver that failed exits, never prints a report off partial output
         with _stubbed(stdout, returncode=1):

@@ -1,8 +1,8 @@
 # Prove a shipped Skyscrapers board is still the board its proof was run on,
 # and still unique.
 #
-#   uv run --with lzstring --with ortools examples/skyscraper/verify.py    # all sizes
-#   uv run --with lzstring --with ortools examples/skyscraper/verify.py 6  # just the 6x6
+#   uv run examples/skyscraper/verify.py    # all sizes
+#   uv run examples/skyscraper/verify.py 6  # just the 6x6
 #
 # With no size it sweeps every global board committed here, found by its gen
 # file rather than by a list -- a new size is covered the day it lands.

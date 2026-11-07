@@ -1,16 +1,13 @@
-# time_example.py: the offline seams — the paste-ready row builder plus its
-# PASS/FAIL verdict, the loud-fail behavior for a missing PUZZLE_LINK.txt or
-# build_link.py, and run()'s own orchestration with the browser call faked out
-# (the app_solve adapter reassigned to a canned-median stub, which is the only
-# thing in run() that needs the app). Fake medians only; no live
+# time_example.py: the offline seams — candidate resolution, the loud-fail
+# behavior for a missing PUZZLE_LINK.txt, and run()'s own orchestration with
+# the browser call faked out (app_timing_fake.fake_solve: app_timing's
+# app_solve adapter, the only thing in run() that needs the app). The row builder, verdicts and rep aggregation are
+# app_timing.test.py's. Fake medians only; no live
 # browser. The CLI's real run against numbered-rooms is a manual check,
 # not here — see docs/real-app-timing.md.
 #
-#   uv run --with lzstring examples/_shared/time_example.test.py
+#   uv run examples/_shared/time_example.test.py
 
-import contextlib
-import io
-import json
 import pathlib
 import subprocess
 import sys
@@ -19,61 +16,28 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-import time_example
+import app_timing
+from app_timing_fake import fake_solve
 from manifest import load_manifest
 from minify import minify_file, minify_js
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 from time_example import (
-    app_solve,
     build_candidate_doc,
-    build_row,
     find_component_file,
-    parse_app_solve_output,
     resolve_backend_file,
-    row_ratio,
     run,
-    ship_verdict,
 )
 
+# The fixtures carry no build_link.py: `just time` swaps the candidate in
+# in-process (link_swap.swap_build) and reads no builder, so an example
+# without one still times.
 WIDGET_MANIFEST = 'timed_component = "WidgetComponent"\n'
-
-STUB_BUILD_LINK_PY = f"""\
-import argparse
-import pathlib
-import sys
-
-sys.path.insert(0, {str(HERE)!r})
-from sudoku_kit.link_codec import decode_puzzle
-from link_swap import check_and_write, swap_component_code
-from minify import minify_file, minify_js
-
-HERE = pathlib.Path(__file__).parent
-CONSTRAINT_NAME = "Widget Lines"
-
-
-def build(component_path, out_path, board=None):
-    component_path = pathlib.Path(component_path)
-    board_path = pathlib.Path(board) if board else HERE / "PUZZLE_LINK.txt"
-    code = minify_file(component_path)
-    base = decode_puzzle(board_path.read_text().strip())
-    doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
-    return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--component", required=True)
-    p.add_argument("--out", required=True)
-    p.add_argument("--board")
-    a = p.parse_args()
-    build(a.component, a.out, board=a.board)
-"""
 
 
 def _widget_doc(backend_code, component_code):
     """A minimal decode_puzzle()-shaped doc: one constraint ("Widget Lines")
     with a code backend and one component, real enough to round-trip through
-    encode_link/decode_puzzle the way a build_link.py stub needs.
+    encode_link/decode_puzzle and link_swap.swap_build.
 
     It carries a 4x4 board too -- one ring clue, one interior given, one
     entered interior digit -- because the timing driver turns a link into a
@@ -136,9 +100,8 @@ def _make_widget_example(
     example_dir, backend_src, component_src, backend_file="main.js", extra_files=None
 ):
     """A working example_dir for build_candidate_doc: PUZZLE_LINK.txt built
-    from _widget_doc's minified backend/component, a build_link.py stub that
-    swaps only the component (mirrors skyscraper/hit-counts/running-start --
-    never the backend), a WidgetComponent.js source file, and backend_file
+    from _widget_doc's minified backend/component, an example.toml naming
+    WidgetComponent, a WidgetComponent.js source file, and backend_file
     ("main.js" or "main-global.js") holding the backend source. extra_files
     adds further committed files -- the other lane's file, for the
     local/global duality cases. Everything is committed, so a caller's
@@ -146,7 +109,6 @@ def _make_widget_example(
     example_dir.mkdir()
     base_doc = _widget_doc(minify_js(backend_src), minify_js(component_src))
     (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-    (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
     (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
     (example_dir / "WidgetComponent.js").write_text(component_src)
     (example_dir / backend_file).write_text(backend_src)
@@ -173,41 +135,6 @@ def _doc(names):
 
 
 if __name__ == "__main__":
-    # candidate under the 0.9x bar -> PASS
-    row, verdict = build_row(
-        "2026-08-26", "v2026.08.14-d47fc4b", "numbered-rooms", 1000, 800
-    )
-    assert verdict == "PASS"
-    assert row == (
-        "| 2026-08-26 | v2026.08.14-d47fc4b | numbered-rooms | 1000ms | 800ms | 0.80 | PASS |"
-    )
-
-    # candidate at exactly the 0.9x bar -> PASS (bar is <=, not <)
-    row, verdict = build_row(
-        "2026-08-26", "v2026.08.14-d47fc4b", "numbered-rooms", 1000, 900
-    )
-    assert verdict == "PASS"
-    assert "0.90" in row and "PASS" in row
-
-    # candidate over the bar -> FAIL
-    row, verdict = build_row(
-        "2026-08-26", "v2026.08.14-d47fc4b", "numbered-rooms", 1000, 950
-    )
-    assert verdict == "FAIL"
-    assert row == (
-        "| 2026-08-26 | v2026.08.14-d47fc4b | numbered-rooms | 1000ms | 950ms | 0.95 | FAIL |"
-    )
-
-    # byte-equal code -> baseline-only row, no candidate/ratio
-    row, verdict = build_row(
-        "2026-08-26", "v2026.08.14-d47fc4b", "numbered-rooms", 1000
-    )
-    assert verdict == "BASELINE"
-    assert (
-        row
-        == "| 2026-08-26 | v2026.08.14-d47fc4b | numbered-rooms | 1000ms | — | — | BASELINE |"
-    )
-
     # missing PUZZLE_LINK.txt raises naming the file. Exact-message check,
     # not a substring: decode_puzzle() on a missing file also raises
     # FileNotFoundError mentioning the path, so a substring check would still
@@ -215,23 +142,11 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "no-baseline"
         example_dir.mkdir()
-        (example_dir / "build_link.py").write_text("# stub\n")
         try:
             run(example_dir)
             raise AssertionError("expected a missing-PUZZLE_LINK.txt failure")
         except FileNotFoundError as e:
             assert str(e) == f"missing {example_dir / 'PUZZLE_LINK.txt'}"
-
-    # missing build_link.py raises naming the file
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "no-builder"
-        example_dir.mkdir()
-        (example_dir / "PUZZLE_LINK.txt").write_text("stub\n")
-        try:
-            run(example_dir)
-            raise AssertionError("expected a missing-build_link.py failure")
-        except FileNotFoundError as e:
-            assert str(e) == f"missing {example_dir / 'build_link.py'}"
 
     # board= names a different board file; the default PUZZLE_LINK.txt is not
     # consulted -- the missing-file error names the requested board, not the
@@ -239,7 +154,6 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "other-board"
         example_dir.mkdir()
-        (example_dir / "build_link.py").write_text("# stub\n")
         (example_dir / "PUZZLE_LINK.txt").write_text("stub\n")  # present, but unused
         try:
             run(example_dir, board="PUZZLE_LINK_timing.txt")
@@ -361,61 +275,10 @@ if __name__ == "__main__":
         got = find_component_file(example_dir, doc)
         assert got.is_file(), (example_dir.name, got)
 
-    # The two-row ship rule: a change ships when it clears 0.9x on one of the
-    # two rows (cold, after-logical) and does not regress past 1.1x on the
-    # other. Order of the rows does not matter.
-    assert ship_verdict([0.72, 1.05]) == "SHIP"
-    assert ship_verdict([1.05, 0.72]) == "SHIP"
-
-    # both bars are inclusive
-    assert ship_verdict([0.90, 1.10]) == "SHIP"
-
-    # cleared 0.9x on one row but regressed past 1.1x on the other -> no ship
-    assert ship_verdict([0.72, 1.15]) == "NO SHIP"
-
-    # neither row clears 0.9x -> no ship, however flat the other row is
-    assert ship_verdict([0.95, 0.95]) == "NO SHIP"
-
-    # a row where BOTH sides read 0ms places no constraint: the app's logical
-    # pass finished the board, so nothing was timed. The other row decides.
-    assert ship_verdict([0.72, None]) == "SHIP"
-    assert ship_verdict([0.95, None]) == "NO SHIP"
-    assert ship_verdict([None, None]) == "NO TIME"
-
-    # a 0ms baseline the candidate does NOT match is the regression this row
-    # exists to catch -- five of six ISOFILL fixtures sit at 0ms after-logical,
-    # so 0ms -> slow is the common way to break one. It must never ship, however
-    # well the other row reads.
-    assert ship_verdict([0.72, float("inf")]) == "NO SHIP"
-
-    # a 0ms baseline has no ratio. Report it, never divide by zero.
-    row, verdict = build_row(
-        "2026-08-26", "v2026.08.14-d47fc4b", "isofill after-logical", 0, 0
-    )
-    assert verdict == "NO TIME"
-    assert row == (
-        "| 2026-08-26 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |"
-    )
-
-    # 0ms baseline, candidate slower: a FAIL row with an infinite ratio, not a
-    # NO TIME row that quietly excuses it
-    row, verdict = build_row(
-        "2026-08-26", "v2026.08.14-d47fc4b", "isofill after-logical", 0, 5000
-    )
-    assert verdict == "FAIL"
-    assert row == (
-        "| 2026-08-26 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 5000ms | ∞ | FAIL |"
-    )
-
-    # the ratio the driver hands ship_verdict for each of those two cases
-    assert row_ratio(0, 0) is None
-    assert row_ratio(0, 5000) == float("inf")
-    assert row_ratio(1000, 800) == 0.8
-
     # build_candidate_doc's byte-equal decision must cover the
-    # constraint's backend, not only registered component code --
-    # build_link.py stubs here mirror skyscraper/hit-counts/running-start,
-    # which never touch the backend on a --component swap. Assertions read
+    # constraint's backend, not only registered component code: a --component
+    # swap alone (skyscraper/hit-counts/running-start's build_link.py) never
+    # touches the backend, so the working-tree one is overlaid. Assertions read
     # the written candidate_link, the file `just time` actually probes and
     # times, not a value the function merely returns internally.
 
@@ -533,7 +396,6 @@ if __name__ == "__main__":
             minify_js("function update(){return 1}\n"),
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         (example_dir / "main.js").write_text("console.log('does not match')\n")
@@ -557,7 +419,6 @@ if __name__ == "__main__":
             minify_js("function update(){return 1}\n"),
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         (example_dir / "main.js").write_text("console.log('does not match')\n")
@@ -586,7 +447,6 @@ if __name__ == "__main__":
             minify_js("function update(){return 1}\n"),
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         _git_commit_all(example_dir)
@@ -642,143 +502,48 @@ if __name__ == "__main__":
         except ValueError as e:
             assert "house-gac.js" in str(e), str(e)
 
-    # all reps timed out: the failure names the fixed 300s per-rep timeout
-    # and the rep counts
-    stdout = (
-        "some app-solve.mjs log lines\n"
-        'JSON: {"median": null, "version": "v2026.08.14-d47fc4b", '
-        '"repsRun": 3, "repsTimedOut": 3}\n'
-    )
-    try:
-        parse_app_solve_output("PUZZLE_LINK_local.txt", stdout)
-        raise AssertionError("expected an all-reps-timed-out failure")
-    except RuntimeError as e:
-        assert str(e) == (
-            "app-solve.mjs: PUZZLE_LINK_local.txt: all 3 reps hit the 300s "
-            "per-rep timeout (3 timed out)"
+    # resolve_backend_file's three non-file answers. A constraint with no code
+    # backend has nothing to resolve: None. A backend with no main.js,
+    # main-global.js or _shared/house-gac.js on disk: None. Two files that both
+    # minify to the committed backend are ambiguous and raise, naming both --
+    # a silent guess would time the wrong backend variant.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        no_backend_dir = root / "no-backend"
+        no_backend_dir.mkdir()
+        (no_backend_dir / "main.js").write_text("console.log('x')\n")
+        no_backend_doc = _widget_doc("unused", minify_js("function update(){}\n"))
+        del no_backend_doc["puzzle"]["constraints"][0]["definition"]["backend"]
+        assert (
+            resolve_backend_file(no_backend_dir, no_backend_doc, "Widget Lines") is None
+        ), "a constraint with no code backend must resolve to None"
+
+        no_file_dir = root / "no-file"
+        no_file_dir.mkdir()
+        shipped = _widget_doc(
+            minify_js("console.log('shipped')\n"), minify_js("function update(){}\n")
+        )
+        assert resolve_backend_file(no_file_dir, shipped, "Widget Lines") is None, (
+            "a backend with no candidate file on disk must resolve to None"
         )
 
-    # mixed outcome (median present) still returns the data
-    stdout = (
-        'JSON: {"median": 220, "version": "v2026.08.14-d47fc4b", '
-        '"repsRun": 3, "repsTimedOut": 1}\n'
-    )
-    data = parse_app_solve_output("PUZZLE_LINK.txt", stdout)
-    assert data["median"] == 220
-    assert data["repsTimedOut"] == 1
-
-    # no JSON line at all -- loud failure
-    try:
-        parse_app_solve_output("PUZZLE_LINK.txt", "no json here\n")
-        raise AssertionError("expected a no-JSON-line failure")
-    except RuntimeError as e:
-        assert "printed no JSON line" in str(e)
-
-    # unreadable app version -- loud failure
-    stdout = 'JSON: {"median": 100, "version": null, "repsRun": 3, "repsTimedOut": 0}\n'
-    try:
-        parse_app_solve_output("PUZZLE_LINK.txt", stdout)
-        raise AssertionError("expected a could-not-read-version failure")
-    except RuntimeError as e:
-        assert "could not read the app version" in str(e)
-
-    # app_solve: the one adapter that builds app-solve.mjs's argv
-    real_run = time_example.subprocess.run
-    seen = []
-
-    def fake_run(cmd, **kwargs):
-        seen.append(list(cmd))
-        code = 1 if "fail.txt" in cmd[2] else 0
-        return subprocess.CompletedProcess(cmd, code, "OUT\n", "ERR\n")
-
-    time_example.subprocess.run = fake_run
-    try:
-        # A successful run forwards the driver's stderr (its busy-machine
-        # warning, #387) instead of swallowing it.
-        err = io.StringIO()
-        with contextlib.redirect_stderr(err):
-            assert app_solve("board.txt", 3) == "OUT\n"
-        assert err.getvalue() == "ERR\n", err.getvalue()
-        assert app_solve("board.txt", 1, ring_clues=True, after_logical=True) == "OUT\n"
+        twin_dir = root / "twin-lanes"
+        twin_dir.mkdir()
+        (twin_dir / "main.js").write_text("console.log('shipped')\n")
+        (twin_dir / "main-global.js").write_text("console.log('shipped')\n")
+        _git_commit_all(twin_dir)
         try:
-            app_solve("fail.txt", 1)
-            raise AssertionError("a failed driver run must raise")
-        except RuntimeError as e:
-            assert "app-solve.mjs failed on fail.txt" in str(e) and "ERR" in str(e), e
-    finally:
-        time_example.subprocess.run = real_run
-    node = ["node", str(time_example.APP_SOLVE)]
-    assert seen[0] == [*node, "board.txt", "3"]
-    assert seen[1] == [*node, "board.txt", "1", "--ring-clues", "--after-logical"]
-
-    # Machine load (#387): the driver's busy verdict survives combine_reps and
-    # reaches the pasted row's verdict cell; the verdict word itself is unchanged.
-    def rep(median, loads, busy):
-        return {
-            "median": median,
-            "version": "v1",
-            "loads": loads,
-            "busy": busy,
-            "loadThreshold": 16,
-        }
-
-    quiet = time_example.combine_reps(
-        "b.txt", [rep(100, [{"before": 1.0, "after": 2.0}], False)]
-    )
-    hot = time_example.combine_reps(
-        "b.txt",
-        [
-            rep(100, [{"before": 1.0, "after": 2.0}], False),
-            rep(100, [{"before": 27.7, "after": 3.0}], True),
-        ],
-    )
-    assert quiet["busy"] is False and hot["busy"] is True
-    assert hot["maxLoad"] == 27.7 and hot["loadThreshold"] == 16
-    assert time_example.busy_note(quiet, quiet) == ""
-    assert time_example.busy_note(quiet, hot) == " (BUSY load 27.7 > 16)"
-    row, verdict = time_example.build_row("2026-10-13", "v1", "b", 100, 80)
-    flagged = time_example._flag_busy(row, verdict, time_example.busy_note(hot))
-    assert flagged.endswith("| PASS (BUSY load 27.7 > 16) |"), flagged
-    assert time_example._flag_busy(row, verdict, "") == row
-    # A driver without load fields (an older JSON line) is not busy.
-    assert (
-        time_example.combine_reps("b.txt", [{"median": 5, "version": "v1"}])["busy"]
-        is False
-    )
+            resolve_backend_file(twin_dir, shipped, "Widget Lines")
+            raise AssertionError("expected a more-than-one-match failure")
+        except ValueError as e:
+            assert "more than one backend file matches" in str(e), str(e)
+            assert "main.js, main-global.js" in str(e), str(e)
 
     # run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the
     # driver arguments run() derives (which link, ring-clues, after-logical)
     # as well as on the rows it builds from the medians it gets back.
-    @contextlib.contextmanager
-    def fake_solve(by_link):
-        """Replace the app_solve adapter with a stub printing, per link name,
-        that link's next value from `by_link` ({name: [per-rep medians, in
-        call order]}) as the driver's JSON line. One call is one rep. Yields
-        the list of (link_name, ring_clues, after_logical) calls."""
-        calls = []
-        real = time_example.app_solve
-        pending = {name: list(v) for name, v in by_link.items()}
-
-        def stub(link_path, reps, ring_clues=False, after_logical=False):
-            assert reps == 1, "interleaving means one rep per driver call"
-            name = pathlib.Path(link_path).name
-            calls.append((name, ring_clues, after_logical))
-            data = {
-                "median": pending[name].pop(0),
-                "version": "v2026.08.14-d47fc4b",
-                "repsRun": reps,
-                "repsTimedOut": 0,
-            }
-            return f"JSON: {json.dumps(data)}\n"
-
-        time_example.app_solve = stub
-        try:
-            yield calls
-        finally:
-            time_example.app_solve = real
-
-    R = time_example.REPS
+    R = app_timing.REPS
     B, C = "baseline_probe.txt", "candidate_probe.txt"
 
     def interleaved(after_logical):
@@ -830,15 +595,39 @@ if __name__ == "__main__":
         assert [r[1] for r in rows] == ["FAIL", "FAIL"]
         assert ship == "NO SHIP"
 
+    # Machine load (#387) reaches run()'s rows: one busy rep of the cold
+    # candidate flags the cold row's verdict cell, the verdict word unchanged,
+    # and the after-logical row, whose reps were all quiet, stays unflagged.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "busy"
+        _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
+        hot = {
+            "loads": [{"before": 27.7, "after": 3.0}],
+            "busy": True,
+            "loadThreshold": 16,
+        }
+        with fake_solve(
+            {
+                B: [1000] * R + [800] * R,
+                C: [500, (500, hot), 500] + [400] * R,
+            }
+        ):
+            rows, ship = run(example_dir)
+        assert rows[0][1] == "PASS"
+        assert rows[0][0].endswith("| PASS (BUSY load 27.7 > 16) |"), rows[0][0]
+        assert rows[1][0].endswith("| PASS |"), rows[1][0]
+
     # a houses-only example has no component to swap: its rows are the
     # baseline alone, built from its committed link, with no candidate and no
-    # ship verdict -- and no build_link.py run
+    # ship verdict
     def houses_example(tmp, main_js="console.log('houses')\n"):
         example_dir = pathlib.Path(tmp) / "houses"
         example_dir.mkdir()
         base_doc = _widget_doc(minify_js(main_js), "")
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text("raise SystemExit('must not run')\n")
         (example_dir / "example.toml").write_text("houses_only = true\n")
         (example_dir / "main.js").write_text("console.log('houses')\n")
         return example_dir
@@ -903,7 +692,6 @@ if __name__ == "__main__":
             minify_file(example_dir / "main.js"), minify_js(component_src)
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text(component_src)
         _git_commit_all(example_dir)
@@ -955,34 +743,3 @@ if __name__ == "__main__":
         ):
             rows, _ship = run(example_dir)
         assert "| 1000ms | 500ms | 0.50 |" in rows[0][0], rows[0][0]
-
-    # one timed-out rep is left out of its link's median; a link whose reps all
-    # timed out raises, naming the link
-    with fake_solve({B: [1000, None, 3000], C: [500, 600, 700]}):
-        base, cand = time_example.run_app_solve(B, C)
-    assert (base["median"], cand["median"]) == (3000, 600)
-    with fake_solve({B: [1000, 1000, 1000], C: [None] * R}):
-        try:
-            time_example.run_app_solve(B, C)
-        except RuntimeError as e:
-            assert str(e) == (
-                f"app-solve.mjs: {C}: all {R} reps hit the 300s per-rep timeout "
-                f"({R} timed out)"
-            ), e
-        else:
-            raise AssertionError("an all-timeout link must raise")
-
-    # an unreadable app version on any rep that finished fails the link, not
-    # only on the first one
-    ok = {"median": 100, "version": "v1", "repsRun": 1, "repsTimedOut": 0}
-    no_version = {**ok, "median": 200, "version": None}
-    for reps in ([ok, no_version, ok], [no_version, ok]):
-        try:
-            time_example.combine_reps(B, reps)
-        except RuntimeError as e:
-            assert "could not read the app version" in str(e) and B in str(e), e
-        else:
-            raise AssertionError("a finished rep with no version must raise")
-    assert time_example.combine_reps(B, [ok, ok, ok])["version"] == "v1"
-
-    print("ok")

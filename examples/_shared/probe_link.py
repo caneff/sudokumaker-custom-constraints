@@ -10,13 +10,13 @@
 # To compare two code variants, empty each half of a same-board pair -- the
 # "ours" link and the "original" link an example's build_original.py writes.
 #
-#   uv run --with lzstring examples/_shared/probe_link.py empty a.txt a_probe.txt
+#   uv run examples/_shared/probe_link.py empty a.txt a_probe.txt
 #
 # The interior is the grid minus its outer ring (row/col 0 and W-1). The ring
 # holds the outside clues (Numbered Rooms, Skyscraper), so it stays; only inner
 # non-given cells lose their stored value.
 #
-#   uv run --with lzstring examples/_shared/probe_link.py strip a.txt a_probe.txt
+#   uv run examples/_shared/probe_link.py strip a.txt a_probe.txt
 #
 # `strip` is the stricter mode: keep only given cells, drop every value and
 # pencil mark from the rest. Use it for any puzzle whose clues are all givens

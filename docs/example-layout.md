@@ -136,8 +136,8 @@ each carries, is `docs/share-checklist.md` § 4.
 `PUZZLE_LINK.txt` is the **shipped link** — the one a reader opens. Any other
 `PUZZLE_LINK_*.txt` is a **variant link**.
 
-`check_layout.py` decodes every `PUZZLE_LINK*.txt` too (`uv run --with
-lzstring`, for the `lzstring` codec dependency) and gates the two mechanical
+`check_layout.py` decodes every `PUZZLE_LINK*.txt` too (`uv run`; the codec is `sudoku_kit.link_codec`) and
+gates the two mechanical
 pre-share criteria: the link opens clean (no entered values on non-given
 cells — except a `_clued` link, which fills the outside-clue ring on
 purpose) and the comment starts with "Normal sudoku rules apply on the

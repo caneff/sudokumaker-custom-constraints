@@ -33,7 +33,7 @@
 # criteria bind all of them -- a link is a link, and any of these can be handed
 # to a person (a board has been picked out of exactly such a batch).
 #
-#   uv run --with lzstring examples/_shared/check_layout.py [root]
+#   uv run examples/_shared/check_layout.py [root]
 
 import ast
 import io

@@ -1,8 +1,8 @@
 # Prove a board has exactly one solution, with OR-Tools CP-SAT. Defaults to
 # the shipped board; name a link file to check a variant.
 #
-#   uv run --with lzstring --with ortools examples/outside-sudoku/verify.py
-#   uv run --with lzstring --with ortools examples/outside-sudoku/verify.py \
+#   uv run examples/outside-sudoku/verify.py
+#   uv run examples/outside-sudoku/verify.py \
 #       examples/outside-sudoku/PUZZLE_LINK_6x6.txt
 #
 # Givens, shown clues, drawn groups and box regions all come off the link

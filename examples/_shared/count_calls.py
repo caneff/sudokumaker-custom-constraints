@@ -3,20 +3,20 @@
 # optimisation: is this component's update hot at all? (The skyscraper line
 # component took 57,000 calls, so 0.1 ms per call is the lever.)
 #
-#   uv run --with lzstring examples/_shared/count_calls.py skyscraper \
+#   uv run examples/_shared/count_calls.py skyscraper \
 #       examples/skyscraper/SkyscraperPairComponent.js [--ring-clues]
-#   uv run --with lzstring examples/_shared/count_calls.py isofill \
+#   uv run examples/_shared/count_calls.py isofill \
 #       /tmp/probe/IsofillComponent.js --board PUZZLE_LINK_28g.txt
 #
 # Makes a probe copy of the component whose `update` logs
 # `[probe] calls=N` every 500 calls, builds the example's same-board link from
-# it (build_link.py --component), empties the link so the solver searches, and
+# it (link_swap.swap_build), empties the link so the solver searches, and
 # runs app-solve.mjs once; the driver relays the `[probe]` lines. Prints the
 # final count and the app's time. See docs/real-app-timing.md.
 #
 # The two pure halves -- `probe_source` (splice the counter in) and
 # `summarize` (the report line) -- are tested directly in count_calls.test.py.
-# `main` is tested there too, with `build_candidate`, `empty_link_file` and
+# `main` is tested there too, with `swap_build`, `empty_link_file` and
 # the `app_solve` adapter stubbed: what it orchestrates is a real Chromium
 # against the live sudokumaker.app, so a run with the real three stays manual.
 
@@ -26,7 +26,10 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from time_example import app_solve, build_candidate, empty_link_file
+from app_timing import app_solve
+from link_swap import swap_build
+from probe_link import empty_link_file
+from time_example import board_link
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
 HOOK = "function * update (instance, puzzle) {"
@@ -78,7 +81,7 @@ def main(example, component, ring_clues, board=None):
         sys.exit(f"{component}: {e}")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        # build_link.py swaps by file stem, and the probe sits in an example
+        # swap_build swaps by file stem, and the probe sits in an example
         # directory beside a `_shared`, where a `// #include
         # ../_shared/...` in the component still resolves
         (tmp / "_shared").symlink_to(EXAMPLES / "_shared")
@@ -86,7 +89,7 @@ def main(example, component, ring_clues, board=None):
         probe = tmp / "probe" / component.name
         probe.write_text(hooked)
         link = tmp / "probe.txt"
-        build_candidate(EXAMPLES / example, probe, link, board=board)
+        swap_build(board_link(EXAMPLES / example, board), probe, link)
         emptied = tmp / "probe_empty.txt"
         empty_link_file(link, emptied, "empty" if ring_clues else "strip")
         try:
