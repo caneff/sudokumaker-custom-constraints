@@ -6,6 +6,9 @@ import pathlib
 
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
+# The document format the app reads; every builder's document opens with it.
+FORMAT_VERSION = "1.6.0"
+
 # The input a constraint declares when its board ships drawn groups: main.js
 # reads them as `input.groups` (docs/example-layout.md).
 GROUPS_INPUT = {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
@@ -66,12 +69,35 @@ def registering_constraint_name(doc, component_name):
     raise ValueError(f"no constraint registers a component named {component_name!r}")
 
 
-def write_link(doc, out_path):
-    """Encode `doc`, assert the link decodes back to it, and write it.
+def puzzle_doc(puzzle, *, sudokupad_export=False):
+    """The document around `puzzle`: the format version, then the puzzle as
+    given. Key order is the encoded bytes, so the puzzle's keys keep the order
+    the caller wrote them in. `sudokupad_export` appends the export block that
+    makes the app treat an incomplete grid as the solution, as the puzzle's
+    last key."""
+    if sudokupad_export:
+        puzzle = {
+            **puzzle,
+            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
+        }
+    return {"formatVersion": FORMAT_VERSION, "puzzle": puzzle}
+
+
+def assert_round_trips(link, doc):
+    """Assert `link` decodes back to `doc` and return the decoded document.
 
     The encoder is lossy on a document it cannot represent, and a link that
     does not round-trip is a board nobody can rebuild from what is on disk."""
+    back = decode_puzzle(link)
+    assert back == doc, (
+        "link does not round-trip: it does not decode back to the built document"
+    )
+    return back
+
+
+def write_link(doc, out_path):
+    """Encode `doc`, assert the link decodes back to it, and write it."""
     link = encode_link(doc)
-    assert decode_puzzle(link) == doc, "link does not round-trip"
+    assert_round_trips(link, doc)
     pathlib.Path(out_path).write_text(link + "\n")
     return link

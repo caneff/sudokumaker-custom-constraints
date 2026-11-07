@@ -37,8 +37,8 @@ from framebuild import (
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
-from sm_document import find_constraint
-from sudoku_kit.link_codec import decode_puzzle, encode_link
+from sm_document import assert_round_trips, find_constraint
+from sudoku_kit.link_codec import encode_link
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -89,8 +89,7 @@ def build_from_template():
 
 
 def check(link, doc):
-    back = decode_puzzle(link)
-    assert back == doc, "link does not decode back to the built document"
+    assert_round_trips(link, doc)
     rs = find_constraint(doc, CONSTRAINT_NAME)
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
