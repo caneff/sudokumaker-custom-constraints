@@ -95,7 +95,7 @@ for (const D of SIZES) {
     const accepted = mod.validate(inst, makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) }))
     const p = makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) })
     fixpoint(mod, inst, p)
-    const killed = p._stopped !== null || [...p._cand.values()].some(s => s.size === 0)
+    const killed = p.isDead()
     const holds = upToN(digits, target) === clue
     runs++
     if (accepted !== holds || killed === holds) {
@@ -113,7 +113,7 @@ console.log('update/validate agreement on filled lines:', runs, 'lines,', disagr
   const p = makePuzzle({ 0: 1, 1: 2, 2: 3, 3: 4 }, (c, v) => [v], { houses: [[0, 1, 2, 3]] })
   fixpoint(mod, inst, p)
   // cell 3 is R1C4 on the mock's 9-wide naming; the lowest cell id, 0, is R1C1.
-  assert.match(String(p._stopped), /R1C4/, 'the stop names the marker, not the lowest cell id')
+  assert.match(String(p.stopMessage()), /R1C4/, 'the stop names the marker, not the lowest cell id')
 }
 
 console.log('UpToNComponent:', bad, 'violations')

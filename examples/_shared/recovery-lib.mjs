@@ -8,10 +8,10 @@
 // The candidate state is a REASSIGNABLE map (state.cand), not a fixed one —
 // the DFS search clones it before a guess and restores it on backtrack. This
 // is a different map from the fixed one makePuzzle holds, so the two mocks
-// differ in who owns the map; the puzzle API over it is harness-lib's
-// makePuzzleApi either way.
+// differ in who owns the map; the puzzle API and its outcome (isDead,
+// stopMessage, reset, total) are harness-lib's makeMockCore either way.
 
-import { makeIo, makePuzzleApi } from './harness-lib.mjs'
+import { makeIo, makeMockCore } from './harness-lib.mjs'
 import { mockBoard, runBackend } from './backend-runner.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
@@ -28,14 +28,8 @@ import { mockBoard, runBackend } from './backend-runner.mjs'
 export function makeCandidateState ({ houses = [] } = {}) {
   const state = {
     cand: new Map(),
-    stopped: false, // a component declared the branch dead via puzzle.stop()
-    total () { let s = 0; for (const set of state.cand.values()) s += set.size; return s },
-    anyEmpty () { for (const set of state.cand.values()) if (set.size === 0) return true; return false },
     clone () { const m = new Map(); for (const [k, v] of state.cand) m.set(k, new Set(v)); return m },
-    puzzle: {
-      ...makePuzzleApi(c => state.cand.get(c), { houses }),
-      stop: (message = '', cells = []) => { state.stopped = true; return { message, cells } }
-    }
+    puzzle: makeMockCore(() => state.cand, { houses })
   }
   return state
 }
@@ -128,12 +122,12 @@ const MAX_PASSES = 500
 export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null } = {}) {
   if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle))
   for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const before = state.total()
+    const before = state.puzzle.total()
     for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle))
-    if (state.stopped) return pass + 1 // the branch is dead; no point propagating on
+    if (state.puzzle.stopMessage() !== null) return pass + 1 // the branch is dead; no point propagating on
     for (const g of alldiffGroups) floorGroup(g)
     if (extra) extra()
-    if (state.total() === before) return pass + 1
+    if (state.puzzle.total() === before) return pass + 1
   }
   return -1
 }
@@ -143,7 +137,7 @@ export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init =
 // leaves an infeasible group untouched rather than emptying a cell, so a
 // caller doing search must test matchability itself.
 export function dead (state, alldiffGroups) {
-  if (state.stopped || state.anyEmpty()) return true
+  if (state.puzzle.isDead()) return true
   for (const g of alldiffGroups) if (maxMatch(g, c => state.cand.get(c)) !== g.length) return true
   return false
 }
@@ -175,7 +169,7 @@ export function search (state, { interior, comps, alldiffGroups, floorGroup, ext
       runToFixpoint(state, comps, alldiffGroups, floorGroup, { init: false, extra })
       if (!dead(state, alldiffGroups)) dfs()
       state.cand = saved
-      state.stopped = false
+      state.puzzle.reset()
       if (capped) return
     }
   }

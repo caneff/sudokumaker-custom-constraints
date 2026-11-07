@@ -107,3 +107,25 @@ console.log('recovery-lib.test.mjs: all seams pass')
   state.cand.set(0, new Set([1, 3, 9]))
   assert.strictEqual(state.puzzle.getCandidatesBitMask(0), (1 << 1) | (1 << 3) | (1 << 9))
 }
+
+// the candidate state keeps the stop's message, reads its map live, and a
+// search clears the stop on backtrack
+{
+  const state = makeCandidateState()
+  state.cand.set(0, new Set([1, 2]))
+  assert.strictEqual(state.puzzle.isDead(), false)
+  state.puzzle.stop('no room')
+  assert.strictEqual(state.puzzle.stopMessage(), 'no room')
+  assert.strictEqual(state.puzzle.isDead(), true)
+  state.puzzle.reset()
+  state.cand = new Map([[0, new Set()]])
+  assert.strictEqual(state.puzzle.total(), 0, 'a reassigned map is read live')
+  assert.strictEqual(state.puzzle.isDead(), true, 'an emptied cell in the reassigned map is dead')
+  // A component that stops on every branch: the search must clear the stop it
+  // backtracks over, or the second value of the guess is read dead too.
+  const s = makeCandidateState()
+  s.cand.set(0, new Set([1, 2]))
+  const stopsOnOne = { __mod: { * update (inst, p) { if (p.getValue(0) === 1) yield p.stop('one') } } }
+  const r = search(s, { interior: [0], comps: [stopsOnOne], alldiffGroups: [], floorGroup: () => {}, validLeaf: () => true })
+  assert.strictEqual(r.solutions, 1, 'the branch after a stopped one still counts')
+}
