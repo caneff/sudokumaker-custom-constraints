@@ -22,14 +22,14 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
   - `caneff/grid-hunts`: whether a fresh clone passes its own gate after
     `uv sync` with no `~/src` sibling checkout. Step 3 proves the files left
     this repo, not that they work there.
-  - `caneff/sudoku-kit`'s own gate. Steps 1 and 2 use the library at the
-    pinned tag; its five statuses and its refusal cases are tested there.
+  - `caneff/sudoku-kit`'s own gate. Steps 1 and 2 use the library as
+    locked in uv.lock; its five statuses and its refusal cases are tested there.
   - the state outside any tree: which repo each issue sits in, the load rule
     in the global instructions, and gridfind archived. Each is read back with
     `gh` and `rg` and cited on the spec.
 
-Left to their own suites, not driven here: the pin and the no-local-copy
-checks (sudoku_kit_source.test.py), the gate wiring (gate.test.py) and the
+Left to their own suites, not driven here: the no-local-copy checks
+(sudoku_kit_source.test.py), the gate wiring (gate.test.py) and the
 recipe closure (recipe_discovery.test.py).
 
     uv run examples/_shared/spec_748_closing.test.py

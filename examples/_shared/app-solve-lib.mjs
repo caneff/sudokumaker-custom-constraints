@@ -11,8 +11,7 @@ import os from 'node:os'
 // verdict, though a "took" the app printed before stopping still names the
 // first-solve time.
 
-// The driver's command line:
-// `<link_file> [reps] [icon_name] [--ring-clues] [--after-logical]`.
+// The driver's command line is the USAGE string below.
 //
 // --ring-clues allows entered values, for edge-clue puzzles whose clues are
 // stored as non-given values in the outer ring; without it a link that is

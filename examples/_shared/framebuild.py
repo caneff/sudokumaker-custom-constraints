@@ -338,9 +338,9 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     with its own line geometry can reuse it. `limit` is the seconds each of
     the two solves may spend.
     """
-    # Imported here, not at module scope: the search is the only part of this
-    # file that needs a solver, so document assembly (build_doc, check,
-    # load_board) and a caller's Spec stay importable without one.
+    # Imported here, not at module scope: `cpsat` imports ortools, which only
+    # the search needs, so document assembly (build_doc, check, load_board)
+    # does not pay for the import.
     from sudoku_kit import cpsat
 
     n, bh, bw = board.n, board.bh, board.bw

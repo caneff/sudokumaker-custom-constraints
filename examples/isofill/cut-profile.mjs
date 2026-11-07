@@ -18,7 +18,8 @@ const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const ALL = Array.from({ length: N }, (_, d) => d)
 // The cut loop's two ends, matched in the component's source; if either
-// moves, `instrument` throws rather than time the wrong span.
+// is missing, `instrument` throws; if one moves, it times the wrong span
+// silently.
 const CUT_START = '  const depth = size - placed.length\n'
 const CUT_END = '  if (held.length) yield puzzle.removeCandidatesFromCells(others, held)\n'
 
