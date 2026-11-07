@@ -148,7 +148,7 @@ refuses([
     puzzle,
     helpers,
     input: { groups: [{ cells: [id(0, 0), id(0, 1)], value: '3' }, { cells: [id(1, 1)], value: '3' }] }
-  }))
+  }), /must be exactly two cells/)
   assert.deepStrictEqual(puzzle.registered, [])
 }
 
