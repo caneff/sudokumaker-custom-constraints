@@ -53,15 +53,15 @@ function builtinUpdate (values, cells, p) {
 
 function hasSdr (values, cells, candOf) {
   const matchOf = new Map()
-  const seenStamp = new Map()
-  let stamp = 0
+  const visitOf = new Map()
+  let visit = 0
   const tryAssign = (valueIndex) => {
-    stamp++
+    visit++
     const walk = (vi) => {
       for (const cell of cells) {
         if (!candOf(cell).has(values[vi])) continue
-        if (seenStamp.get(cell) === stamp) continue
-        seenStamp.set(cell, stamp)
+        if (visitOf.get(cell) === visit) continue
+        visitOf.set(cell, visit)
         if (!matchOf.has(cell) || walk(matchOf.get(cell))) {
           matchOf.set(cell, vi)
           return true
