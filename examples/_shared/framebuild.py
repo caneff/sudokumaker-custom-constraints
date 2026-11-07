@@ -177,6 +177,36 @@ LOCAL_RULES_SUFFIX = (
 
 
 @dataclass(frozen=True)
+class Geometry:
+    """The interior a search carves: `n` wide, `height` tall, `digits` digits,
+    and its `(box_height, box_width)`. A rectangle carries `box=None`: nothing
+    reads a rectangle's box, so none is named. Build one with `square` or
+    `rect`, which resolve the square defaults once."""
+
+    n: int
+    height: int
+    digits: int
+    box: tuple | None
+
+    @classmethod
+    def square(cls, n, bh, bw):
+        return cls(n, n, n, (bh, bw))
+
+    @classmethod
+    def rect(cls, n, height, digits):
+        return cls(n, height, digits, None)
+
+    @property
+    def shape(self):
+        """The keywords a rectangular board hands its interior hooks:
+        `height` and `digits`, or none when both equal `n`, so a hook for a
+        square interior takes no keyword it does not know."""
+        if self.box is not None:
+            return {}
+        return {"height": self.height, "digits": self.digits}
+
+
+@dataclass(frozen=True)
 class Board:
     """One carved puzzle: the grid, the geometry its clues read, and what the
     link shows of them.
@@ -212,18 +242,23 @@ class Board:
     seed: int | None = None
 
     @property
-    def shape(self):
-        """The keywords a rectangular board hands its interior hooks:
-        `height` and `digits`, or none when both equal `n`, so a hook for a
-        square interior takes no keyword it does not know."""
+    def geo(self):
+        """This board's `Geometry`. A rectangle's recorded (bh, bw) is only the
+        gen JSON's stand-in, so `geo.box` is None for it."""
         if self.height == self.n and self.digits == self.n:
-            return {}
-        return {"height": self.height, "digits": self.digits}
+            return Geometry.square(self.n, self.bh, self.bw)
+        return Geometry.rect(self.n, self.height, self.digits)
+
+    @property
+    def shape(self):
+        """The keyword dict the interior hooks receive (see `Geometry.shape`)."""
+        return self.geo.shape
 
     @property
     def box(self):
-        """The (box_height, box_width) pair a clue rule sizes itself from."""
-        return (self.bh, self.bw)
+        """The (box_height, box_width) pair a clue rule sizes itself from;
+        None for a rectangle."""
+        return self.geo.box
 
 
 def _ring_key(name):
@@ -348,13 +383,13 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     # does not pay for the import.
     from sudoku_kit import cpsat
 
-    n, bh, bw = board.n, board.bh, board.bw
+    geo = board.geo
     if model_fn:
-        m, x = model_fn(n, (bh, bw), **board.shape)
+        m, x = model_fn(geo.n, geo.box, **geo.shape)
     else:
-        if board.shape:
+        if geo.shape:
             raise ValueError("a rectangular board needs the Spec's own model_fn")
-        m, x = cpsat.sudoku_model(n, cpsat.boxes(n, bh, bw))
+        m, x = cpsat.sudoku_model(geo.n, cpsat.boxes(geo.n, *geo.box))
     for (r, c), v in board.givens.items():
         m.Add(x[r, c] == v)
     # sorted: `active` is a set, whose iteration order is randomized per
@@ -372,7 +407,7 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     return unique if first is not None else None
 
 
-def generate(spec, n, bh, bw, seeds, paths=False, shape=None):
+def generate(spec, geo, seeds, paths=False):
     """Search `seeds` for the leanest board and return the chosen `Board`.
 
     `paths` builds the local board: bent paths in place of the straight frame
@@ -385,26 +420,20 @@ def generate(spec, n, bh, bw, seeds, paths=False, shape=None):
     `ring_only_search` on them first and falls back to the interior-given
     carve over the same layouts only when it finds nothing.
 
-    `shape` is a rectangular board's {"height", "digits"}; None is the square
-    board with n digits. A rectangle needs an interior hook that takes both
+    `geo` is the board's `Geometry`. A rectangle needs an interior hook that takes both
     (`Spec.grid_fn` and `Spec.model_fn`), and draws straight lines only.
     """
-    shape = shape or {}
-    if shape and (paths or not (spec.grid_fn and spec.model_fn)):
+    if geo.shape and (paths or not (spec.grid_fn and spec.model_fn)):
         raise ValueError(
             "a rectangular board needs the Spec's own grid_fn and model_fn and "
             "the straight frame lines"
         )
     if spec.ring_only and paths:
         raise ValueError("a ring-only search reads the straight frame lines only")
-    layouts = _layouts(spec, n, bh, bw, seeds, shape) if spec.ring_only else None
-    board = (
-        ring_only_search(spec, n, bh, bw, layouts, shape) if spec.ring_only else None
-    )
+    layouts = _layouts(spec, geo, seeds) if spec.ring_only else None
+    board = ring_only_search(spec, geo, layouts) if spec.ring_only else None
     if board is None:
-        board = hide_clues(
-            spec, _fewest_givens(spec, n, bh, bw, seeds, paths, layouts, shape)
-        )
+        board = hide_clues(spec, _fewest_givens(spec, geo, seeds, paths, layouts))
     assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True, (
         f"seed {board.seed}: the carved board is not proved unique under the "
         f"{SOLVE_LIMIT} s limit"
@@ -432,35 +461,37 @@ def _carve_proof(spec, board, limit=None):
     return unique(spec.cp_sat_clue_fn, board, spec.model_fn, limit)
 
 
-def _full_ring(spec, grid, lines, n, bh, bw, seed, shape):
+def _full_ring(spec, grid, lines, geo, seed):
     """`grid` as a board with no givens and every line's clue shown."""
-    box = (bh, bw)
+    # A rectangle names no box; the gen JSON still records one, so one row of
+    # boxes stands in.
+    bh, bw = geo.box or (1, geo.n)
     return Board(
-        n=n,
+        n=geo.n,
         bh=bh,
         bw=bw,
         grid=grid,
         clue={
-            k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, box)
+            k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, geo.box)
             for k, cells in lines.items()
         },
         givens={},
         active=set(lines),
         lines=lines,
-        height=shape.get("height", n),
-        digits=shape.get("digits", n),
+        height=geo.height,
+        digits=geo.digits,
         seed=seed,
     )
 
 
-def _layouts(spec, n, bh, bw, seeds, shape):
+def _layouts(spec, geo, seeds):
     """{seed: grid} for each seed's layout, a layout an earlier seed drew
     left out. Drawn once, because a sampler need not redraw a seed's grid
     the same way twice: the search and its fallback carve these grids."""
     out = {}
     seen = set()
     for seed in seeds:
-        grid = (spec.grid_fn or make_grid)(random.Random(seed), n, bh, bw, **shape)
+        grid = _draw_grid(spec, random.Random(seed), geo)
         layout = tuple(map(tuple, grid))
         if layout in seen:
             print(f"  seed {seed}: skipped, an earlier seed drew this layout")
@@ -470,14 +501,14 @@ def _layouts(spec, n, bh, bw, seeds, shape):
     return out
 
 
-def ring_only_search(spec, n, bh, bw, layouts, shape):
+def ring_only_search(spec, geo, layouts):
     """The board with no interior givens and the fewest shown clues across
     `layouts` ({seed: grid}), or None when no layout proves unique on its
     full ring. A layout whose carve-limit proof reaches no verdict is proved
     again at SOLVE_LIMIT before it is given up on, and the search reports how
     many never reached one, since "no verdict" is not "not unique". Prints
     how many layouts it tried and what it found."""
-    lines = make_lines(n, shape.get("height"))
+    lines = make_lines(geo.n, geo.height)
     found, open_ = [], []
 
     def carve(seed, base):
@@ -486,7 +517,7 @@ def ring_only_search(spec, n, bh, bw, layouts, shape):
         found.append(carved)
 
     for seed, grid in layouts.items():
-        base = _full_ring(spec, grid, lines, n, bh, bw, seed, shape)
+        base = _full_ring(spec, grid, lines, geo, seed)
         verdict = _carve_proof(spec, base)
         if verdict is None:
             print(f"  seed {seed}: no verdict on the ring alone inside the carve limit")
@@ -524,27 +555,29 @@ def ring_only_search(spec, n, bh, bw, layouts, shape):
     return best
 
 
-def _fewest_givens(spec, n, bh, bw, seeds, paths, layouts=None, shape=None):
+def _draw_grid(spec, rng, geo):
+    """One solved interior for `geo`, from the Spec's sampler or `make_grid`."""
+    # a rectangle names no box, so its sampler is handed none
+    bh, bw = geo.box or (None, None)
+    return (spec.grid_fn or make_grid)(rng, geo.n, bh, bw, **geo.shape)
+
+
+def _fewest_givens(spec, geo, seeds, paths, layouts=None):
     """The first board, over `seeds` (or the drawn `layouts`, {seed: grid}),
     carved to the fewest interior givens with every clue shown."""
-    shape = shape or {}
-    rows = shape.get("height", n)
+    n, rows = geo.n, geo.height
     best = None
     for seed in layouts or seeds:
         lines = (
             make_paths(random.Random(seed * 13), n) if paths else make_lines(n, rows)
         )
         rng = random.Random(seed)
-        grid = (
-            layouts[seed]
-            if layouts
-            else (spec.grid_fn or make_grid)(rng, n, bh, bw, **shape)
-        )
+        grid = layouts[seed] if layouts else _draw_grid(spec, rng, geo)
         if paths and not repeating_lines(grid, lines):
             print(f"  seed {seed}: skipped, no line repeats a digit")
             continue
         # every line clued while carving givens
-        base = _full_ring(spec, grid, lines, n, bh, bw, seed, shape)
+        base = _full_ring(spec, grid, lines, geo, seed)
         givens = {}
         cells_all = [(r, c) for r in range(rows) for c in range(n)]
         rng.shuffle(cells_all)
@@ -879,17 +912,18 @@ class Lane:
         )
         assert doc["puzzle"]["minDigit"] == spec.min_digit
 
-    def run(self, n, bh, bw, seeds, shape=None):
-        """Search `seeds` for a board on this lane, build its link, and write
-        both files. `shape` is a rectangular board's {"height", "digits"}; its
-        box is the builder's grammar only, so it is not held to n."""
-        shape = shape or {}
-        assert shape or bh * bw == n, "box_height * box_width must equal n"
-        board = generate(self.spec, n, bh, bw, seeds, paths=self.paths, shape=shape)
+    def run(self, geo, seeds):
+        """Search `seeds` for a board of geometry `geo` on this lane, build its
+        link, and write both files. A rectangle's box is the builder's grammar
+        only, so it is not held to n."""
+        assert geo.box is None or geo.box[0] * geo.box[1] == geo.n, (
+            "box_height * box_width must equal n"
+        )
+        board = generate(self.spec, geo, seeds, paths=self.paths)
         doc = self.build_doc(board)
         link = link_codec.encode_link(doc)
         self.check(link, doc, board)
-        link_path, gen_path = self.files(n, height=shape.get("height"))
+        link_path, gen_path = self.files(geo.n, height=geo.shape.get("height"))
         link_path.write_text(link + "\n")
         save_board(board, gen_path)
         print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
@@ -1228,9 +1262,6 @@ def main(spec, argv=None):
         p.error(
             "--seeds names a rectangle's seed count: a square takes it positionally"
         )
-    shape = (
-        {} if args.digits is None else {"height": args.height, "digits": args.digits}
-    )
     if args.rebuild:
         link_path, _ = lane.files(args.n, height=args.height)
         link = lane.rebuild(args.n, height=args.height)
@@ -1240,13 +1271,16 @@ def main(spec, argv=None):
             "current component code, same board"
         )
         return
-    if shape:
+    if args.digits is not None:
         if args.box_height is not None:
             p.error("a rectangle names no box: pass n, --height and --digits")
-        # nothing reads a rectangle's box: one row of boxes stands in
-        box, count = (1, args.n), args.seeds or args.seed_count
+        geo, count = (
+            Geometry.rect(args.n, args.height, args.digits),
+            (args.seeds or args.seed_count),
+        )
     elif args.box_height is None or args.box_width is None:
         p.error("a fresh search needs n, box_height and box_width")
     else:
-        box, count = (args.box_height, args.box_width), args.seed_count
-    lane.run(args.n, *box, range(101, 101 + count), shape)
+        geo = Geometry.square(args.n, args.box_height, args.box_width)
+        count = args.seed_count
+    lane.run(geo, range(101, 101 + count))

@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE))
 
 import framebuild
 from build_size import SPEC, rule_text
-from framebuild import RingGlobal, generate, load_board, save_board
+from framebuild import Geometry, RingGlobal, generate, load_board, save_board
 from ring_link import mismatches
 from sudoku_kit import link_codec
 from verify import check
@@ -30,7 +30,7 @@ SHAPES = [(4, 3), (3, 4)]  # width, height
 
 
 def _board(width, height):
-    return generate(SPEC, width, 1, width, SEEDS, shape={"height": height, "digits": 3})
+    return generate(SPEC, Geometry.rect(width, height, 3), SEEDS)
 
 
 def test_a_rectangular_board_builds_and_its_link_is_a_rectangle():
@@ -110,7 +110,6 @@ def test_the_command_line_builds_and_rebuilds_a_rectangle():
 
 
 def test_generate_refuses_a_rectangle_it_cannot_build():
-    shape = {"height": 3, "digits": 3}
     # bent paths read square lines; a sudoku interior's hooks take no height
     for spec, paths in [
         (SPEC, True),
@@ -118,7 +117,7 @@ def test_generate_refuses_a_rectangle_it_cannot_build():
         (dataclasses.replace(SPEC, model_fn=None), False),
     ]:
         try:
-            generate(spec, 4, 1, 4, SEEDS, paths=paths, shape=shape)
+            generate(spec, Geometry.rect(4, 3, 3), SEEDS, paths=paths)
         except ValueError as e:
             assert "grid_fn and model_fn" in str(e), str(e)
         else:
