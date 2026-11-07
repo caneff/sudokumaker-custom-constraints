@@ -42,8 +42,8 @@ assert.ok(generated.includes('`getCellAt(arg0, arg1)`'),
 // (d) the component table carries a real param list, not an extraction
 // that silently dropped every param. Two components, not one: House's
 // param type is a plain `f.CellArray` type-enum reference, Between's are
-// object-literal type specs (`{type:f.CellArray,amount:2}`) -- the two
-// distinct shapes the decorator uses for a param's type.
+// object-literal type specs (`{type:f.CellArray,amount:2}`) -- two of the
+// three shapes `describeParamType` reads (the bare string literal is the third).
 assert.ok(generated.includes('| House | cells: CellArray |'),
   'House should list its cells: CellArray param')
 assert.ok(generated.includes('| Between | endPoints: CellArray (amount: 2), midPoints: CellArray |'),

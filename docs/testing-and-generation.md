@@ -62,7 +62,8 @@ To generate a puzzle:
    while it stays unique. Carve clues too if you want fewer.
 
 `examples/running-start/build_size.py` does all of this — through the shared
-`_shared/framebuild.py` machinery — and scans several seeds for the leanest
+frame-builder machinery (`_shared/board.py`, `carve.py`, `document.py`,
+`lanes.py`) — and scans several seeds for the leanest
 grid. Note a real finding there: running-start clues are weak,
 so all four sides with **no** interior givens is *not* unique — a few givens are
 unavoidable.
@@ -75,9 +76,11 @@ a different puzzle than the app enforces.
 
 ## Layout gate on commit and push
 
-`.pre-commit-config.yaml` runs `examples/_shared/check_layout.py` (about 3 s)
-on `pre-commit` and `pre-push`, always and over the whole tree (#879), so a
-docs-only change meets the research-load rule (#659) as well as `just check`.
+`.pre-commit-config.yaml` runs `examples/_shared/check_layout.py` and
+`examples/_shared/check_research_loads.py` (about 3 s together) on `pre-commit`
+and `pre-push`, always and over the whole tree (#879), so a docs-only change
+meets the research-load rule (#659) as well as `just check`. The research-load
+scan is its own script: `check_layout.py` checks `examples/` only.
 Every other hook there is commit-only (`default_stages`). The gate reads the
 working tree, untracked files included, as `just check` does.
 

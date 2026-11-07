@@ -24,8 +24,8 @@ RULE = (
 
 def digit_range(spec, n):
     """`n` is the width; a gen JSON names `digits` when the digit count is not
-    the width (a rectangle). The app's top digit is 9, so a range ending below
-    it ships `maxDigit`."""
+    the width (a rectangle). The app's top digit is 9, so any top digit other
+    than 9 ships `maxDigit`."""
     lo = spec.get("minDigit", 0)
     hi = lo + spec.get("digits", n) - 1
     return lo, hi, {"minDigit": lo, **({"maxDigit": hi} if hi != 9 else {})}

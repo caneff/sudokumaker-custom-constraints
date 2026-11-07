@@ -3,9 +3,9 @@ python_sources(
     sources=["*.py"],
     # Shared .js files read by path, which no import shows. Each is named: a
     # blanket `:js` here would put every shared .js under every suite whose
-    # unit imports framebuild.
+    # unit imports document.
     overrides={
-        "framebuild.py": {
+        "document.py": {
             "dependencies": [
                 # FRAME_BACKENDS, read in frame_backend_code.
                 "./frame-rowcol.js:js",
@@ -42,14 +42,17 @@ files(name="data", sources=["*.toml", "*.har"])
 for file in [
     "app-dom.test.mjs",
     "app-strip-lib.test.mjs",
+    "board.test.py",
     "board_checks.test.py",
     "bundle-behaviour.test.mjs",
+    "carve.test.py",
     "component_scan.test.py",
+    "document.test.py",
     "frame-geometry.test.mjs",
     "frame.test.py",
-    "framebuild.test.py",
     "harness-lib.test.mjs",
     "harness-parity.test.mjs",
+    "lanes.test.py",
     "manifest.test.py",
     "minify.test.py",
     "recovery-lib.test.mjs",
@@ -88,10 +91,14 @@ suite("precommit_layout_hook.test.py", needs=["//:precommit-config"])
 for file in [
     "check_layout.py",
     "check_layout.test.py",
+    "check_research_loads.py",
+    "check_research_loads.test.py",
     "global-backends.test.mjs",
+    "manifest_spec.test.py",
     "size_builders.test.py",
     "spec_855_closing.test.py",
     "spec_865_closing.test.py",
+    "spec_896_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 

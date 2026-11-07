@@ -6,10 +6,11 @@
 // house of {0..8}. Ungated, the rule removes that true clue value and the run
 // goes red.
 //
-// A second pass runs the pair components and the side hit matching over real grids, where both clues of a
-// line are true together, all to one fixpoint as the solver runs them, and a
-// third names the mirrored-pair exclusion by running one state as a house and
-// again as bare.
+// Further passes run the pair components and the side hit matching over real
+// grids, where both clues of a line are true together, all to one fixpoint as
+// the solver runs them, and name the mirrored-pair exclusion by running one
+// state as a house and again as bare. Each probe says what it checks where it
+// is defined below.
 //
 // The side hit matching reads a whole side at once, so its corpus is whole
 // grids only. Run after the pair components it sees only states they have already

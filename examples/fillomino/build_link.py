@@ -1,4 +1,4 @@
-#   uv run examples/fillomino/build_link.py [--puzzle FILE] [--out FILE]
+#   uv run examples/fillomino/build_link.py [--puzzle FILE] [--out FILE] [--keep-comments]
 #   uv run examples/fillomino/build_link.py --component FILE --out FILE [--board LINK]
 
 import pathlib

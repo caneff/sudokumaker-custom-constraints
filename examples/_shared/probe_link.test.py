@@ -4,6 +4,7 @@
 #
 #   uv run examples/_shared/probe_link.test.py
 
+import copy
 import pathlib
 import tempfile
 
@@ -42,13 +43,19 @@ if __name__ == "__main__":
 
     doc = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
     w, h = doc["puzzle"]["width"], doc["puzzle"]["height"]
-    before = doc["puzzle"]["cells"]
+    before = copy.deepcopy(doc["puzzle"]["cells"])
     inner_filled = [
         i
         for i, c in enumerate(before)
         if 0 < i // w < h - 1 and 0 < i % w < w - 1 and not c.get("given")
     ]
     assert inner_filled, "fixture has no inner non-given cells to empty"
+    ring_valued = [
+        i
+        for i, c in enumerate(before)
+        if (i // w in (0, h - 1) or i % w in (0, w - 1)) and "value" in c
+    ]
+    assert ring_valued, "fixture has no ring cell holding a value to keep"
 
     empty_interior(doc)
     cells = doc["puzzle"]["cells"]

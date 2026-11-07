@@ -23,7 +23,7 @@ pants_ignore = ["/.claude/", "/.scratch/", "/.venv", "node_modules", "/_binary_s
 
 # Every directory a script puts on sys.path: the shared directory and each
 # example. Inference does not read sys.path.insert; these roots are what make
-# `import framebuild` resolve.
+# `import lanes` resolve.
 [source]
 root_patterns = ["/examples/*"]
 

@@ -114,7 +114,7 @@ def registered_backend(doc, constraint_name):
 BACKEND_FILES = ("main.js", "main-global.js")
 
 # A backend declared in `_shared/` rather than per-example: house-gac.js backs
-# the shared HouseGacComponent (framebuild.HOUSE_GAC_BACKEND_TITLE). A
+# the shared HouseGacComponent (document.HOUSE_GAC_BACKEND_TITLE). A
 # board that opts in has no per-example copy of its own to drift from the
 # committed one -- resolve_backend_file follows the shared file the same way
 # find_component_file already follows the shared component file, above.

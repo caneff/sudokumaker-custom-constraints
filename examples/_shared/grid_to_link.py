@@ -10,8 +10,9 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import NO_RING_RULES_PREFIX
+from document import NO_RING_RULES_PREFIX
 from no_ring import grid_backend_constraint
+from sm_document import puzzle_doc
 from sudoku_kit.link_codec import encode_link
 
 N = 9
@@ -35,9 +36,8 @@ def grid_to_doc(grid):
     check_grid(grid)
     cells = [{} if ch in BLANKS else {"given": True, "value": int(ch)} for ch in grid]
     regions = [(r // BOX) * BOX + c // BOX for r in range(N) for c in range(N)]
-    return {
-        "formatVersion": "1.6.0",
-        "puzzle": {
+    return puzzle_doc(
+        {
             "name": "Hard classic",
             "author": "",
             "comment": NO_RING_RULES_PREFIX.strip(),
@@ -50,9 +50,9 @@ def grid_to_doc(grid):
                 grid_backend_constraint(),
                 {"type": 0},
             ],
-            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
         },
-    }
+        sudokupad_export=True,
+    )
 
 
 def grid_to_link(grid):

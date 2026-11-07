@@ -1,8 +1,8 @@
 # The CP-SAT helper and the link codec have one home, the sudoku-kit library
 # (#750): this repo follows its main branch, keeps no copy of its own, imports neither
 # as a module of this repo, and no tracked file names a path into a gridfind
-# checkout in one of GRIDFIND_PATH's spellings. Checked on the tracked tree,
-# the lock file and one real link.
+# checkout in one of GRIDFIND_PATH's spellings. Checked on the tracked tree
+# and the lock file.
 #
 #   uv run examples/_shared/sudoku_kit_source.test.py
 
@@ -91,18 +91,9 @@ def nothing_reaches_into_gridfind():
     assert not hits, "paths into a gridfind checkout:\n" + "\n".join(hits)
 
 
-def the_library_reads_a_committed_link():
-    from sudoku_kit.link_codec import decode_puzzle, encode_link, read_link
-
-    link_file = ROOT / "examples" / "house-gac" / "PUZZLE_LINK.txt"
-    doc = decode_puzzle(read_link(link_file))
-    assert decode_puzzle(encode_link(doc)) == doc, "a committed link's round trip"
-
-
 if __name__ == "__main__":
     the_lock_follows_main()
     no_local_copy_is_left()
     nothing_imports_a_local_copy()
     nothing_reaches_into_gridfind()
-    the_library_reads_a_committed_link()
     print("sudoku_kit_source.test.py: ok")

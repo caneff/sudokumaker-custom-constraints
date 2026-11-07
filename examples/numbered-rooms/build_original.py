@@ -15,8 +15,8 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import frame_groups as _frame_groups
-from framebuild import make_lines
+from board import make_lines
+from document import frame_groups as _frame_groups
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
 from sm_document import GROUPS_INPUT, find_constraint, write_link

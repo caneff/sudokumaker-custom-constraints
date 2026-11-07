@@ -67,7 +67,7 @@ function publicPreamble (text) {
   return text
 }
 
-// ---------------------------------------------------------------- markdown prep
+// markdown prep
 // The markdown keeps bundle line citations for readers with the bundle in
 // hand; the page is for readers without it, so they are stripped here.
 function stripLineRefs (text) {
@@ -111,8 +111,9 @@ function prepare (text) {
     .join('')
 }
 
-// Split markdown into [preamble, {title, body}...] on h2 lines. Fenced blocks
-// never start with "## ", so a plain line scan is enough.
+// Split markdown into [preamble, {title, body}...] on h2 lines. A fenced block
+// can hold a line starting with "## " (a shell comment, a markdown sample), so
+// the scan toggles `fence` and splits only outside one.
 function splitSections (md) {
   const lines = md.split('\n')
   const out = []
@@ -141,7 +142,7 @@ function splitEntries (body) {
   return out.map(e => ({ heading: e.heading, body: e.lines.join('\n') }))
 }
 
-// ------------------------------------------------------------------------- ids
+// ids
 const used = new Map()
 function unique (id) {
   const n = (used.get(id) || 0) + 1
@@ -179,7 +180,7 @@ function componentName (heading) { return heading.split(' (')[0].trim() }
 function baseOf (heading) { const m = /extends ([A-Za-z]+)/.exec(heading); return m ? m[1] : null }
 const SHAPE = { ConstraintComponent: 'leaf', CompositeComponent: 'composite', PairComponent: 'pair' }
 
-// ---------------------------------------------------------------- renderer
+// renderer
 const TIER = { public: 'good', 'reachable, not documented': 'warn', internal: 'neutral' }
 const TIERKEY = { public: 'public', 'reachable, not documented': 'reachable', internal: 'internal' }
 const ACCESS = /^Access: \*\*([^*]+)\*\*\s*[—-]\s*([\s\S]*)$/
@@ -299,7 +300,7 @@ function renderEntry (e) {
   return '<section class="entry" data-tier="' + tier + '">' + inner + '</section>\n'
 }
 
-// ------------------------------------------------- public-only redaction
+// public-only redaction
 // The names a public page must not mention: the class of every non-public
 // entry, its aliases, and its methods that no public entry also has.
 function nonPublicNames (sections) {
@@ -362,7 +363,7 @@ function scrub (md, names) {
   return out.join('\n').replace(/\n{3,}/g, '\n\n')
 }
 
-// --------------------------------------------------------------- assemble
+// assemble
 let refMd = prepare(readFileSync(args[0], 'utf8'))
 const redacted = publicOnly ? nonPublicNames(splitSections(refMd)) : null
 if (publicOnly) refMd = scrub(publicPreamble(refMd), redacted)
@@ -428,7 +429,7 @@ for (const title of page.sectionOrder) {
 let hoodHtml = ''
 if (!publicOnly) for (const title of page.underTheHood) hoodHtml += renderSection(byTitle.get(title))
 
-// ------------------------------------------------------------ autolinking
+// autolinking
 // Link `identifier` code spans to entries. Scope is the enclosing h3; a method
 // resolves to the current class first, then to a page-unique method.
 const ids = new Set(headings.map(h => h.id))
@@ -498,7 +499,7 @@ if (publicOnly) {
   if (left.length) throw new Error('public-only: non-public names survive in the page:\n  ' + left.join('\n  '))
 }
 
-// ------------------------------------------------------------------ nav
+// nav
 const hoodTitles = new Set(page.underTheHood)
 const isGuide = (h) => h.id === 'guide' || h.id.startsWith('guide-')
 const navHeads = headings.filter(h => h.level >= 2)
@@ -528,7 +529,7 @@ const nav = '<li class="part"><span>Guide</span></li>' + navTree(guideHeads) +
   (publicOnly ? '' : '<li class="part hood"><a href="#under-the-hood">Under the hood</a></li>' + navTree(hoodHeads))
 const tierButtons = publicOnly ? '' : '<div class="tiers" role="group" aria-label="Show tiers in the reference"><button type="button" data-tier="public" aria-pressed="true">public</button><button type="button" data-tier="reachable" aria-pressed="true">reachable</button><button type="button" data-tier="internal" aria-pressed="false">internal</button></div>'
 
-// ------------------------------------------------------------------ page
+// page
 const html = `<title>SudokuMaker Constraint API</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>

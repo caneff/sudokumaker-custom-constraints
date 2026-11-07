@@ -13,8 +13,8 @@ from collections.abc import Callable
 
 from link_swap import swap_main
 from minify import minify_file
-from sm_document import code_constraint
-from sudoku_kit.link_codec import decode_puzzle, encode_link
+from sm_document import assert_round_trips, code_constraint, puzzle_doc
+from sudoku_kit.link_codec import encode_link
 
 # The highest digit the app's solver can run. It accepts 30, then crashes on it
 # (docs/puzzle-api.md, helpers.digits).
@@ -55,9 +55,8 @@ class BareBoard:
             for r in range(height)
             for c in range(width)
         ]
-        doc = {
-            "formatVersion": "1.6.0",
-            "puzzle": {
+        doc = puzzle_doc(
+            {
                 "name": self.name,
                 "author": "",
                 "type": "custom",
@@ -88,12 +87,17 @@ class BareBoard:
                     ),
                 ],
             },
-        }
+        )
         return encode_link(doc), doc, len(clues)
 
     def check(self, link, doc, n_clues):
-        back = decode_puzzle(link)
-        assert back == doc, "link does not decode back to the built document"
+        """What a houseless link must satisfy: it decodes back to `doc`, is
+        type `custom`, offers a digit range within 0..MAX_DIGIT, has width x
+        height cells and no houses key, stores no value on a non-given cell,
+        holds exactly `n_clues` givens, and carries the given-digits constraint
+        plus one global constraint with no groups whose only component is
+        `self.component`. Raises AssertionError on the first that fails."""
+        back = assert_round_trips(link, doc)
         p = back["puzzle"]
         width, height = p["width"], p["height"]
         assert p["type"] == "custom"

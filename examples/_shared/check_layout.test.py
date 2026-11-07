@@ -9,7 +9,6 @@
 
 import ast
 import contextlib
-import io
 import json
 import pathlib
 import subprocess
@@ -21,19 +20,23 @@ import check_layout
 from check_layout import (
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
+    HouseSource,
+    LinkFacts,
+    LinkKind,
     check_digit_range,
     check_gen_frame_backends,
     check_gen_json_parses,
-    check_research_loads,
     check_stale_backend_code,
     check_tree,
 )
 from manifest import Manifest, load_manifest
 from minify import minify_file
+from no_ring import GRID_BACKEND
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
+LOCAL_FILES = ("PUZZLE_LINK_local.txt", "gen_local.json")
 
 
 def _link(
@@ -214,6 +217,13 @@ REQUIRED = [
 # columns backend of its own, with a hand-made link.
 WHOLE_GRID = {"lanes": "single", "rules_prefix": "none", "houses": False}
 SINGLE_LANE = {"lanes": "single"}
+# A single-lane example's files: main.js alone, no main-global.js and no
+# local board pair.
+SINGLE_LANE_FILES = [
+    f
+    for f in REQUIRED
+    if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+]
 HAND_MADE = {"generator_less_links": ["PUZZLE_LINK.txt"]}
 SHARED_GAC = {
     "lanes": "single",
@@ -234,7 +244,7 @@ def manifest_text(traits):
 
 @contextlib.contextmanager
 def example(
-    files=REQUIRED,
+    files=None,
     extra_links=(),
     extra_gens=(),
     name="widget",
@@ -252,6 +262,15 @@ def example(
     defaults, and a `contents` entry for "example.toml" replaces the text.
     """
     contents = contents or {}
+    if files is None:
+        # The default file set is a split example's; a single- or global-lane
+        # manifest drops the files its lane does not carry.
+        lane = (manifest or {}).get("lanes", "split")
+        strays = {
+            "single": {"main-global.js", *LOCAL_FILES},
+            "global": set(LOCAL_FILES),
+        }.get(lane, set())
+        files = [f for f in REQUIRED if f not in strays]
     # A ringless board's links open on the plain sentence, not the inner-grid
     # one.
     traits = manifest or {}
@@ -306,8 +325,11 @@ if __name__ == "__main__":
         assert "widget" in violations[0]
         assert "main-global.js" in violations[0]
 
-    # a `lanes = "single"` example needs no main-global.js
-    with example(files=missing, name="whole-grid", manifest=WHOLE_GRID) as (root, _):
+    # a `lanes = "single"` example needs no main-global.js and no local board
+    with example(files=SINGLE_LANE_FILES, name="whole-grid", manifest=WHOLE_GRID) as (
+        root,
+        _,
+    ):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -326,6 +348,42 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 1, violations
         assert "missing required file main-global.js" in violations[0]
+
+    # a `lanes = "single"` example ships main.js alone: a main-global.js, or
+    # the local board pair, is a stray lane file and is named
+    with example(files=SINGLE_LANE_FILES, manifest=SINGLE_LANE) as (root, _):
+        assert check_tree(root) == []
+    with example(
+        files=[*SINGLE_LANE_FILES, "main-global.js"], manifest=SINGLE_LANE
+    ) as (
+        root,
+        _,
+    ):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "single-lane" in violations[0] and "main-global.js" in violations[0]
+    with example(
+        files=[*SINGLE_LANE_FILES, "PUZZLE_LINK_local.txt", "gen_local.json"],
+        manifest=SINGLE_LANE,
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 2, violations
+        for stray in ("PUZZLE_LINK_local.txt", "gen_local.json"):
+            assert any("single-lane" in v and stray in v for v in violations), (
+                violations
+            )
+
+    # a `lanes = "global"` example carries neither local file either
+    with example(
+        files=[*global_only, "PUZZLE_LINK_local.txt", "gen_local.json"],
+        manifest={"lanes": "global"},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 2, violations
+        for stray in ("PUZZLE_LINK_local.txt", "gen_local.json"):
+            assert any("global-lane" in v and stray in v for v in violations), (
+                violations
+            )
 
     # a split example ships a local board: both halves of the pair are
     # required, and each is named on its own. Dropping one half also
@@ -347,32 +405,6 @@ if __name__ == "__main__":
             assert any("widget" in v and pairing_text in v for v in violations), (
                 violations
             )
-
-    # the no-local-global-split example needs neither half of the local pair,
-    # and ships neither in reality -- dropping both leaves nothing unpaired
-    iso_missing = [
-        f for f in REQUIRED if f not in ("PUZZLE_LINK_local.txt", "gen_local.json")
-    ]
-    with example(files=iso_missing, name="whole-grid", manifest=WHOLE_GRID) as (
-        root,
-        _,
-    ):
-        violations = check_tree(root)
-        assert violations == [], violations
-
-    # a global constraint with no drawn groups ships main.js alone and no local
-    # board.
-    fillomino_files = [
-        f
-        for f in REQUIRED
-        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
-    ]
-    with example(files=fillomino_files, name="whole-grid", manifest=WHOLE_GRID) as (
-        root,
-        _,
-    ):
-        violations = check_tree(root)
-        assert violations == [], violations
 
     # a gen*.json with no matching link is unpaired: the naming-follows-the-
     # rename bug this check exists to catch
@@ -552,19 +584,8 @@ if __name__ == "__main__":
 
     # `rules_prefix = "none"` exempts the rules-prefix check -- the example is
     # not sudoku, and its rules text must not mention sudoku
-    missing = [f for f in REQUIRED if f != "main-global.js"]
     with example(
-        files=missing,
-        name="whole-grid",
-        manifest=WHOLE_GRID,
-        contents={"PUZZLE_LINK.txt": _link(prefix=False)},
-    ) as (root, _):
-        violations = check_tree(root)
-        assert violations == [], violations
-
-    # ...and the sudoku sentence is not required of it either
-    with example(
-        files=fillomino_files,
+        files=SINGLE_LANE_FILES,
         name="whole-grid",
         manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
@@ -591,15 +612,7 @@ if __name__ == "__main__":
     # isofill and fillomino are exempt: whole-grid constraints on a bare
     # board, with no row, column or box rule to declare
     with example(
-        files=missing,
-        name="whole-grid",
-        manifest=WHOLE_GRID,
-        contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
-    ) as (root, _):
-        violations = check_tree(root)
-        assert violations == [], violations
-    with example(
-        files=fillomino_files,
+        files=SINGLE_LANE_FILES,
         name="whole-grid",
         manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
@@ -609,7 +622,7 @@ if __name__ == "__main__":
 
     # a no-ring example with a local lane only ships main.js and
     # PUZZLE_LINK.txt with no global lane and no _local pair
-    with example(files=fillomino_files, name="single-lane", manifest=SINGLE_LANE) as (
+    with example(files=SINGLE_LANE_FILES, name="single-lane", manifest=SINGLE_LANE) as (
         root,
         _,
     ):
@@ -1044,7 +1057,7 @@ if __name__ == "__main__":
             manifest = load_manifest(d)
             return (
                 check_stale_backend_code(d, link, puzzle, manifest),
-                check_digit_range(d, link, puzzle, manifest),
+                check_digit_range(d, link, puzzle, manifest, LinkFacts.of(puzzle)),
             )
 
     stale_found, range_found = _checks(_link(frame_backend="stale", houses="none"))
@@ -1071,13 +1084,16 @@ if __name__ == "__main__":
         widget / "PUZZLE_LINK.txt",
         ring_no_boxes,
         Manifest(timed_component="WidgetComponent"),
+        LinkFacts.of(ring_no_boxes),
     )
     assert found == [], found
+    wide = dict(ring_no_boxes, maxDigit=5)
     found = check_digit_range(
         widget,
         widget / "PUZZLE_LINK.txt",
-        dict(ring_no_boxes, maxDigit=5),
+        wide,
         Manifest(timed_component="WidgetComponent"),
+        LinkFacts.of(wide),
     )
     assert len(found) == 1 and "3 cell interior lines" in found[0], found
 
@@ -1231,109 +1247,6 @@ if __name__ == "__main__":
     with example(contents={"PUZZLE_LINK.txt": encode_link(doc)}) as (root, _):
         assert check_tree(root) == [], check_tree(root)
 
-    # a path into docs/research/ in examples/ code fails, in each spelling the
-    # tree has used: a joined path, a pathlib chain, a URL, a plain string
-    loads = {
-        "examples/a/x.mjs": "const B = join(HERE, '..', '..', 'docs', 'research', 'b.js')\n",
-        "examples/a/y.py": 'BASE = REPO / "docs" / "research" / "x.txt"\n',
-        "examples/_shared/z.test.mjs": (
-            "const u = new URL('../../docs/research/l.txt', import.meta.url)\n"
-        ),
-        "examples/a/w.py": 'sys.path.insert(0, str(REPO / "docs/research/h"))\n',
-    }
-    for rel, text in loads.items():
-        with tempfile.TemporaryDirectory() as tmp:
-            root = pathlib.Path(tmp)
-            (root / rel).parent.mkdir(parents=True)
-            (root / rel).write_text("\n" + text)
-            violations = check_research_loads(root)
-            assert len(violations) == 1, (rel, violations)
-            assert violations[0].startswith(f"{rel}:2:"), violations[0]
-
-    # ...but a citation in a comment or a docstring is a reference, not a load
-    citations = {
-        "examples/a/x.mjs": (
-            "// see docs/research/a.md\n//! (docs/research/b.md)\n"
-            "/* docs/research/c.md\n   docs/research/d.md */\nconst n = 1 // docs/research/e.md\n"
-        ),
-        "examples/a/y.py": (
-            '"""Module notes: docs/research/a.md."""\n# docs/research/b.md\n'
-            'def f():\n    """docs/research/c.md"""\n    return 1  # docs/research/d.md\n'
-        ),
-    }
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        for rel, text in citations.items():
-            (root / rel).parent.mkdir(parents=True, exist_ok=True)
-            (root / rel).write_text(text)
-        assert check_research_loads(root) == [], check_research_loads(root)
-
-    # a load that hides from a line-by-line read still fails: an `#include`
-    # resolving into research (minify splices it into the link), a join split
-    # over lines, a .cjs file, and code after a `/*` inside a string
-    hidden = {
-        "examples/a/x.js": "// #include ../../docs/research/h.js\n",
-        "examples/a/y.mjs": "const B = join(HERE,\n  'docs',\n  'research', 'b.js')\n",
-        "examples/a/z.cjs": "const B = join(HERE, 'docs', 'research', 'b.js')\n",
-        "examples/a/w.mjs": "const g = '**/*.js'; const B = join(HERE, 'docs', 'research')\n",
-    }
-    for rel, text in hidden.items():
-        with tempfile.TemporaryDirectory() as tmp:
-            root = pathlib.Path(tmp)
-            (root / rel).parent.mkdir(parents=True)
-            (root / rel).write_text(text)
-            violations = check_research_loads(root)
-            assert len(violations) == 1, (rel, violations)
-            assert violations[0].startswith(f"{rel}:"), violations[0]
-
-    # ...an `#include` of a sibling file is not a load from research, and
-    # node_modules and dot directories (scratch) are not scanned
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        skipped = {
-            "examples/a/x.js": "// #include ../_shared/frame-lines.js\n",
-            "examples/node_modules/p/i.js": "require('../../docs/research/x')\n",
-            "examples/a/.scratch/s.py": 'P = "docs/research/x"\n',
-        }
-        for rel, text in skipped.items():
-            (root / rel).parent.mkdir(parents=True, exist_ok=True)
-            (root / rel).write_text(text)
-        assert check_research_loads(root) == [], check_research_loads(root)
-
-    # a .py that does not parse is a violation naming it, not a traceback
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        (root / "examples" / "a").mkdir(parents=True)
-        (root / "examples" / "a" / "b.py").write_text("def (:\n")
-        violations = check_research_loads(root)
-        assert len(violations) == 1 and "examples/a/b.py" in violations[0], violations
-
-    # the no-args run `just test` makes applies the research rule to the repo
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        (root / "examples" / "_shared").mkdir(parents=True)
-        (root / "examples" / "_shared" / "z.mjs").write_text(
-            "const u = new URL('../../docs/research/l.txt', import.meta.url)\n"
-        )
-        real_root = check_layout.REPO_ROOT
-        out = io.StringIO()
-        try:
-            check_layout.REPO_ROOT = root
-            with contextlib.chdir(root), contextlib.redirect_stdout(out):
-                code = check_layout.main(["check_layout.py"])
-        finally:
-            check_layout.REPO_ROOT = real_root
-        assert code == 1, out.getvalue()
-        assert "examples/_shared/z.mjs:1: loads from docs/research/" in out.getvalue()
-
-    # the gate's own files name docs/research/ to police it, and pass
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        target = root / "examples" / "_shared" / "check_layout.py"
-        target.parent.mkdir(parents=True)
-        target.write_text('research_dir = repo_root / "docs" / "research"\n')
-        assert check_research_loads(root) == [], check_research_loads(root)
-
     # an example with no example.toml fails and names the file: its traits
     # are what the checker reads, so there is nothing to guess from
     with example() as (root, d):
@@ -1422,6 +1335,89 @@ if __name__ == "__main__":
     with example(contents={"PUZZLE_LINK.txt": _link(ringless=True)}) as (root, _):
         violations = check_tree(root)
         assert len(violations) == 1 and "rules prefix" in violations[0], violations
+
+    # a document whose cells do not fill width x height has no ring to judge:
+    # ten given cells on a 3x3 would read as a full ring if the size guard
+    # were gone, and the share check says nothing about it
+    misfit = {
+        "width": 3,
+        "height": 3,
+        "comment": RULES_PREFIX,
+        "cells": [{"value": 1, "given": True} for _ in range(10)],
+        "constraints": [],
+    }
+    widget = pathlib.Path("widget")
+    assert (
+        check_layout.check_share_ready(
+            widget,
+            widget / "PUZZLE_LINK.txt",
+            misfit,
+            Manifest(timed_component="WidgetComponent"),
+            LinkFacts.of(misfit),
+        )
+        == []
+    )
+    fits = dict(misfit, cells=misfit["cells"][:9])
+    found = check_layout.check_share_ready(
+        widget,
+        widget / "PUZZLE_LINK.txt",
+        fits,
+        Manifest(timed_component="WidgetComponent"),
+        LinkFacts.of(fits),
+    )
+    assert len(found) == 1 and "fills all 8 ring cells" in found[0], found
+
+    # LinkFacts classifies a decoded link once, from the raw document alone
+    def doc(*constraints, **top):
+        return {
+            "width": 3,
+            "height": 3,
+            "cells": [{} for _ in range(9)],
+            "constraints": list(constraints),
+            **top,
+        }
+
+    def named(title, **extra):
+        return {"definition": {"name": title}, **extra}
+
+    no_ring_doc = LinkFacts.of(doc(named(GRID_BACKEND[1])))
+    assert no_ring_doc.kind is LinkKind.NO_RING and no_ring_doc.ringless, no_ring_doc
+    assert no_ring_doc.house_source is HouseSource.NO_RING_BACKEND, no_ring_doc
+    # a no-ring backend wins over the document type: it is the stronger claim
+    both = LinkFacts.of(doc(named(GRID_BACKEND[1]), type="sudoku"))
+    assert both.kind is LinkKind.NO_RING, both
+    sudoku_doc = LinkFacts.of(doc(type="sudoku"))
+    assert sudoku_doc.kind is LinkKind.SUDOKU_DOCUMENT and sudoku_doc.ringless, (
+        sudoku_doc
+    )
+    plain_frame = LinkFacts.of(doc())
+    assert plain_frame.kind is LinkKind.FRAME and not plain_frame.ringless, plain_frame
+    assert plain_frame.house_source is HouseSource.DOCUMENT, plain_frame
+    rowcol = LinkFacts.of(doc(named(check_layout.FRAME_ROWCOL_CONSTRAINT)))
+    assert rowcol.house_source is HouseSource.FRAME_BACKEND, rowcol
+    assert rowcol.backend_titles == (check_layout.FRAME_ROWCOL_CONSTRAINT,), rowcol
+    assert LinkFacts.of(doc({"type": 2003})).house_source is HouseSource.SUDOKU_RULES
+    # backend titles keep constraint order and skip unrelated names
+    ordered = LinkFacts.of(
+        doc(named(check_layout.CORNERS_TITLE), named("Mine"), named(GRID_BACKEND[1]))
+    )
+    assert ordered.backend_titles == (check_layout.CORNERS_TITLE, GRID_BACKEND[1])
+    assert "Mine" in ordered.constraint_names, ordered
+    # interior: the region cells, or None when the size is not declared
+    regions = LinkFacts.of(
+        doc({"type": 1, "regions": [0, 0, -1, 0, 0, -1, -1, -1, -1]})
+    )
+    assert regions.interior == frozenset({0, 1, 3, 4}), regions
+    assert LinkFacts.of(doc(width=None)).interior is None
+    # reading the titles never minifies a backend (ARCH-8 a)
+    real = check_layout.frame_backend_files
+    check_layout.frame_backend_files = lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("LinkFacts minified the backends")
+    )
+    try:
+        LinkFacts.of(doc(named(check_layout.CORNERS_TITLE)))
+    finally:
+        check_layout.frame_backend_files = real
 
     # check_layout names no example: no string in its source equals the name
     # of a directory under examples/ -- a name-keyed table or an

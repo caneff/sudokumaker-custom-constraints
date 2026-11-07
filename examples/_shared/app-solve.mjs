@@ -16,6 +16,7 @@
 //   npm i            # once: installs playwright (a devDependency)
 //   npx playwright install chromium
 //   node examples/_shared/app-solve.mjs <link_file> [reps] [icon_name]
+//     [--ring-clues] [--after-logical] [--refuse-busy]
 //
 // --after-logical first clicks the app's own logical solver (Icon AutoStep)
 // and waits for it to settle, then times the search from there. That is the

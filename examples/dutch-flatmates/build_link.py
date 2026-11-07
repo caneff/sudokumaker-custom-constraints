@@ -8,11 +8,11 @@
 # box. The code still loses its `/* eslint-disable */` line, which is for this
 # repo's linter.
 #
-# framebuild cannot host this board: its only ringless path (`no_ring.NoRing`)
+# The frame builder cannot host this board: its only ringless path (`no_ring.NoRing`)
 # reads drawn groups and a clue function from a `Spec`, and a flatmate board has
 # neither. The document is written out here, in the shape `NoRing`
 # builds, and takes its two shared parts -- the whole-grid rows-and-columns
-# backend from no_ring and the rules opening from framebuild.
+# backend from no_ring and the rules opening from document.py.
 #
 # A gen JSON with a "circles" list is Flinty's Counting Circles board
 # (gen_0g.json). Its builtin constraint shapes (types 10, 11, 306) are the ones
@@ -28,14 +28,14 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from document import NO_RING_RULES_PREFIX
 from flatmate_model import Extras, N, prove_recorded
-from framebuild import NO_RING_RULES_PREFIX
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
 from no_ring import grid_backend_constraint
-from sm_document import code_constraint
-from sudoku_kit.link_codec import decode_puzzle, encode_link
+from sm_document import assert_round_trips, code_constraint, puzzle_doc
+from sudoku_kit.link_codec import encode_link
 
 MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name
@@ -116,9 +116,8 @@ def build(
         for c in range(N)
     ]
     regions = [(r // 3) * 3 + c // 3 for r in range(N) for c in range(N)]
-    doc = {
-        "formatVersion": "1.6.0",
-        "puzzle": {
+    doc = puzzle_doc(
+        {
             "name": CONSTRAINT_NAME,
             "author": "",
             "comment": circles_comment(extras, spec)
@@ -155,15 +154,14 @@ def build(
                     else []
                 ),
             ],
-            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
         },
-    }
+        sudokupad_export=True,
+    )
     return encode_link(doc), doc, len(givens)
 
 
 def check(link, doc, n_givens):
-    back = decode_puzzle(link)
-    assert back == doc, "link does not decode back to the built document"
+    back = assert_round_trips(link, doc)
     p = back["puzzle"]
     assert (p["type"], p["width"], p["height"]) == ("custom", N, N)
     assert p["comment"].startswith(NO_RING_RULES_PREFIX)

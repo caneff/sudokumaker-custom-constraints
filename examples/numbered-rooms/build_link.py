@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_clued
 import build_original
-from framebuild import RULES_PREFIX, refresh_frame_backends
+from document import RULES_PREFIX, refresh_frame_backends
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
@@ -55,7 +55,7 @@ def refresh(root=HERE):
     declared to prevent -- and rules text for a different puzzle.
 
     This board is hand-built. No `gen_*.json` describes it, so
-    `framebuild.Lane.rebuild` cannot reach it and nothing else re-embeds
+    `lanes.Lane.rebuild` cannot reach it and nothing else re-embeds
     `main-global.js`, `frame-rowcol.js` or `frame-corners.js` when they change,
     pins the range both frame backends read off `helpers.digits`, or corrects
     the comment. Without this the link keeps a stale copy and

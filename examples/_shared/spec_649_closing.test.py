@@ -8,7 +8,7 @@ name no shared file has ever seen, in a throwaway copy of `examples/` and
      it once the manifest is gone;
   2. the timing driver resolves its timed component from that manifest, and
      refuses a name the board does not register;
-  3. its 4x4 board rebuilds byte-for-byte through framebuild and the
+  3. its 4x4 board rebuilds byte-for-byte through the frame builder and the
      document module, and every custom-constraint entry on it carries
      `input` and `style`;
   4. its soundness harness passes, and the shared fuzz runner fails a run of
@@ -40,8 +40,8 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
 
 Left to their own suites, not driven here: the CP-SAT base model and
 solve_unique (the sudoku-kit library's own tests), loadBundle and the bundle-solve
-import (bundle-load.test.mjs, bundle-solve.test.mjs), the framebuild lanes
-(framebuild.test.py), and the stamp guard (the fillomino and isofill stamp
+import (bundle-load.test.mjs, bundle-solve.test.mjs), the frame builder's lanes
+(lanes.test.py), and the stamp guard (the fillomino and isofill stamp
 tests).
 
     uv run examples/_shared/spec_649_closing.test.py
@@ -60,7 +60,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from check_layout import _js_code, check_example, check_research_loads
+from check_layout import check_example
+from check_research_loads import _js_code, check_research_loads
 from manifest import load_manifest
 from sm_document import find_constraint, registering_constraint_name
 from sudoku_kit.link_codec import decode_puzzle
@@ -372,10 +373,17 @@ def sweep_fuzzed(tree):
 
 def sweep_registered_names(tree):
     names = {p.stem for p in (tree / "examples").rglob("*Component*.js")}
+    links = sorted((tree / "examples").rglob("PUZZLE_LINK*.txt"))
+    assert links, "no PUZZLE_LINK*.txt under examples/ to sweep"
+    registered = [
+        (link, name)
+        for link in links
+        for name in shipped_component_code(decode_puzzle(link.read_text().strip()))
+    ]
+    assert registered, "no link registers a component, so the sweep checked nothing"
     missing = [
         f"{link.relative_to(tree)}: {name}"
-        for link in sorted((tree / "examples").rglob("PUZZLE_LINK*.txt"))
-        for name in shipped_component_code(decode_puzzle(link.read_text().strip()))
+        for link, name in registered
         if name not in names
     ]
     assert not missing, f"links register components with no file: {missing}"

@@ -57,9 +57,9 @@ grid backend, so `check_layout.is_no_ring` already gives it the "Normal sudoku
 rules apply." opening. It matters only if the board is ever rebuilt without that
 backend.
 
-## Board: a ringless 9x9, built here and not by framebuild
+## Board: a ringless 9x9, built here and not by the frame builder
 
-`framebuild` cannot host this board. Its only ringless path (`no_ring.NoRing`)
+The frame builder cannot host this board. Its only ringless path (`no_ring.NoRing`)
 reads drawn groups and a per-line clue function from a `Spec`; a flatmate board
 has neither. `build_link.py` writes the document itself, in the shape
 `NoRing` builds: a `"custom"` document, a region constraint for the

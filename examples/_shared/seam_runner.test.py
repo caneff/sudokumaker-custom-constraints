@@ -63,6 +63,10 @@ def the_recipes_call_the_runner():
         assert (r.returncode, ran) == (0, []), f"a group with no suite:\n{r.stderr}"
         assert r.stdout.splitlines()[-1] == "0 of 0 suites passed (group: soundness)"
 
+
+def a_bad_argument_is_refused():
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
         assert "no group named fast" in refusal(tree, "--group", "fast")
         assert "no group named lint test" in refusal(tree, "--group", "lint test")
         assert "--frobnicate" in refusal(tree, "--frobnicate")
@@ -152,6 +156,7 @@ ALWAYS = [
     "uv run examples/_shared/s.test.py",
     "uv run examples/_shared/frame.test.py",
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/_shared/check_research_loads.py",
 ]
 
 AA = ["node examples/aa/a.test.mjs", "node examples/aa/soundness-harness.mjs"]
@@ -559,6 +564,7 @@ S_ALWAYS = [
     *LINT,
     "uv run examples/_shared/e.test.py",
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/_shared/check_research_loads.py",
     "uv run examples/fillomino/pipeline.test.py",
     "uv run examples/fillomino/generate.test.py",
     *SKYSCRAPER,
@@ -974,6 +980,7 @@ if __name__ == "__main__":
     the_sandbox_gets_the_trees_python()
     no_pants_runs_no_suite()
     the_recipes_call_the_runner()
+    a_bad_argument_is_refused()
     agents_md_names_both_commands()
     n = a_run_covers_its_listing()
     a_failing_suite_stops_the_run()

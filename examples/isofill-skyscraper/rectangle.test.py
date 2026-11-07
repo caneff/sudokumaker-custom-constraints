@@ -18,9 +18,11 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-import framebuild
+import lanes
+from board import Geometry, load_board, save_board
 from build_size import SPEC, rule_text
-from framebuild import RingGlobal, generate, load_board, save_board
+from carve import generate
+from lanes import RingGlobal
 from ring_link import mismatches
 from sudoku_kit import link_codec
 from verify import check
@@ -30,7 +32,7 @@ SHAPES = [(4, 3), (3, 4)]  # width, height
 
 
 def _board(width, height):
-    return generate(SPEC, width, 1, width, SEEDS, shape={"height": height, "digits": 3})
+    return generate(SPEC, Geometry.rect(width, height, 3), SEEDS)
 
 
 def test_a_rectangular_board_builds_and_its_link_is_a_rectangle():
@@ -93,24 +95,23 @@ def test_the_command_line_builds_and_rebuilds_a_rectangle():
     with tempfile.TemporaryDirectory() as tmp:
         link = pathlib.Path(tmp) / "link.txt"
         gen = pathlib.Path(tmp) / "gen.json"
-        named = framebuild.named_files
-        framebuild.named_files = lambda spec, tag: (
+        named = lanes.named_files
+        lanes.named_files = lambda spec, tag: (
             link.with_name(f"link_{tag}.txt"),
             gen.with_name(f"gen_{tag}.json"),
         )
         try:
             args = ["4", "--height", "3", "--digits", "3", "--seeds", "3"]
-            framebuild.main(SPEC, args)
+            lanes.main(SPEC, args)
             built = (pathlib.Path(tmp) / "link_4x3.txt").read_text()
             assert load_board(pathlib.Path(tmp) / "gen_4x3.json").height == 3
-            framebuild.main(SPEC, ["4", "--rebuild", "--height", "3"])
+            lanes.main(SPEC, ["4", "--rebuild", "--height", "3"])
             assert (pathlib.Path(tmp) / "link_4x3.txt").read_text() == built
         finally:
-            framebuild.named_files = named
+            lanes.named_files = named
 
 
 def test_generate_refuses_a_rectangle_it_cannot_build():
-    shape = {"height": 3, "digits": 3}
     # bent paths read square lines; a sudoku interior's hooks take no height
     for spec, paths in [
         (SPEC, True),
@@ -118,7 +119,7 @@ def test_generate_refuses_a_rectangle_it_cannot_build():
         (dataclasses.replace(SPEC, model_fn=None), False),
     ]:
         try:
-            generate(spec, 4, 1, 4, SEEDS, paths=paths, shape=shape)
+            generate(spec, Geometry.rect(4, 3, 3), SEEDS, paths=paths)
         except ValueError as e:
             assert "grid_fn and model_fn" in str(e), str(e)
         else:
@@ -126,24 +127,24 @@ def test_generate_refuses_a_rectangle_it_cannot_build():
 
 
 def _refusal(argv):
-    """The message `framebuild.main` exits with for `argv`. Its files are named
+    """The message `lanes.main` exits with for `argv`. Its files are named
     in a temporary directory, so an `argv` it wrongly accepts writes nothing
     into the example."""
     err = io.StringIO()
-    named = framebuild.named_files
+    named = lanes.named_files
     with tempfile.TemporaryDirectory() as tmp:
-        framebuild.named_files = lambda spec, tag: (
+        lanes.named_files = lambda spec, tag: (
             pathlib.Path(tmp) / f"link_{tag}.txt",
             pathlib.Path(tmp) / f"gen_{tag}.json",
         )
         try:
             with contextlib.redirect_stderr(err):
-                framebuild.main(SPEC, argv)
+                lanes.main(SPEC, argv)
         except SystemExit as e:
             assert e.code == 2, e.code
             return err.getvalue()
         finally:
-            framebuild.named_files = named
+            lanes.named_files = named
     raise AssertionError(f"{argv} was accepted")
 
 

@@ -101,7 +101,7 @@ column end. It runs the **global** backend and draws no groups, as every
 example's bare `PUZZLE_LINK.txt` does (`docs/example-layout.md`, "Which lane a
 link runs", #268).
 
-- Seed 123 of `framebuild.generate`, recorded in `gen.json`: 10 interior
+- Seed 123 of `carve.generate`, recorded in `gen.json`: 10 interior
   givens, 23 of the 36 ring clues shown; the other 13 are empty cells the
   solver fills in.
 - Uniqueness is proved by OR-Tools CP-SAT, which models the same membership
@@ -214,10 +214,10 @@ the same board comes back out:
     uv run examples/outside-sudoku/build_size.py --rebuild 6
 
 `build_size.test.py` holds that to a byte: each committed link must equal what
-the lane's `rebuild(n)` (`framebuild.RingGlobal`, `framebuild.RingLocal`) produces from its gen JSON, the local board
+the lane's `rebuild(n)` (`lanes.RingGlobal`, `lanes.RingLocal`) produces from its gen JSON, the local board
 included. The 9x9 global board is the shipped one, so `build_size.py 9 3 3`
 and `build_size.py --rebuild 9` write `PUZZLE_LINK.txt`, not
-`PUZZLE_LINK_9x9.txt` (`framebuild.RingGlobal.files`).
+`PUZZLE_LINK_9x9.txt` (`lanes.RingGlobal.files`).
 
 ### Which window digit is the clue
 
@@ -230,7 +230,7 @@ membership.
 ### How a clue function sees the direction
 
 A window is 3 across but 2 down on a 6x6, so the line's digits alone do not
-fix its length. `framebuild.Spec.clue_fn` therefore takes
+fix its length. `board.Spec.clue_fn` therefore takes
 `(values, cells, box)`: `cells` are the line's cells, nearest the clue first,
 and both of this example's clue functions read the direction off `cells[0]`
 and `cells[1]`; `box` is the board's `(box_height, box_width)`, which fixes how
@@ -247,7 +247,7 @@ size. Clue functions on other examples ignore both arguments.
     uv run examples/outside-sudoku/verify.test.py
 
 All of these run under `just check`. Only `verify.test.py` needs OR-Tools:
-`framebuild` imports the solver inside its search, so the clue functions, the
+The frame builder imports the solver inside its search (`carve.unique`), so the clue functions, the
 document assembly and the rebuild all reach a test with `lzstring` alone.
 
 ## Timing

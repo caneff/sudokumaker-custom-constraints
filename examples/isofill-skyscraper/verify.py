@@ -14,13 +14,13 @@
 #      Uniqueness alone would not catch a corrupted grid: the solver would
 #      find the one solution the clues do describe.
 #   3. The board has exactly one solution, under the model build_size.py
-#      carved it with (framebuild.unique on the ISOFILL interior, SPEC's
+#      carved it with (carve.unique on the ISOFILL interior, SPEC's
 #      clue rule).
 #
 # A staleness check, not a second opinion on the rule: it shares the
 # generator's model on purpose, and what it catches is a board that outlived
 # its proof. That a link opens clean is check_layout.py's; that it ships its
-# lane's own components is framebuild.Lane.check's, run by build_size.py.
+# lane's own components is lanes.Lane.check's, run by build_size.py.
 
 import pathlib
 import sys
@@ -29,11 +29,14 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from board import load_board
 from build_size import MIN_DIGIT, SPEC
-from framebuild import FRAME_BACKENDS, RingGlobal, load_board, unique
+from carve import unique
+from document import FRAME_BACKENDS
 from isofill_model import Board as IsofillBoard
 from isofill_model import model
-from ring_link import mismatches
+from lanes import RingGlobal
+from ring_link import mismatches, stale_against_grid
 from sudoku_kit import cpsat
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -73,23 +76,10 @@ def grid_problems(board):
         for key, cells in board.lines.items()
     }
     return (
-        (
-            []
-            if status in cpsat.SOLVED
-            else ["the recorded grid is not an ISOFILL solution"]
-        )
-        + [
-            f"given {key}: gen says {v}, the recorded grid has {grid[key[0]][key[1]]}"
-            for key, v in sorted(board.givens.items())
-            if grid[key[0]][key[1]] != v
-        ]
-        + [
-            f"clue {key[0]}{key[1]}: gen says {board.clue[key]}, "
-            f"the recorded grid reads {read[key]}"
-            for key in sorted(board.lines)
-            if read[key] != board.clue[key]
-        ]
-    )
+        []
+        if status in cpsat.SOLVED
+        else ["the recorded grid is not an ISOFILL solution"]
+    ) + stale_against_grid(board, read)
 
 
 def check(board, link_file):

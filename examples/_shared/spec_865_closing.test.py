@@ -142,12 +142,14 @@ def a_rectangular_isofill_builds_from_the_setter_s_tools():
 
 def a_rectangular_isofill_skyscraper_builds_and_proves():
     build_size = _load("isofill-skyscraper", "build_size")
-    from framebuild import RingGlobal, generate, unique
+    from board import Geometry
+    from carve import generate, unique
+    from lanes import RingGlobal
     from ring_link import mismatches
     from sudoku_kit import link_codec
 
     spec = build_size.SPEC
-    board = generate(spec, 4, 1, 4, range(101, 104), shape={"height": 3, "digits": 3})
+    board = generate(spec, Geometry.rect(4, 3, 3), range(101, 104))
     assert (board.n, board.height, board.digits) == (4, 3, 3)
     assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
     lane = RingGlobal(spec)

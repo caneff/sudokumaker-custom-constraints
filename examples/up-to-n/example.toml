@@ -1,2 +1,3 @@
 timed_component = "UpToNComponent"
 lanes = "single"
+rules_prefix = "ringless"

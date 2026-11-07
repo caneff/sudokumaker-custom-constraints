@@ -26,19 +26,19 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import rule_text
-from frame import cosmetics
-from framebuild import (
+from document import (
     HOUSE_GAC_BACKEND_TITLE,
     RULES_PREFIX,
     frame_backend_code,
     house_gac_constraint,
     refresh_frame_backends,
 )
+from frame import cosmetics
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
-from sm_document import find_constraint
-from sudoku_kit.link_codec import decode_puzzle, encode_link
+from sm_document import assert_round_trips, find_constraint
+from sudoku_kit.link_codec import encode_link
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -73,7 +73,7 @@ def build_from_template():
     # The shared house-GAC filter, on this 9x9 global board only: real-app
     # timing clears the two-row bar here (0.71x cold, ~0x after-logical;
     # docs/research/421-frame-link-timing.md). The local, 4x4 and 6x6 lanes are
-    # framebuild-native and were not timed, so they do not carry it.
+    # frame-builder-native and were not timed, so they do not carry it.
     cons[:] = [
         c
         for c in cons
@@ -89,8 +89,7 @@ def build_from_template():
 
 
 def check(link, doc):
-    back = decode_puzzle(link)
-    assert back == doc, "link does not decode back to the built document"
+    assert_round_trips(link, doc)
     rs = find_constraint(doc, CONSTRAINT_NAME)
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"

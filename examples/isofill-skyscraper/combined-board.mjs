@@ -28,7 +28,7 @@ export function combinedBoard (here, read, gen = JSON.parse(readFileSync(join(he
 
   const truth = {}
   gen.grid.forEach((row, r) => row.forEach((d, c) => { truth[at(r + 1, c + 1)] = d }))
-  // The ring cell of each gen.json clue key ("L0", "T8"), as framebuild's
+  // The ring cell of each gen.json clue key ("L0", "T8"), as the frame builder's
   // `ring_cell` places it.
   const ringCell = { L: i => at(i + 1, 0), R: i => at(i + 1, W - 1), T: i => at(0, i + 1), B: i => at(H - 1, i + 1) }
   for (const [key, v] of Object.entries(gen.clue)) truth[ringCell[key[0]](Number(key.slice(1)))] = v

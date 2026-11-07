@@ -81,6 +81,9 @@ class Board:
 
 
 def model(board, givens):
+    """Returns `(CpModel, x)`, `x` keyed by cell `(r, c)`. Each digit's cells
+    form one connected region of `board.size` cells, encoded as a single-root
+    flow; `givens` pins cells to digits."""
     size, lo = board.size, board.lo
     m = cp_model.CpModel()
     x = {p: m.NewIntVar(lo, lo + board.digits - 1, f"x{p}") for p in board.cells}
@@ -124,6 +127,8 @@ def model(board, givens):
 
 
 def rows(board, s, x):
+    """The grid as one digit string per row; `s` is a solved CpSolver and `x`
+    is the variables `model` returned."""
     return [
         "".join(str(s.Value(x[r, c])) for c in range(board.width))
         for r in range(board.height)
@@ -131,6 +136,8 @@ def rows(board, s, x):
 
 
 def sample(board, seed, limit=LIMIT):
+    """Draws one grid as rows of digit strings. Raises TimeoutError when
+    CP-SAT hits `limit` seconds with no grid. A draw, not a uniqueness proof."""
     m, x = model(board, {})
     # A seed alone barely moves the default search (it hands back striped
     # grids); randomize_search makes the seed pick a genuinely different grid.

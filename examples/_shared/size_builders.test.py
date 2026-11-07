@@ -1,7 +1,7 @@
 # Every size builder's committed boards rebuild byte for byte: each
 # examples/*/build_size.py's Spec, run through `--rebuild` on every gen JSON
 # its example ships, gives back the committed link exactly: a change to
-# framebuild's lanes that moves a single byte of a shipped link fails here,
+# the frame builder's lanes that moves a single byte of a shipped link fails here,
 # naming the board.
 #
 # No CP-SAT search runs: a rebuild re-encodes the recorded board, so the whole
@@ -15,8 +15,9 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from board import load_board
 from check_layout import _link_suffix
-from framebuild import lane_kinds, load_board, named_files
+from lanes import lane_kinds, named_files
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
 

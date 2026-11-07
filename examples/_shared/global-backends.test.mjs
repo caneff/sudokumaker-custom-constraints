@@ -6,7 +6,7 @@
 // Both lanes run here (docs/line-contract.md). The GLOBAL lane is
 // main-global.js with no `input`: it derives every cell id from the board size,
 // so it gets the frame checks as well. The LOCAL lane is main.js with
-// `input.groups` supplied in the shape framebuild.frame_groups ships --
+// `input.groups` supplied in the shape document.frame_groups ships --
 // `{ cells: [clueCell, ...line], value: '' }` -- and it gets the id checks
 // alone: a drawn board is whatever its author drew, and the shapes below are
 // two of the things an author can legitimately draw that a frame never is.
@@ -80,11 +80,11 @@ const helpers = {
 }
 
 // Walk everything a component was constructed with and report any cell id that
-// is not a plain number, and any that is off the board. The second check is
-// what keeps the coercion honest: `getCellAt` returns undefined off the board
-// and `undefined | 0` is 0 -- a real cell -- so a backend that strayed
-// off-grid would coerce a miss into a silent, wrong cell 0 rather than fail
-// loud (CODING_STANDARDS.md).
+// is not a plain in-range integer. The walk cannot see a coerced miss:
+// `getCellAt` returns undefined off the board and `undefined | 0` is 0 -- a
+// real, in-range cell -- so a backend that strayed off-grid would hand
+// components a silent, wrong cell 0. Only the `offBoard` counter catches that
+// (CODING_STANDARDS.md).
 function badIdsIn (value, cells, path = '') {
   if (Array.isArray(value)) return value.flatMap((v, i) => badIdsIn(v, cells, `${path}[${i}]`))
   if (value instanceof Number) return [`${path}: boxed, not coerced`]
@@ -335,7 +335,7 @@ for (const name of dirs.filter(globalOnly)) {
     `${name} says lanes = "global" and must ship no main.js`)
 }
 
-// A drawn group as framebuild.frame_groups ships it: the clue's ring cell,
+// A drawn group as document.frame_groups ships it: the clue's ring cell,
 // then that line's cells inward, and the empty value the app stores on a group
 // the author has not typed into.
 const drawn = cells => ({ cells, value: '' })
@@ -348,7 +348,7 @@ const drawn = cells => ({ cells, value: '' })
 //    that pairs ends must still do something sane with a single one -- the
 //    author may be halfway through drawing the other.
 //  - BENT PATH: an L, `a` cells straight in from the clue then a turn and
-//    n - a across, n in all. That is the shape framebuild.make_paths generates
+//    n - a across, n in all. That is the shape carve.make_paths generates
 //    and the local boards of the bare-line examples ship. A bent path spans more
 //    than one row and more than one column, so it is not a house and the line
 //    kind checks in a component must not assume one (docs/line-contract.md).
@@ -403,5 +403,6 @@ for (const name of localDirs) {
       `${name}/main.js on ${W}x${H} must build from the drawn groups: a lone clue registered ${registered[', lone clue']}, the whole frame ${registered[', drawn frame']}`)
   }
 }
+assert.ok(localRuns > 0, 'no local backend was checked')
 
 console.log(`PASS (${dirs.length} global backends, ${localDirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)

@@ -43,9 +43,7 @@ import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
     { linkFile: 'link.txt', outFile: 'out.json', gridFile: 'puzzle.json', seed: 1 }
   )
 
-  // every missing path is a usage error, never a run with a null path -- a
-  // missing --grid in particular would otherwise strip clues from a grid the
-  // driver never read
+  // every missing path is a usage error, never a run with a null path
   const incomplete = [
     [],
     ['link.txt'],

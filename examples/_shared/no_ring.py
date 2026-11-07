@@ -1,17 +1,18 @@
 # The no-ring lane: a board with no clue ring around it, its clues typed into
 # drawn groups on the bare n x n grid (up-to-n's shape). A Spec with a
-# `groups_fn` builds this lane and no other -- `framebuild.lane_kinds` says
+# `groups_fn` builds this lane and no other -- `lanes.lane_kinds` says
 # so -- because the groups are the only place its clues live.
 #
 # The ring lanes, the shared generator and the board round trip stay in
-# framebuild.py; this module holds what only a no-ring board needs: its
+# lanes.py, carve.py and board.py; this module holds what only a no-ring board needs: its
 # groups, its clue labels, its document, its check and its rebuild rules.
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import NO_RING_RULES_PREFIX, Lane, named_files, puzzle_document
+from document import NO_RING_RULES_PREFIX, board_document
+from lanes import Lane, named_files
 from minify import minify_file
 from sm_document import code_constraint
 
@@ -163,7 +164,7 @@ class NoRing(Lane):
             *([labels] if labels else []),
         ]
         comment = self.rules_prefix + spec.comment_fn(n)
-        return puzzle_document(spec, board, n, cells, constraints, comment)
+        return board_document(spec, board, n, cells, constraints, comment)
 
     def _check_lane(self, lc, doc, board):
         spec = self.spec

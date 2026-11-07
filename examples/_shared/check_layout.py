@@ -35,18 +35,17 @@
 #
 #   uv run examples/_shared/check_layout.py [root]
 
-import ast
-import io
+import dataclasses
+import enum
 import json
 import pathlib
 import re
 import sys
-import tokenize
 import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import describe_mismatch, mismatch
-from framebuild import (
+from document import (
     FRAME_BACKENDS,
     HOUSE_GAC_BACKEND_TITLE,
     HOUSE_GAC_COMPONENT_NAME,
@@ -56,7 +55,7 @@ from framebuild import (
     house_gac_backend_code,
 )
 from manifest import load_manifest
-from minify import INCLUDE_RE, minify_file
+from minify import minify_file
 from no_ring import GRID_BACKEND, grid_backend_constraint
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -220,117 +219,6 @@ def check_gen_link_pairing(example_dir, manifest):
     return violations
 
 
-# A path into docs/research/, in each spelling a loader writes it: one string,
-# path.join's separate arguments (on one line or several), or a pathlib `/`
-# chain.
-RESEARCH_PATH = re.compile(r"""docs(?:/|['"]\s*[,/]\s*['"])research""")
-
-# The gate's own files, which name docs/research/ to police it, not to load
-# from it.
-RESEARCH_INSPECTORS = frozenset(
-    {
-        "examples/_shared/check_layout.py",
-        "examples/_shared/check_layout.test.py",
-        "examples/_shared/gate.test.py",
-        "examples/_shared/spec_649_closing.test.py",
-        "examples/_shared/spec_748_closing.test.py",
-    }
-)
-
-# A JavaScript comment, opening a line or after whitespace: a `//` or `/*`
-# inside a string (a URL, a glob) follows other characters, so it is left be.
-_JS_COMMENT = re.compile(r"(?:^|(?<=\s))(?://[^\n]*|/\*.*?\*/)", re.M | re.S)
-
-
-def _blank(text, spans):
-    """`text` with each (start, end) offset span replaced by spaces, keeping its
-    newlines, so every offset left keeps its line number."""
-    chars = list(text)
-    for start, end in spans:
-        for i in range(start, end):
-            if chars[i] != "\n":
-                chars[i] = " "
-    return "".join(chars)
-
-
-def _python_code(text):
-    """Python source with its comments and docstrings blanked."""
-    prose = set()
-    for node in ast.walk(ast.parse(text)):
-        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
-            prose.update(range(node.lineno, node.end_lineno + 1))
-    starts = [0]
-    for line in text.splitlines(keepends=True):
-        starts.append(starts[-1] + len(line))
-    spans = []
-    for tok in tokenize.generate_tokens(io.StringIO(text).readline):
-        if tok.type == tokenize.COMMENT or (
-            tok.type == tokenize.STRING and tok.start[0] in prose
-        ):
-            (r0, c0), (r1, c1) = tok.start, tok.end
-            spans.append((starts[r0 - 1] + c0, starts[r1 - 1] + c1))
-    return _blank(text, spans)
-
-
-def _js_code(text):
-    """JavaScript source with its comments blanked."""
-    return _blank(text, [m.span() for m in _JS_COMMENT.finditer(text)])
-
-
-def check_research_loads(repo_root):
-    """Return one violation string per load of a docs/research/ path from
-    examples/ code: a path built in code, or a `// #include` that resolves
-    into docs/research/ (minify splices the included file into the link).
-
-    docs/research/ holds records, not live code: a file the gate's code
-    loads from there is maintained source the gate never lints. A citation in
-    a comment or docstring is not a load. A dot directory (scratch) and
-    node_modules are not scanned.
-
-    It reads text, not a parse tree, so a pass is not proof: a path segment
-    held in a variable, and code hidden behind a `//` or `/*` that sits after
-    whitespace inside a string, are not seen."""
-    repo_root = pathlib.Path(repo_root)
-    research = (repo_root / "docs" / "research").resolve()
-    violations = []
-    for path in sorted((repo_root / "examples").rglob("*")):
-        parts = path.relative_to(repo_root).parts
-        if path.suffix not in {".py", ".js", ".mjs", ".cjs"} or any(
-            p == "node_modules" or p.startswith(".") for p in parts
-        ):
-            continue
-        rel = path.relative_to(repo_root).as_posix()
-        if rel in RESEARCH_INSPECTORS:
-            continue
-        text = path.read_text()
-        loads = set()
-        if path.suffix == ".py":
-            try:
-                code = _python_code(text)
-            except SyntaxError as e:
-                violations.append(
-                    f"{rel}: does not parse ({e.msg}), so its loads cannot be checked"
-                )
-                continue
-        else:
-            code = _js_code(text)
-            for n, line in enumerate(text.splitlines(), 1):
-                directive = INCLUDE_RE.match(line)
-                target = (
-                    directive and (path.parent / directive.group(1).strip()).resolve()
-                )
-                if target and target.is_relative_to(research):
-                    loads.add(n)
-        for m in RESEARCH_PATH.finditer(code):
-            loads.add(code.count("\n", 0, m.start()) + 1)
-        violations.extend(
-            f"{rel}:{n}: loads from docs/research/ -- research holds records, "
-            "so move what it loads into examples/"
-            for n in sorted(loads)
-        )
-    return violations
-
-
 # The prefix every SudokuMaker link starts with. A committed .txt beside an
 # example is a link when it starts with this and nothing else is; a golden or a
 # note is not decoded and not checked.
@@ -393,7 +281,7 @@ def _ring_state(puzzle):
     return sum(1 for i in ring if cells[i]), len(ring)
 
 
-def check_share_ready(example_dir, link, puzzle, manifest):
+def check_share_ready(example_dir, link, puzzle, manifest, facts):
     """Return one violation string per pre-share criterion `link` (a
     committed link, decoded as `puzzle`) fails: the link opens clean, the ring is
     not filled end to end, and the rules text carries the sudoku prefix
@@ -406,10 +294,10 @@ def check_share_ready(example_dir, link, puzzle, manifest):
     name = example_dir.name
     violations = []
 
-    # The clued twins fill all 36 outside clues on purpose -- that is what
-    # the name means, and app-solve.mjs reads them with --ring-clues. The
-    # entered-values check does not apply to them; the prefix check still
-    # does.
+    # The clued twins fill every outside clue on purpose -- that is what the
+    # name means, and app-solve.mjs reads them with --ring-clues. The
+    # entered-values check and the full-ring check do not apply to them; the
+    # prefix check still does.
     clued = f"_{TAGS[0]}" in link.name
     entered = sum(
         1 for cell in puzzle["cells"] if "value" in cell and not cell.get("given")
@@ -419,15 +307,14 @@ def check_share_ready(example_dir, link, puzzle, manifest):
             f"{name}: {_shown(example_dir, link)} has {entered} entered value(s) on non-given cells"
         )
 
-    no_ring = is_no_ring(puzzle) or is_sudoku_document(puzzle)
-    ring_filled, ring_total = (0, 0) if no_ring else _ring_state(puzzle)
+    ring_filled, ring_total = (0, 0) if facts.ringless else _ring_state(puzzle)
     if ring_total and ring_filled == ring_total and not clued:
         violations.append(
             f"{name}: {_shown(example_dir, link)} fills all {ring_total} ring cells -- curate "
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
-    ringless = no_ring or manifest.rules_prefix == "ringless"
+    ringless = facts.ringless or manifest.rules_prefix == "ringless"
     prefix = NO_RING_RULES_PREFIX if ringless else RULES_PREFIX
     if manifest.rules_prefix != "none" and not puzzle.get("comment", "").startswith(
         prefix
@@ -449,11 +336,11 @@ def check_components(example_dir, link, puzzle):
     A component nothing in the link instantiates is dead weight, and the
     recipient reads its source as part of the rule; a component the link's
     code instantiates but the link omits fails inside the app, where the author
-    never sees it. `framebuild.Lane.check` asserts this when it builds a link, but
+    never sees it. `lanes.Lane.check` asserts this when it builds a link, but
     a committed link goes stale on its own: the builder's component list
     changes, the link is not regenerated, and nothing notices.
 
-    A lexical check, like the one in `framebuild.Lane.check`: it reads
+    A lexical check, like the one in `lanes.Lane.check`: it reads
     `new <Name>Component` (or `new customComponents.<Name>Component`) off that
     code, so a class reached through
     an alias, or named some other way, is invisible to it. SudokuMaker's own
@@ -507,7 +394,7 @@ def declared_houses(puzzle):
     return houses
 
 
-# The constraint name `framebuild`'s ring lanes' `build_doc` ships the row/column backend
+# The constraint name the ring lanes' `build_doc` ships the row/column backend
 # under, read off the one place that pairing lives so a rename reaches this
 # sweep too. It is the handle that says "this board meant to declare its lines
 # in JS" even when the code embedded under it is an old copy.
@@ -542,49 +429,120 @@ def house_gac_component_file(keep_comments=False):
     return (HOUSE_GAC_COMPONENT_NAME, f"{HOUSE_GAC_COMPONENT_NAME}.js", code)
 
 
-def carries_frame_rowcol(puzzle):
-    """Does this link ship the frame row/column backend under its own name,
-    whatever code is embedded there?"""
-    return any(
-        (c.get("definition") or {}).get("name") == FRAME_ROWCOL_CONSTRAINT
-        for c in puzzle.get("constraints", [])
-    )
-
-
 # The constraint type of `SudokuRules`: the app expands it into a house for
 # every row and column of the grid (a custom document can carry it too).
 SUDOKU_RULES_TYPE = 2003
 
+# Every backend title a link can ship under its own name: the frame's two, the
+# opt-in house-GAC filter and a no-ring board's whole-grid rows and columns.
+# Titles only -- reading the code behind them means minifying it, which
+# `frame_backend_files` does for the staleness check alone.
+FRAME_BACKEND_TITLES = frozenset(
+    [*(title for _, title in FRAME_BACKENDS), HOUSE_GAC_BACKEND_TITLE, GRID_BACKEND[1]]
+)
 
-def has_sudoku_rules(puzzle):
-    """Does this link carry the bare `SudokuRules` constraint, which gives the
-    grid every row and column as a house without a region or cage saying so?"""
-    return any(
-        c.get("type") == SUDOKU_RULES_TYPE for c in puzzle.get("constraints", [])
-    )
+
+class LinkKind(enum.Enum):
+    """`LinkFacts.kind`: a misspelt member raises, a misspelt string would
+    compare unequal and pass."""
+
+    NO_RING = "no-ring"
+    SUDOKU_DOCUMENT = "sudoku-document"
+    FRAME = "frame"
 
 
-def declares_rows_and_columns(manifest, puzzle):
+class HouseSource(enum.Enum):
+    """`LinkFacts.house_source`, an enum for the same reason as `LinkKind`."""
+
+    FRAME_BACKEND = "frame-backend"
+    NO_RING_BACKEND = "no-ring-backend"
+    SUDOKU_RULES = "sudoku-rules"
+    DOCUMENT = "document"
+
+
+@dataclasses.dataclass(frozen=True)
+class LinkFacts:
+    """What the per-link checks need to know about one decoded link, worked out
+    once from the raw document alone (no frame-builder lane is called).
+
+    - `kind`: "no-ring" (carries the whole-grid rows-and-columns backend,
+      `is_no_ring`), "sudoku-document" (`is_sudoku_document`), else "frame".
+      The first two have no clue ring; their edge cells are real cells.
+    - `backend_titles`: the frame backends the link ships under their own
+      name, whatever code is embedded there, in constraint order.
+    - `constraint_names`: every custom constraint's name, for a backend a
+      manifest borrows (`declares_rows_and_columns`).
+    - `interior`: the ids of the cells a frame board's rows and columns run
+      through (see `_interior_cells`); None when `width` x `height` is not
+      declared as ints.
+    - `house_source`: where the board's rows and columns come from when not
+      a region or cage: "frame-backend", "no-ring-backend", "sudoku-rules"
+      (type 2003, which the app expands into them), or "document" -- a
+      static read of the document's regions and cages is all there is."""
+
+    kind: LinkKind
+    backend_titles: tuple
+    constraint_names: frozenset
+    interior: frozenset | None
+    house_source: HouseSource
+
+    @classmethod
+    def of(cls, puzzle):
+        constraints = puzzle.get("constraints", [])
+        names = [(c.get("definition") or {}).get("name") for c in constraints]
+        titles = tuple(n for n in names if n in FRAME_BACKEND_TITLES)
+        no_ring = is_no_ring(puzzle)
+        if no_ring:
+            kind = LinkKind.NO_RING
+        elif is_sudoku_document(puzzle):
+            kind = LinkKind.SUDOKU_DOCUMENT
+        else:
+            kind = LinkKind.FRAME
+        if FRAME_ROWCOL_CONSTRAINT in names:
+            house_source = HouseSource.FRAME_BACKEND
+        elif no_ring:
+            house_source = HouseSource.NO_RING_BACKEND
+        elif any(c.get("type") == SUDOKU_RULES_TYPE for c in constraints):
+            house_source = HouseSource.SUDOKU_RULES
+        else:
+            house_source = HouseSource.DOCUMENT
+        w, h = puzzle.get("width"), puzzle.get("height")
+        interior = (
+            _interior_cells(constraints, titles, w, h)
+            if isinstance(w, int) and isinstance(h, int)
+            else None
+        )
+        return cls(
+            kind, titles, frozenset(n for n in names if n), interior, house_source
+        )
+
+    @property
+    def ringless(self):
+        """No clue ring: a no-ring board or a "sudoku" document."""
+        return self.kind is not LinkKind.FRAME
+
+
+def declares_rows_and_columns(manifest, facts):
     """Does this link get its row and column houses from something other than
     a region or cage, which declared_houses' static read of the document
     would miss? Either a constraint that builds them in JS, or the bare
-    `SudokuRules` constraint (type 2003, `has_sudoku_rules`), which the app
-    expands into them. The JS cases: the frame's shared row/col backend, a
-    no-ring board's whole-grid one, or the one borrowed backend the manifest's rowcol_backend names (house-gac's
+    `SudokuRules` constraint (type 2003), which the app expands into them
+    (`LinkFacts.house_source`). The JS cases: the frame's shared row/col
+    backend, a no-ring board's whole-grid one, or the one borrowed backend the manifest's rowcol_backend names (house-gac's
     "Rows & Columns", docs/research/406-gac-demo's own, carried unmodified;
     nothing here compares it to a file in the tree). Scoped per example,
     not by name alone: a name match on some other example's own unrelated
     constraint must not silently exempt it too. SudokuRules carries no name to
     match and is the app's own constraint, so it is recognised on any example."""
-    if carries_frame_rowcol(puzzle) or is_no_ring(puzzle) or has_sudoku_rules(puzzle):
+    if facts.house_source is not HouseSource.DOCUMENT:
         return True
-    return manifest.rowcol_backend is not None and any(
-        (c.get("definition") or {}).get("name") == manifest.rowcol_backend
-        for c in puzzle.get("constraints", [])
+    return (
+        manifest.rowcol_backend is not None
+        and manifest.rowcol_backend in facts.constraint_names
     )
 
 
-def interior_cells(puzzle, width, height):
+def _interior_cells(constraints, backend_titles, width, height):
     """The ids of the cells a region constraint places in a region.
 
     That is the interior of a frame board: its ring is outside every region and
@@ -593,56 +551,53 @@ def interior_cells(puzzle, width, height):
     draws no boxes (isofill-skyscraper), and its interior is every cell off the
     ring.
     """
-    regions = next(
-        (c["regions"] for c in puzzle.get("constraints", []) if "regions" in c), None
-    )
-    if regions is None and CORNERS_TITLE in carried_backend_titles(puzzle):
-        return {
+    regions = next((c["regions"] for c in constraints if "regions" in c), None)
+    if regions is None and CORNERS_TITLE in backend_titles:
+        return frozenset(
             i
             for i in range(width * height)
             if 0 < i // width < height - 1 and 0 < i % width < width - 1
-        }
+        )
     if regions is None:
-        return set(range(width * height))
-    return {i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0}
+        return frozenset(range(width * height))
+    return frozenset(i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0)
 
 
-def interior_line_lengths(puzzle, width, height):
+def interior_line_lengths(facts, width, height):
     """How many interior cells each row and each column holds, empty lines
     dropped -- a frame board's ring rows and columns hold none."""
-    inside = interior_cells(puzzle, width, height)
+    inside = facts.interior
     rows = ([i for i in inside if i // width == r] for r in range(height))
     columns = ([i for i in inside if i % width == c] for c in range(width))
     return {len(line) for line in (*rows, *columns) if line}
 
 
-def check_houses(example_dir, link, puzzle, manifest):
+def check_houses(example_dir, link, puzzle, manifest, facts):
     """Return one violation string per interior row or column of `puzzle`
     that is neither a house the document declares nor one the shared frame
     backend declares in JS.
 
     A region constraint gives you BOXES ONLY -- rows and columns are not
     implied, and nothing in the app says so: it solves, times and counts
-    solutions on a board that is not the one you meant. `framebuild.py` ships
-    them as two type-301 cage constraints; a builder that writes its own
-    constraint list has to do the same. This cost three tickets of quad-rank
+    solutions on a board that is not the one you meant. The frame builder
+    declares them as named houses through the frame-rowcol backend; a builder
+    that writes its own constraint list has to declare them itself. This cost three tickets of quad-rank
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
     a 6x6 whose true count is 2 came back as 5 (docs/gotchas.md #9).
 
     A "sudoku" document is exempt: the app prepends SudokuRules to it, every
     row and column of the whole grid (`is_sudoku_document`).
 
-    Interior is `interior_cells` above.
+    Interior is `LinkFacts.interior`.
     """
     name = example_dir.name
     if not manifest.houses:
         return []
 
-    width, height = puzzle.get("width"), puzzle.get("height")
-    if not isinstance(width, int) or not isinstance(height, int):
+    if facts.interior is None:
         return []
-
-    inside = interior_cells(puzzle, width, height)
+    width, height = puzzle["width"], puzzle["height"]
+    inside = facts.interior
 
     # A board carrying a row/column backend declares its lines in JS, so
     # counting missing rows here would send the reader after a constraint that
@@ -650,7 +605,10 @@ def check_houses(example_dir, link, puzzle, manifest):
     # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns).
-    if declares_rows_and_columns(manifest, puzzle) or is_sudoku_document(puzzle):
+    if (
+        declares_rows_and_columns(manifest, facts)
+        or facts.kind is LinkKind.SUDOKU_DOCUMENT
+    ):
         return []
 
     houses = declared_houses(puzzle)
@@ -667,17 +625,6 @@ def check_houses(example_dir, link, puzzle, manifest):
                 f"columns need their own constraints (docs/gotchas.md #9)"
             )
     return violations
-
-
-def carried_backend_titles(puzzle):
-    """The titles of the frame backends `puzzle` ships under their own name,
-    whatever code is embedded there."""
-    current = frame_backend_files()
-    return [
-        title
-        for constraint in puzzle.get("constraints", [])
-        if (title := (constraint.get("definition") or {}).get("name")) in current
-    ]
 
 
 def check_stale_backend_code(example_dir, link, puzzle, manifest):
@@ -747,7 +694,7 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     return violations
 
 
-def check_digit_range(example_dir, link, puzzle, manifest):
+def check_digit_range(example_dir, link, puzzle, manifest, facts):
     """Return one violation if `puzzle` ships a frame backend and declares no
     digit range, or a range that does not span the interior line.
 
@@ -762,7 +709,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     in the source text.
     """
     name = example_dir.name
-    carried = carried_backend_titles(puzzle)
+    carried = facts.backend_titles
     if not carried:
         return []
 
@@ -781,7 +728,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     ):
         return []
 
-    lengths = interior_line_lengths(puzzle, width, height)
+    lengths = interior_line_lengths(facts, width, height)
     span = hi - lo + 1
     if lengths and lengths != {span}:
         cells = "/".join(str(n) for n in sorted(lengths))
@@ -824,7 +771,7 @@ def check_gen_frame_backends(example_dir):
 
     A gen JSON is the board's record, and the shared frame backends are not
     part of a board: their code is read from the tree at build time
-    (`framebuild.refresh_frame_backends`), so a copy kept here is dead data no
+    (`document.refresh_frame_backends`), so a copy kept here is dead data no
     build reads and nothing rebuilds -- it can only drift from the file it
     copies, and a reader comparing the two has no way to tell which one runs.
     Keep the field empty. A gen JSON that does not parse is
@@ -905,6 +852,21 @@ def check_example(example_dir):
             if not (example_dir / required).is_file()
         )
 
+    # A single-lane example ships main.js alone and a global-lane one ships
+    # main-global.js in its place; neither carries the local board (the
+    # comment above REQUIRED_LOCAL_FILES). A stray file is a lane the
+    # manifest says does not exist.
+    strays = {
+        "single": ["main-global.js", *REQUIRED_LOCAL_FILES],
+        "global": REQUIRED_LOCAL_FILES,
+    }.get(manifest.lanes, [])
+    violations.extend(
+        f"{name}: {manifest.lanes}-lane example carries {stray}, a file of a lane "
+        f"its manifest says it does not have"
+        for stray in strays
+        if (example_dir / stray).is_file()
+    )
+
     violations.extend(check_lanes(example_dir))
     violations.extend(check_gen_link_pairing(example_dir, manifest))
     violations.extend(check_gen_json_parses(example_dir))
@@ -925,11 +887,12 @@ def check_example(example_dir):
                 f"{name}: {_shown(example_dir, link)} failed to decode: {e}"
             )
             continue
-        violations.extend(check_share_ready(example_dir, link, puzzle, manifest))
+        facts = LinkFacts.of(puzzle)
+        violations.extend(check_share_ready(example_dir, link, puzzle, manifest, facts))
         violations.extend(check_components(example_dir, link, puzzle))
         violations.extend(check_stale_backend_code(example_dir, link, puzzle, manifest))
-        violations.extend(check_digit_range(example_dir, link, puzzle, manifest))
-        violations.extend(check_houses(example_dir, link, puzzle, manifest))
+        violations.extend(check_digit_range(example_dir, link, puzzle, manifest, facts))
+        violations.extend(check_houses(example_dir, link, puzzle, manifest, facts))
 
     return violations
 
@@ -951,21 +914,9 @@ def check_tree(root):
     return violations
 
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-
-
 def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
-    # The research-load scan reads the whole repo, found relative to this file
-    # rather than `root` -- but only for the real, no-args invocation `just
-    # check` and the pre-commit hook (#879) make. A test that passes an explicit root is pointed at a temp
-    # tree on purpose, and must stay hermetic: scanning this file's real repo
-    # location in that case would fail check_layout.test.py's subprocess cases
-    # on whatever another session has under examples/ right now, unrelated to
-    # the temp tree under test.
-    if len(argv) <= 1:
-        violations.extend(check_research_loads(REPO_ROOT))
     for v in violations:
         print(v)
     print(f"{'FAILED' if violations else 'ok'} — {len(violations)} violation(s)")

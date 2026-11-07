@@ -1,11 +1,11 @@
 # The two gate tiers: `just check` is the fast loop, `just check-full`
 # is everything and runs nightly in CI. Both reach their suites
 # through the seam runner, `tests/all.sh`. This runs both recipes with
-# node, npx, uv and uvx replaced by stubs that log their argv and exit 0, then
+# node, npx, uv, uvx and pants replaced by stubs that log their argv and exit 0, then
 # checks what each tier would have run against the files on disk:
 #
 #   - check-full runs every *.test.mjs, *.test.py and soundness-harness.mjs
-#     under examples/, lint, and the two plain scripts the gate runs, so a new
+#     under examples/, lint, and the four plain scripts the gate runs, so a new
 #     or renamed test cannot drop out of both tiers -- and it runs nothing
 #     else: a suite or a lint step for a directory outside examples/ fails
 #     here, and so does a file `just fmt` rewrites outside it;
@@ -78,6 +78,7 @@ LINT = {
 
 SCRIPTS = {
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/_shared/check_research_loads.py",
     "uv run examples/skyscraper/verify.py",
     "uv run examples/isofill-skyscraper/verify.py",
 }
