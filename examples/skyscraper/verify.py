@@ -45,7 +45,7 @@ sys.path.insert(0, str(HERE))
 
 from build_size import SPEC
 from framebuild import RingGlobal, load_board, unique
-from ring_link import interior_index, mismatches
+from ring_link import interior_index, mismatches, stale_against_grid
 from sudoku_kit.link_codec import decode_puzzle
 
 
@@ -58,24 +58,11 @@ def grid_problems(board):
         key: SPEC.clue_fn([grid[r][c] for (r, c) in cells], cells, board.box)
         for key, cells in board.lines.items()
     }
-    return (
-        [
-            f"house at {house[0]} is not 1-{n}: {sorted(grid[r][c] for r, c in house)}"
-            for house in houses
-            if sorted(grid[r][c] for r, c in house) != list(range(1, n + 1))
-        ]
-        + [
-            f"given {key}: gen says {v}, the recorded grid has {grid[key[0]][key[1]]}"
-            for key, v in sorted(board.givens.items())
-            if grid[key[0]][key[1]] != v
-        ]
-        + [
-            f"clue {key[0]}{key[1]}: gen says {board.clue[key]}, "
-            f"the recorded grid reads {read[key]}"
-            for key in sorted(board.lines)
-            if read[key] != board.clue[key]
-        ]
-    )
+    return [
+        f"house at {house[0]} is not 1-{n}: {sorted(grid[r][c] for r, c in house)}"
+        for house in houses
+        if sorted(grid[r][c] for r, c in house) != list(range(1, n + 1))
+    ] + stale_against_grid(board, read)
 
 
 def boxes(n, bh, bw):
