@@ -378,7 +378,8 @@ if __name__ == "__main__":
         example_dir = tmp / "ex"
         example_dir.mkdir()
         (example_dir / "PUZZLE_LINK.txt").write_text(LINK_FILE.read_text())
-        component = LINK_FILE.parent / "SkyscraperPairComponent.js"
+        component = tmp / "SkyscraperPairComponent.js"
+        component.write_text("function update () {}\n")
         out = tmp / "out.txt"
 
         code, stdout, stderr = call_swap_main(
