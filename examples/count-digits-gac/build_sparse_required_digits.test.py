@@ -8,7 +8,6 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 
 from board_kit import box, givens_of
-from board_kit import count_solutions as count_with
 from build_sparse_required_digits import (
     BASELINE_NAME,
     BOARD_DIR,
@@ -19,12 +18,11 @@ from build_sparse_required_digits import (
     is_house,
     model,
 )
+from count_test_kit import counter_for, full_givens
 from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
 
-
-def count_solutions(groups, givens):
-    return count_with(model, groups, givens)
+count_solutions = counter_for(model)
 
 
 NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
@@ -51,7 +49,7 @@ def check_board(gen):
 
 
 def check_rule_is_enforced(gen):
-    full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
+    full = full_givens(gen)
     g = gen["groups"][0]
     held = {full[tuple(p)] for p in g["cells"]}
     absent = sorted(set(range(1, 10)) - held)

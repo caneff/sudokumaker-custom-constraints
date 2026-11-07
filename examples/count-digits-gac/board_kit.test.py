@@ -14,6 +14,7 @@ from board_kit import (
     carve,
     count_solutions,
     draw_grid,
+    draw_groups,
     givens_of,
     search,
 )
@@ -96,6 +97,54 @@ def check_search():
     assert count_solutions(plain_model, gen["groups"], givens_of(gen)) == 1
 
 
+def check_draw_groups():
+    asked = []
+
+    def draw_group(rng, grid, taken, index):
+        asked.append(set(taken))
+        cell = (rng.randrange(N), 0)
+        return None if cell in taken or cell[0] == 0 else {"cells": [cell]}
+
+    rng = random.Random(4)
+    groups = draw_groups(
+        rng, None, 3, draw_group, lambda g: set(g["cells"]), attempts=500
+    )
+    cells = [g["cells"][0] for g in groups]
+    assert len(set(cells)) == 3 and all(r != 0 for r, _ in cells)
+    assert asked[-1] == set(cells[:2]) or len(asked[-1]) == 2, (
+        "claimed cells not passed"
+    )
+    # what `claimed` returns is what the next draw sees as taken
+    seen = []
+    draw_groups(
+        random.Random(1),
+        None,
+        2,
+        lambda rng, grid, taken, index: seen.append(set(taken)) or {"n": index},
+        lambda g: {("claimed", g["n"])},
+        attempts=10,
+    )
+    assert seen == [set(), {("claimed", 0)}]
+    try:
+        draw_groups(random.Random(0), None, 2, lambda *a: None, lambda g: set(), 7)
+    except RuntimeError as e:
+        assert str(e) == "only drew 0 of 2 groups"
+    else:
+        raise AssertionError("an exhausted retry cap must raise")
+    calls = []
+    try:
+        draw_groups(
+            random.Random(0),
+            None,
+            1,
+            lambda *a: calls.append(1),
+            lambda g: set(),
+            7,
+        )
+    except RuntimeError:
+        assert len(calls) == 7, "the cap is the attempt count"
+
+
 def check_count_solutions():
     full = {
         (r, c): v
@@ -135,6 +184,7 @@ if __name__ == "__main__":
     check_carve_policy()
     check_carve_trial_is_the_running_board()
     check_givens_of()
+    check_draw_groups()
     check_count_solutions()
     check_search()
     check_board_doc()

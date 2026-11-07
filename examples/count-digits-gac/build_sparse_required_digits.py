@@ -19,14 +19,13 @@
 #       grid comes from CP-SAT's portfolio search, which is not reproducible
 #       from the seed: the committed gen.json is the artifact, this a one-shot.
 
-import argparse
 import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from board_kit import N, board_doc, box
+from board_kit import N, board_doc, box, search_parser, write_gen
 from board_kit import search as search_board
 from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
@@ -157,10 +156,11 @@ def build(out_dir=BOARD_DIR, gen_path=GEN):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--search", type=int, metavar="SEED")
-    p.add_argument("--gen", default=GEN)
-    p.add_argument("--groups", type=int, default=20)
+    p = search_parser(
+        GEN,
+        20,
+        out_help="directory for the links (default: required-digits/sparse/ beside this script)",
+    )
     p.add_argument("--required", type=int, default=5)
     p.add_argument(
         "--disjoint",
@@ -168,17 +168,11 @@ if __name__ == "__main__":
         action="store_false",
         help="keep groups from sharing cells (default: they may)",
     )
-    p.add_argument(
-        "--out",
-        help="directory for the links (default: required-digits/sparse/ beside this script)",
-    )
     args = p.parse_args()
     if args.search is not None:
-        pathlib.Path(args.gen).write_text(
-            json.dumps(search(args.search, args.groups, args.required, args.overlap))
-            + "\n"
+        write_gen(
+            args.gen, search(args.search, args.groups, args.required, args.overlap)
         )
-        print(f"wrote {args.gen}")
     else:
         build(pathlib.Path(args.out) if args.out else BOARD_DIR, args.gen)
         print("wrote PUZZLE_LINK.txt and PUZZLE_LINK_original.txt")

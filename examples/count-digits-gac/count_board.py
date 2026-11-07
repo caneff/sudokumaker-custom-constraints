@@ -62,6 +62,31 @@ def grow_group(rng, taken, size):
     return cells
 
 
+def finish_group(rng, grid, cells, values, blocked, index):
+    """The tail the demo and sparse generators share: count the drawn
+    `cells` holding a listed digit, then pick the counter among the cells
+    outside `blocked` whose solution digit is that count. None when the
+    count is outside 1..N or no such cell exists. The rng call is the
+    counter's `rng.choice`, last, so a generator's draw order is its own."""
+    count = sum(1 for r, c in cells if grid[r][c] in values)
+    if not 1 <= count <= N:
+        return None
+    outside = [
+        (r, c)
+        for r in range(N)
+        for c in range(N)
+        if grid[r][c] == count and (r, c) not in blocked
+    ]
+    if not outside:
+        return None
+    return {
+        "name": f"group {index + 1}",
+        "values": values,
+        "counter": list(rng.choice(outside)),
+        "cells": [list(p) for p in cells],
+    }
+
+
 def demo_backend_code(class_name):
     src = DEMO_BACKEND.read_text().replace(CANDIDATE_NAME, class_name)
     return minify_js(src, base_dir=DEMO_BACKEND.parent, keep_comments=True)
