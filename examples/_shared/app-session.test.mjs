@@ -8,7 +8,37 @@
 
 import assert from 'assert'
 import fs from 'fs'
-import { withApp, solveInApp } from './app-session.mjs'
+import { withApp, solveInApp, readVerdict } from './app-session.mjs'
+
+// readVerdict against a stub page: it waits for the verdict pattern (plus an
+// extra pattern when given), then reads the readout and refuses a verdict the
+// app judged from marks unless marks are expected.
+{
+  const stub = text => {
+    const waits = []
+    return {
+      waits,
+      waitForFunction: async (fn, arg, opts) => { waits.push({ arg, opts }) },
+      waitForTimeout: async () => {},
+      evaluate: async () => text
+    }
+  }
+  const ok = 'Solved took 1.0s\nThis is a unique solution. Solutions took 2.0s'
+  const page = stub(ok)
+  const r = await readVerdict(page, { timeout: 1234, alsoWaitFor: /rejected/ })
+  assert.strictEqual(r.verdict, 'unique')
+  assert.strictEqual(r.text, ok)
+  assert.strictEqual(page.waits[0].opts.timeout, 1234)
+  assert.match(page.waits[0].arg[0], /\|rejected$/)
+
+  const marked = stub(ok + ' (based on already entered values and pencil marks.)')
+  await assert.rejects(readVerdict(marked, { name: 'cell (1,2)' }), /cell \(1,2\): .*based on already entered values/)
+  assert.strictEqual((await readVerdict(marked, { marksExpected: true })).verdict, 'unique')
+
+  // a wait that times out reads '?', never throws
+  const slow = { ...stub('nothing yet'), waitForFunction: async () => { throw new Error('timeout') } }
+  assert.strictEqual((await readVerdict(slow)).verdict, '?')
+}
 
 const link = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8').trim()
 

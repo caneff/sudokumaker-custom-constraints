@@ -5,7 +5,7 @@
 import assert from 'assert'
 import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
-import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary, busyThreshold, readLoad, busyMessage, isBusy, timeReps, loadSummary } from './app-solve-lib.mjs'
+import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, cellTransform, cellCenter, parseCells, gridRows, solveSummary, busyThreshold, readLoad, busyMessage, isBusy, timeReps, loadSummary } from './app-solve-lib.mjs'
 
 // first "took" only, no verdict yet: all three times report null
 // The solve phase printed its "took" but the uniqueness search has not
@@ -224,6 +224,31 @@ assert.strictEqual(parseVersion('no footer here'), null)
     { fill: 'rgb(82, 116, 234)', transform: 'translate(75 25) scale(25)' }
   ]
   assert.strictEqual(countEnteredValues(withEntered), 1)
+}
+
+// The cell reader: one parse of the page's `svg text` elements feeds the grid
+// read, the click point and the entered-value count.
+{
+  assert.strictEqual(cellTransform(2, 3), 'translate(175 125) scale(25)')
+  assert.deepStrictEqual(cellCenter(2, 3), { x: 175, y: 125 })
+  const raw = [
+    { content: '5', fill: '#000', transform: 'translate(25 75) scale(25)' },
+    { content: '7', fill: 'rgb(82, 116, 234)', transform: 'translate(525 25) scale(25)' },
+    { content: '3', fill: '#fff', transform: 'translate(1.045 1.036) scale(0.02)' },
+    { content: '9', fill: '#000', transform: null }
+  ]
+  const cells = parseCells(raw)
+  assert.deepStrictEqual(cells.map(c => [c.row, c.col, c.content]), [[1, 0, '5'], [0, 10, '7']])
+  assert.strictEqual(cells[0].transform, cellTransform(1, 0))
+  assert.strictEqual(countEnteredValues(cells), 1)
+  // size follows the farthest cell, so an 11-wide board is not clipped to 9
+  const rows = gridRows(cells)
+  assert.strictEqual(rows.length, 11)
+  assert.strictEqual(rows[1][0], '5')
+  assert.strictEqual(rows[0][10], '7')
+  assert.strictEqual(gridRows(cells, 12).length, 12)
+  // 9x9 grid with one digit, written out
+  assert.deepStrictEqual(gridRows(parseCells([raw[0]]), 9), ['.........', '5........', ...Array(7).fill('.........')])
 }
 
 // parseArgs: the driver's command line
