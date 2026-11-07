@@ -406,10 +406,10 @@ def check_share_ready(example_dir, link, puzzle, manifest):
     name = example_dir.name
     violations = []
 
-    # The clued twins fill all 36 outside clues on purpose -- that is what
-    # the name means, and app-solve.mjs reads them with --ring-clues. The
-    # entered-values check does not apply to them; the prefix check still
-    # does.
+    # The clued twins fill every outside clue on purpose -- that is what the
+    # name means, and app-solve.mjs reads them with --ring-clues. The
+    # entered-values check and the full-ring check do not apply to them; the
+    # prefix check still does.
     clued = f"_{TAGS[0]}" in link.name
     entered = sum(
         1 for cell in puzzle["cells"] if "value" in cell and not cell.get("given")

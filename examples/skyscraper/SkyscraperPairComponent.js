@@ -6,7 +6,7 @@
 //! fills, so this component deduces the clues from the line and the line from
 //! the clues.
 //!
-//! The line is a full house, so its tallest building is exactly maxDigit, at
+//! The line is a full house, so its tallest building is the line's length, at
 //! one cell p (the peak). The left clue is 1 + the left-to-right maxima among
 //! the cells before p; the right clue is 1 + the right-to-left maxima among the
 //! cells after p. Prefix and suffix are disjoint and together use every digit

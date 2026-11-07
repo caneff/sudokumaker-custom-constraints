@@ -80,11 +80,11 @@ const helpers = {
 }
 
 // Walk everything a component was constructed with and report any cell id that
-// is not a plain number, and any that is off the board. The second check is
-// what keeps the coercion honest: `getCellAt` returns undefined off the board
-// and `undefined | 0` is 0 -- a real cell -- so a backend that strayed
-// off-grid would coerce a miss into a silent, wrong cell 0 rather than fail
-// loud (CODING_STANDARDS.md).
+// is not a plain in-range integer. The walk cannot see a coerced miss:
+// `getCellAt` returns undefined off the board and `undefined | 0` is 0 -- a
+// real, in-range cell -- so a backend that strayed off-grid would hand
+// components a silent, wrong cell 0. Only the `offBoard` counter catches that
+// (CODING_STANDARDS.md).
 function badIdsIn (value, cells, path = '') {
   if (Array.isArray(value)) return value.flatMap((v, i) => badIdsIn(v, cells, `${path}[${i}]`))
   if (value instanceof Number) return [`${path}: boxed, not coerced`]

@@ -111,8 +111,9 @@ function prepare (text) {
     .join('')
 }
 
-// Split markdown into [preamble, {title, body}...] on h2 lines. Fenced blocks
-// never start with "## ", so a plain line scan is enough.
+// Split markdown into [preamble, {title, body}...] on h2 lines. A fenced block
+// can hold a line starting with "## " (a shell comment, a markdown sample), so
+// the scan toggles `fence` and splits only outside one.
 function splitSections (md) {
   const lines = md.split('\n')
   const out = []

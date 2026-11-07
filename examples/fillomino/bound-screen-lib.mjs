@@ -86,8 +86,7 @@ export function fixtureBoard (here, file) {
   }
 }
 
-// Best of `reps` whole solves. A run that solved nothing has no verdict, and
-// `reps` below one is refused rather than run empty.
+// Best of `reps` whole solves. A run that solved nothing has no verdict.
 function measure (mod, board, reps) {
   let best = Infinity
   let result
@@ -101,7 +100,8 @@ function measure (mod, board, reps) {
 
 const answer = r => JSON.stringify([r.verdict, r.grid])
 
-// Every variant on every board. `bad` counts the variants that answered
+// Every variant on every board; `reps` below one is refused rather than run
+// empty. `bad` counts the variants that answered
 // differently from `baseline` (or answered nothing): a screen is only worth
 // reading when its variants agree with what ships.
 export function runScreen (boards, variants, reps) {

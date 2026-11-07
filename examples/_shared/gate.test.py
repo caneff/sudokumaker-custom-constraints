@@ -5,7 +5,7 @@
 # checks what each tier would have run against the files on disk:
 #
 #   - check-full runs every *.test.mjs, *.test.py and soundness-harness.mjs
-#     under examples/, lint, and the two plain scripts the gate runs, so a new
+#     under examples/, lint, and the three plain scripts the gate runs, so a new
 #     or renamed test cannot drop out of both tiers -- and it runs nothing
 #     else: a suite or a lint step for a directory outside examples/ fails
 #     here, and so does a file `just fmt` rewrites outside it;

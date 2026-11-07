@@ -79,8 +79,7 @@ assert.deepStrictEqual(settle(4, 1)[0], [1])
 // N = 2, clue 0: the target is first, since any digit before it reads at
 // least 1. On a house the first 2 is the only 2, so 2 leaves every other cell
 // (the house's hidden single then places it in the first; this component only
-// removes). On a bare line a later cell may hold a second 2, so nothing is
-// removed. Each claim is about the removed digit alone: a stronger update may
+// removes). Each claim is about the removed digit alone: a stronger update may
 // prune more.
 {
   const house = settle(2, 0, { houses: [[0, 1, 2, 3]] })

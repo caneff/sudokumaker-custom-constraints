@@ -214,7 +214,6 @@ if __name__ == "__main__":
         re.M,
     ), "pants.toml must keep process_execution_local_parallelism = 1"
 
-    # Each leg-specific step guards on its own leg.
     steps = steps_of(jobs["gate"])
     # ...and no step overrides it, which would put that leg back on one core.
     for s in steps:
@@ -223,6 +222,7 @@ if __name__ == "__main__":
         )
     # A suite run through Pants shells out to `just`, so every leg has one on PATH.
     assert step(steps, "Install just")["run"] == "uv tool install rust-just"
+    # Each leg-specific step guards on its own leg.
     narrowed = step(steps, "Narrowed seam")
     assert narrowed["if"] == "matrix.recipe == 'narrowed'", narrowed["if"]
     recipe_step = step(steps, "Gate (")
@@ -264,10 +264,11 @@ if __name__ == "__main__":
             f"the widening must be in the log: {out}"
         )
 
-    # The coverage claim: running every matrix recipe once, together, must
-    # reproduce exactly what `just check-full` runs -- no less (a heavy test
-    # dropped off the matrix and never runs in CI) and no more (a recipe
-    # counted twice would hide a job that's redundant with another).
+    # The coverage claim: the union of every matrix recipe's commands must
+    # equal the set `just check-full` runs. The set difference catches a
+    # command missing from the matrix (a heavy test dropped off it never runs
+    # in CI) and a step check-full never runs. It cannot see a command two
+    # recipes both run: the sets collapse duplicates.
     full = set(commands("check-full"))
     split = set()
     for recipe in recipes:

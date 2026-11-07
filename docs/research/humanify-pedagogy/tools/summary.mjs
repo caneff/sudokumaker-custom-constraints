@@ -1,4 +1,6 @@
-// Pass-1 input: one line per top-level unit, with annotated ids, truncated bodies.
+// Pass-1 input: one block per top-level unit (a `// ---- unit` header, then the
+// annotated text), read from the working directory. A class is cut to its head
+// line plus up to 40 member signatures; any other unit is cut at 700 chars.
 import { readFileSync, writeFileSync } from 'fs'
 const ann = readFileSync('annotated.js', 'utf8')
 const units = JSON.parse(readFileSync('units.json'))
