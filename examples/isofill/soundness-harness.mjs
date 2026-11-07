@@ -1,6 +1,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { N, CELLS, rows, bent } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -10,23 +11,7 @@ installGlobals(0, 9)
 
 const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate'])
 
-const N = 10
-const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const ALL = Array.from({ length: N }, (_, d) => d)
-
-const rows = {}
-for (const c of CELLS) rows[c] = Math.floor(c / N)
-
-// Rows 2r,2r+1: digit 2r takes cols 0-5 of the top row and cols 0-3 of the
-// bottom row; digit 2r+1 takes the rest. Ten cells each, both connected.
-const bent = {}
-for (const c of CELLS) {
-  const r = Math.floor(c / N)
-  const x = c % N
-  const top = r % 2 === 0
-  const band = Math.floor(r / 2)
-  bent[c] = (top ? x <= 5 : x <= 3) ? 2 * band : 2 * band + 1
-}
 
 // The same seeder, but digit `d` is never pinned, so no cell ever holds it as
 // a value: `d` stays silent and the silent-digit rule is the only one that can

@@ -77,8 +77,8 @@ console.log('bundle-solve-lib: buildStartMessage skips solver-ignored constraint
 console.log('bundle-solve-lib: buildStartMessage default range 1..9 ok')
 
 // buildStartMessage: declared minDigit/maxDigit pass through unchanged
-// minDigit 0 (the real examples/hit-counts value), not 1 -- 1 would equal the
-// undeclared default and pass whether or not the declared value is read.
+// minDigit 0 (the real examples/hit-counts value), not 1, and maxDigit 6, not
+// 9 -- either default would pass whether or not the declared value is read.
 {
   const doc = {
     puzzle: {
@@ -86,14 +86,15 @@ console.log('bundle-solve-lib: buildStartMessage default range 1..9 ok')
       width: 11,
       height: 11,
       minDigit: 0,
-      maxDigit: 9,
+      maxDigit: 6,
       cells: Array(121).fill({}),
       constraints: []
     }
   }
   const msg = buildStartMessage(doc)
   assert.strictEqual(msg.spec.minDigit, 0)
-  assert.strictEqual(msg.spec.maxDigit, 9)
+  assert.strictEqual(msg.spec.maxDigit, 6)
+  assert.strictEqual(msg.spec.digitCount, 7)
 }
 
 // buildStartMessage: a two-digit maxDigit throws up front, before any
