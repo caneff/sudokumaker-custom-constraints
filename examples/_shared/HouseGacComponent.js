@@ -39,7 +39,7 @@
 //! (docs/research/all-different-gac.md). A larger house is a registration
 //! mistake, refused at setup: the RangeError fails the Node harness loudly,
 //! but in the app it only reaches the console, and the board ships with no
-//! GAC filter at all. The build-time cap in document.py is the loud guard.
+//! GAC filter at all. The build-time cap in framebuild.py is the loud guard.
 //! The same rule in three other forms, and what each costs, is in
 //! docs/research/408-house-gac/.
 const MAX_CELLS = 9
