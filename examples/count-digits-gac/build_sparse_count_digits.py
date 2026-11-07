@@ -29,19 +29,19 @@
 #       comes from CP-SAT's portfolio search, which is not reproducible from
 #       the seed: the committed gen.json is the artifact, this a one-shot.
 
-import argparse
 import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from board_kit import N, board_doc
+from board_kit import N, board_doc, draw_groups, search_parser, write_gen
 from board_kit import search as search_board
 from count_board import (
     BASELINE_NAME,
     CANDIDATE_NAME,
     COMPONENT,
+    finish_group,
     model,
 )
 from minify import minify_file, minify_js
@@ -65,36 +65,21 @@ RULES = (
 def draw_group(rng, grid, index, n_targets, n_digits):
     cells = rng.sample([(r, c) for r in range(N) for c in range(N)], n_targets)
     values = sorted(rng.sample(range(1, N + 1), n_digits))
-    count = sum(1 for r, c in cells if grid[r][c] in values)
-    if not 1 <= count <= N:
-        return None
-    outside = [
-        (r, c)
-        for r in range(N)
-        for c in range(N)
-        if grid[r][c] == count and (r, c) not in set(cells)
-    ]
-    if not outside:
-        return None
-    return {
-        "name": f"group {index + 1}",
-        "values": values,
-        "counter": list(rng.choice(outside)),
-        "cells": [list(p) for p in cells],
-    }
+    return finish_group(rng, grid, cells, values, set(cells), index)
 
 
 def make_groups(rng, grid, n_groups, n_targets, n_digits):
-    groups = []
-    for _attempt in range(2000):
-        if len(groups) == n_groups:
-            break
-        g = draw_group(rng, grid, len(groups), n_targets, n_digits)
-        if g is not None:
-            groups.append(g)
-    if len(groups) != n_groups:
-        raise RuntimeError(f"only drew {len(groups)} of {n_groups} groups")
-    return groups
+    """Groups may overlap here, so a group claims nothing from later draws."""
+    return draw_groups(
+        rng,
+        grid,
+        n_groups,
+        lambda rng, grid, taken, index: draw_group(
+            rng, grid, index, n_targets, n_digits
+        ),
+        lambda g: set(),
+        2000,
+    )
 
 
 def search(seed, n_groups=20, n_targets=14, n_digits=3):
@@ -146,10 +131,11 @@ def build(out_dir=BOARD_DIR, gen_path=GEN, keep_comments=False):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--search", type=int, metavar="SEED")
-    p.add_argument("--gen", default=GEN)
-    p.add_argument("--groups", type=int, default=20)
+    p = search_parser(
+        GEN,
+        20,
+        out_help="directory for the links (default: sparse/ beside this script)",
+    )
     p.add_argument("--targets", type=int, default=14)
     p.add_argument("--digits", type=int, default=3)
     p.add_argument(
@@ -164,17 +150,9 @@ if __name__ == "__main__":
         help="write only PUZZLE_LINK_annotated.txt: the candidate link "
         "with every comment kept in the embedded code, the lint directive aside (#567)",
     )
-    p.add_argument(
-        "--out",
-        help="directory for the links (default: sparse/ beside this script)",
-    )
     args = p.parse_args()
     if args.search is not None:
-        pathlib.Path(args.gen).write_text(
-            json.dumps(search(args.search, args.groups, args.targets, args.digits))
-            + "\n"
-        )
-        print(f"wrote {args.gen}")
+        write_gen(args.gen, search(args.search, args.groups, args.targets, args.digits))
     else:
         if args.carved is not None:
             if args.keep_comments:
