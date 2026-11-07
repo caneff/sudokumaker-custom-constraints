@@ -60,7 +60,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from check_layout import _js_code, check_example, check_research_loads
+from check_layout import check_example
+from check_research_loads import _js_code, check_research_loads
 from manifest import load_manifest
 from sm_document import find_constraint, registering_constraint_name
 from sudoku_kit.link_codec import decode_puzzle
