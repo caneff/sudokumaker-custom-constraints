@@ -8,6 +8,8 @@
 #
 #   uv run examples/_shared/link_swap.test.py
 
+import contextlib
+import io
 import itertools
 import pathlib
 import subprocess
@@ -21,6 +23,7 @@ from link_swap import (
     replace_constraint_code,
     swap_build,
     swap_component_code,
+    swap_main,
 )
 from minify import minify_file
 from sm_document import find_constraint
@@ -352,5 +355,51 @@ if __name__ == "__main__":
             pathlib.Path(out).read_text()
             == (ex / "house-gac/PUZZLE_LINK.txt").read_text()
         )
+
+    # swap_main's own paths, called in-process: --component without --out and a
+    # bare invocation on an example with no rebuild are refused with exit 2 and
+    # the reason, and --component --out writes the swapped link to --out.
+    def call_swap_main(example_dir, *argv, **kw):
+        out, err = io.StringIO(), io.StringIO()
+        real_argv = sys.argv
+        sys.argv = ["build_link.py", *argv]
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                swap_main(example_dir, **kw)
+        except SystemExit as e:
+            code = e.code
+        finally:
+            sys.argv = real_argv
+        return code, out.getvalue(), err.getvalue()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        example_dir = tmp / "ex"
+        example_dir.mkdir()
+        (example_dir / "PUZZLE_LINK.txt").write_text(LINK_FILE.read_text())
+        component = LINK_FILE.parent / "SkyscraperPairComponent.js"
+        out = tmp / "out.txt"
+
+        code, stdout, stderr = call_swap_main(
+            example_dir, "--component", str(component)
+        )
+        assert code == 2, (code, stderr)
+        assert "--component needs --out" in stderr, stderr
+        assert not out.exists()
+
+        code, stdout, stderr = call_swap_main(example_dir)
+        assert code == 2, (code, stderr)
+        assert "give --component with --out" in stderr, stderr
+
+        code, stdout, stderr = call_swap_main(
+            example_dir, "--component", str(component), "--out", str(out)
+        )
+        assert code == 0, (code, stderr)
+        link = swap_build(example_dir / "PUZZLE_LINK.txt", component, tmp / "again.txt")
+        assert out.read_text().strip() == link
+        assert stdout == (
+            f"wrote {out} ({len(link)} chars, from {example_dir / 'PUZZLE_LINK.txt'})\n"
+        ), stdout
 
     print("ok")

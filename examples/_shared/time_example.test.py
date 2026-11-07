@@ -524,6 +524,43 @@ if __name__ == "__main__":
         except ValueError as e:
             assert "house-gac.js" in str(e), str(e)
 
+    # resolve_backend_file's three non-file answers. A constraint with no code
+    # backend has nothing to resolve: None. A backend with no main.js,
+    # main-global.js or _shared/house-gac.js on disk: None. Two files that both
+    # minify to the committed backend are ambiguous and raise, naming both --
+    # a silent guess would time the wrong backend variant.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        no_backend_dir = root / "no-backend"
+        no_backend_dir.mkdir()
+        (no_backend_dir / "main.js").write_text("console.log('x')\n")
+        no_backend_doc = _widget_doc("unused", minify_js("function update(){}\n"))
+        del no_backend_doc["puzzle"]["constraints"][0]["definition"]["backend"]
+        assert (
+            resolve_backend_file(no_backend_dir, no_backend_doc, "Widget Lines") is None
+        ), "a constraint with no code backend must resolve to None"
+
+        no_file_dir = root / "no-file"
+        no_file_dir.mkdir()
+        shipped = _widget_doc(
+            minify_js("console.log('shipped')\n"), minify_js("function update(){}\n")
+        )
+        assert resolve_backend_file(no_file_dir, shipped, "Widget Lines") is None, (
+            "a backend with no candidate file on disk must resolve to None"
+        )
+
+        twin_dir = root / "twin-lanes"
+        twin_dir.mkdir()
+        (twin_dir / "main.js").write_text("console.log('shipped')\n")
+        (twin_dir / "main-global.js").write_text("console.log('shipped')\n")
+        _git_commit_all(twin_dir)
+        try:
+            resolve_backend_file(twin_dir, shipped, "Widget Lines")
+            raise AssertionError("expected a more-than-one-match failure")
+        except ValueError as e:
+            assert "more than one backend file matches" in str(e), str(e)
+            assert "main.js, main-global.js" in str(e), str(e)
+
     # run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the
     # driver arguments run() derives (which link, ring-clues, after-logical)
