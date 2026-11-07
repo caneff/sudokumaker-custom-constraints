@@ -160,7 +160,9 @@ if __name__ == "__main__":
         assert " on PUZZLE_LINK_28g.txt: " in printed.getvalue(), printed.getvalue()
         assert seen["empty"][1] == "empty", "--ring-clues must keep the ring"
         assert seen["solve"][2] is True, "--ring-clues must reach the driver"
-        assert seen["build"][0].name == "PUZZLE_LINK_28g.txt", "--board must reach the build"
+        assert seen["build"][0].name == "PUZZLE_LINK_28g.txt", (
+            "--board must reach the build"
+        )
 
         # a driver that failed exits, never prints a report off partial output
         with _stubbed(stdout, returncode=1):
