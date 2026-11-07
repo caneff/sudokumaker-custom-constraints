@@ -7,7 +7,6 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 
-from board_kit import count_solutions as count_with
 from board_kit import givens_of
 from build_sparse_count_digits import (
     BOARD_DIR,
@@ -16,6 +15,7 @@ from build_sparse_count_digits import (
     build,
 )
 from count_board import BASELINE_NAME, CANDIDATE_NAME, COMPONENT, model
+from count_test_kit import counter_for, full_givens
 from minify import minify_file
 from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
@@ -25,8 +25,7 @@ ANNOTATED = "PUZZLE_LINK_annotated.txt"
 N = 9
 
 
-def count_solutions(groups, givens):
-    return count_with(model, groups, givens)
+count_solutions = counter_for(model)
 
 
 def count(gen, group):
@@ -66,7 +65,7 @@ def check_board(gen):
 
 
 def check_rule_is_enforced(gen):
-    full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
+    full = full_givens(gen)
     g = gen["groups"][0]
     assert count_solutions([g], full) == 1, (
         "the solution does not satisfy its own group"

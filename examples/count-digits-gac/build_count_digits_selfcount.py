@@ -15,14 +15,13 @@
 #   uv run examples/count-digits-gac/build_count_digits_selfcount.py --search SEED --groups G --targets T --gen FILE
 #       draw a fresh board (one-shot: CP-SAT's portfolio search is not seeded)
 
-import argparse
 import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from board_kit import board_doc
+from board_kit import board_doc, draw_groups, search_parser, write_gen
 from board_kit import search as search_board
 from count_board import (
     CANDIDATE_NAME,
@@ -78,18 +77,20 @@ def draw_group(rng, grid, taken, index, size):
     }
 
 
+def claimed(g):
+    """The targets only: the counter is the first of them."""
+    return {tuple(p) for p in g["cells"]}
+
+
 def make_groups(rng, grid, n_groups, size):
-    groups, taken = [], set()
-    for _attempt in range(5000):
-        if len(groups) == n_groups:
-            break
-        g = draw_group(rng, grid, taken, len(groups), size)
-        if g is not None:
-            groups.append(g)
-            taken |= {tuple(p) for p in g["cells"]}
-    if len(groups) != n_groups:
-        raise RuntimeError(f"only drew {len(groups)} of {n_groups} groups")
-    return groups
+    return draw_groups(
+        rng,
+        grid,
+        n_groups,
+        lambda rng, grid, taken, index: draw_group(rng, grid, taken, index, size),
+        claimed,
+        5000,
+    )
 
 
 def search(seed, n_groups, size):
@@ -129,20 +130,13 @@ def build(out_dir=BOARD_DIR, gen_path=GEN):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--search", type=int, metavar="SEED")
-    p.add_argument("--gen", default=GEN)
-    p.add_argument("--groups", type=int, default=5)
+    p = search_parser(GEN, 5)
     p.add_argument(
         "--targets", type=int, default=8, help="cells per group, the counter included"
     )
-    p.add_argument("--out")
     args = p.parse_args()
     if args.search is not None:
-        pathlib.Path(args.gen).write_text(
-            json.dumps(search(args.search, args.groups, args.targets)) + "\n"
-        )
-        print(f"wrote {args.gen}")
+        write_gen(args.gen, search(args.search, args.groups, args.targets))
     else:
         for path in build(pathlib.Path(args.out) if args.out else BOARD_DIR, args.gen):
             print(f"wrote {path}")

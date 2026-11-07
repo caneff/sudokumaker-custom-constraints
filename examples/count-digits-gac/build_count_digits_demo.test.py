@@ -7,7 +7,6 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 
-from board_kit import count_solutions as count_with
 from board_kit import givens_of
 from build_count_digits_demo import (
     BASELINE_NAME,
@@ -31,13 +30,12 @@ from count_board import (
 from count_board import (
     demo_backend_code as backend_code,
 )
+from count_test_kit import counter_for, full_givens
 from minify import minify_file
 from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
 
-
-def count_solutions(groups, givens):
-    return count_with(model, groups, givens)
+count_solutions = counter_for(model)
 
 
 LINK = DEMO_DIR / "PUZZLE_LINK.txt"
@@ -102,7 +100,7 @@ def check_board(gen, selfcount):
 
 
 def check_uniqueness_detects_a_wrong_count(gen):
-    full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
+    full = full_givens(gen)
     g = gen["groups"][0]
     assert count_solutions([g], full) == 1
     other = next(
