@@ -21,7 +21,7 @@
 
 import { join } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength, total } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
 import { FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -43,11 +43,11 @@ const apply = (mod, p, CELLS, width, height) => {
   }
   Array.from(mod.initialize(inst, p))
   for (let call = 0; call < 4000; call++) {
-    const before = total(p)
+    const before = p.total()
     const changes = mod.update(inst, p)
     changes.next()
     changes.return()
-    if (total(p) === before) return
+    if (p.total() === before) return
   }
   throw new Error('the reference did not settle in 4000 calls')
 }

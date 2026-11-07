@@ -22,7 +22,7 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
@@ -229,13 +229,14 @@ function fuzzBeating (label, { iters, draw }) {
       return { ...state, inspect: p => runs.push({ p, rivalLeft }) }
     }
   })
-  return { ...r, beaten: runs.filter(({ p, rivalLeft }) => total(p) < rivalLeft).length }
+  return { ...r, beaten: runs.filter(({ p, rivalLeft }) => p.total() < rivalLeft).length }
 }
 
 // One random full house of 1..n with its two true clues, the candidates seeded
-// around the truth. `dropClue` removes n - 1 from the clue seeds (the exclusion
-// draw below needs it gone); the rnd call order is the same either way.
-const drawFullHouseLine = dropClue => {
+// around the truth. `dropNMinus1FromClues` removes n - 1 from the clue seeds
+// (the exclusion draw below needs it gone); the rnd call order is the same
+// either way.
+const drawFullHouseLine = ({ dropNMinus1FromClues = false } = {}) => {
   const n = 4 + ((rnd() * 6) | 0)
   const perm = makeLine(rnd, 'fullHouse', n, n)
   const cells = Array.from({ length: n }, (_, j) => j)
@@ -247,9 +248,9 @@ const drawFullHouseLine = dropClue => {
   for (const c of Object.keys(truth)) {
     const isClue = +c === A || +c === B
     const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
-    cands.set(+c, isClue && dropClue ? set.filter(d => d !== n - 1) : set)
+    cands.set(+c, isClue && dropNMinus1FromClues ? set.filter(d => d !== n - 1) : set)
   }
-  return { n, perm, cells, truth, cands }
+  return { n, cells, truth, cands }
 }
 
 // The counters above show that SOMETHING pruned; this one names the rule. It
@@ -261,7 +262,7 @@ const drawFullHouseLine = dropClue => {
 const exclusion = fuzzBeating('mirrored-pair exclusion', {
   iters: 20000,
   draw: () => {
-    const { n, cells, truth, cands } = drawFullHouseLine(true)
+    const { n, cells, truth, cands } = drawFullHouseLine({ dropNMinus1FromClues: true })
     const part = () => {
       const inst = { cells: [A, B, ...cells] }
       pairComp.setParams(inst, A, B, cells)
@@ -269,7 +270,7 @@ const exclusion = fuzzBeating('mirrored-pair exclusion', {
     }
     const bare = makePuzzle(truth, c => cands.get(c), { houses: housesOf('bare', cells) })
     fixpointAll(part(), bare)
-    return { truth, seed: c => cands.get(c), houses: housesOf('fullHouse', cells), parts: part(), note: `n = ${n}`, rivalLeft: total(bare) }
+    return { truth, seed: c => cands.get(c), houses: housesOf('fullHouse', cells), parts: part(), note: `n = ${n}`, rivalLeft: bare.total() }
   }
 })
 console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the house run pruned more')
@@ -286,7 +287,7 @@ const caseSweep = load(CASE_SWEEP_REF, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,
   draw: () => {
-    const { n, cells, truth, cands } = drawFullHouseLine(false)
+    const { n, cells, truth, cands } = drawFullHouseLine()
     const part = component => {
       const inst = { cells: [A, B, ...cells] }
       component.setParams(inst, A, B, cells)
@@ -294,7 +295,7 @@ const permutation = fuzzBeating('permutation sweep', {
     }
     const old = makePuzzle(truth, c => cands.get(c), { houses: [cells] })
     fixpointAll(part(caseSweep), old)
-    return { truth, seed: c => cands.get(c), houses: [cells], parts: part(pairComp), note: `n = ${n}`, rivalLeft: total(old) }
+    return { truth, seed: c => cands.get(c), houses: [cells], parts: part(pairComp), note: `n = ${n}`, rivalLeft: old.total() }
   }
 })
 console.log('permutation sweep:', permutation.beaten, 'states where the permutation sweep pruned more')

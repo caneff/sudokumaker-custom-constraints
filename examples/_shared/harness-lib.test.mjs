@@ -8,7 +8,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
-  columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, shuffle, strengthSweep, total
+  columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, shuffle, strengthSweep
 } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -115,7 +115,7 @@ const { rnd } = makeRng()
 }
 
 // total: the candidate count of a puzzle
-assert.strictEqual(total(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1]))), 4)
+assert.strictEqual(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1])).total(), 4)
 
 // strengthSweep: the never-weaker contract
 // A version that prunes as hard as the reference passes; one that keeps a
@@ -368,7 +368,7 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   // prunes every cell to its truth, so a state seen after it totals exactly 3.
   const pruner = { * update (inst, p) { for (const [c, v] of [[0, 1], [1, 2], [2, 3]]) p.filterCandidatesInCell(1 << v, c) } }
   const seen0 = []
-  run(pruner, { inspect: p => seen0.push(total(p)) })
+  run(pruner, { inspect: p => seen0.push(p.total()) })
   assert.strictEqual(seen0.length, 50)
   assert.ok(seen0.every(n => n >= 3) && Math.max(...seen0) > 3, 'inspect reads the seeded state, not the pruned one')
 

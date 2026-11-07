@@ -143,9 +143,6 @@ export function shuffle (rnd, a) {
   return a
 }
 
-// The candidates left on a mock puzzle, summed over its cells.
-export const total = p => p.total()
-
 // Run one starting state (cell -> candidate array) through two versions of a
 // component and report the candidates `cur` keeps that `ref` removed — the
 // cells where `cur` prunes less. `apply` sets a version's params and runs it.
@@ -360,12 +357,12 @@ export const columnsOf = width => Array.from({ length: width }, (_, col) => Arra
 const MAX_PASSES = 20
 export function fixpointAll (parts, p) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const before = total(p)
+    const before = p.total()
     for (const { mod, inst } of parts) {
       Array.from(mod.update(inst, p)) // drain
       if (p.stopMessage() !== null) return
     }
-    if (total(p) === before) return
+    if (p.total() === before) return
   }
 }
 
@@ -432,9 +429,9 @@ export function fuzzSoundness (label, { iters, draw, log = console.log }) {
     const { truth, seed, parts, houses = [], note = '', inspect } = draw(iter)
     const p = makePuzzle(truth, seed, { houses })
     if (inspect) inspect(p)
-    const before = total(p)
+    const before = p.total()
     fixpointAll(parts, p)
-    if (total(p) < before) fired++
+    if (p.total() < before) fired++
     const v = lostTruth(p, truth)
     if (v) { violations++; if (violations <= 5) log(label, 'violation', v, note) }
     const filled = makePuzzle(truth, (c, val) => [val], { houses })

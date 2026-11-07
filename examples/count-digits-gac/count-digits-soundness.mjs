@@ -18,7 +18,7 @@
 //      supported digits off them. The component must remove no more than the
 //      oracle (sound); on `exact` shapes it must remove no less either.
 
-import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, total } from '../_shared/harness-lib.mjs'
+import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -121,7 +121,7 @@ function run (label, shape) {
   let removedOracle = 0
   let missedByGac = 0
   for (const { state, p, start } of records) {
-    const pruned = total(p) < [...start.values()].reduce((n, set) => n + set.size, 0)
+    const pruned = p.total() < [...start.values()].reduce((n, set) => n + set.size, 0)
     if (pruned || p.stopMessage() !== null) {
       const q = puzzleOf(state)
       for (const [cell, set] of start) q._cand.set(cell, new Set(set))
