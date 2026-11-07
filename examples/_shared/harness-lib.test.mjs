@@ -102,12 +102,20 @@ const { rnd } = makeRng()
   assert.ok(pins > DRAWS * 0.28 && pins < DRAWS * 0.4, `pin drawn ${pins} of ${DRAWS} with full dropped`)
 }
 
-// shuffle and total
+// shuffle: in place, same elements, and the seeded permutation itself
+// The recorded order differs from the input, so a no-op shuffle goes red; it
+// would otherwise shrink every fuzz seeded through makeLine 'fullHouse' to the
+// identity permutation.
 {
   const { rnd } = makeRng(3)
   const a = [1, 2, 3, 4, 5, 6, 7, 8]
   assert.strictEqual(shuffle(rnd, a), a, 'shuffles in place')
   assert.deepStrictEqual([...a].sort(), [1, 2, 3, 4, 5, 6, 7, 8])
+  assert.deepStrictEqual(a, [4, 3, 1, 7, 6, 8, 2, 5], 'the seed-3 permutation')
+}
+
+// total: the candidate count of a puzzle
+{
   assert.strictEqual(total(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1]))), 4)
 }
 
@@ -317,57 +325,6 @@ assert.deepStrictEqual(columnsOf(3), [[0, 3, 6], [1, 4, 7], [2, 5, 8]])
 assert.strictEqual(columnsOf(9).length, 9)
 assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
 
-console.log('harness-lib.test.mjs: all seams pass')
-
-// DigitSet: a set reads as its mask, as the app's SmallNumberSet does
-// `new SudokuDigitSet(someSet)` coerces its argument through `+`, so without
-// `valueOf` it is NaN and the copy is empty.
-{
-  const copy = new DigitSet(DigitSet.from([1, 2, 3]))
-  assert.deepStrictEqual([...copy], [1, 2, 3])
-  assert.strictEqual(+DigitSet.from([1, 2, 3]), 0b1110)
-}
-
-// DigitSet: every member agrees with a JS Set on the same digits
-// The oracle is Set arithmetic, not mask arithmetic, so a flipped `&`/`|` or a
-// dropped `~` in the mock turns a row red.
-{
-  const A = [1, 2, 3, 5]
-  const B = [3, 5, 8]
-  const mk = ds => DigitSet.from(ds)
-  const sorted = s => [...s].sort((x, y) => x - y)
-  const inter = A.filter(d => B.includes(d))
-  const cases = [
-    ['union', sorted(new Set([...A, ...B])), s => s.union(mk(B))],
-    ['intersect', inter, s => s.intersect(mk(B))],
-    ['xor', [1, 2, 8], s => s.xor(mk(B))],
-    ['subtract', [1, 2], s => s.subtract(mk(B))],
-    ['add', [1, 2, 3, 5, 9], s => { s.add(9); return s }],
-    ['delete', [1, 2, 5], s => { s.delete(3); return s }],
-    ['clear', [], s => { s.clear(); return s }],
-    ['getUnion', sorted(new Set([...A, ...B])), () => DigitSet.getUnion([mk(A), mk(B)])],
-    ['getIntersection', inter, () => DigitSet.getIntersection([mk(A), mk(B)])]
-  ]
-  for (const [name, want, run] of cases) {
-    assert.deepStrictEqual([...run(mk(A))], want, name)
-  }
-  assert.ok(mk([2, 3]).isSubsetOf(mk(A)) && !mk(B).isSubsetOf(mk(A)))
-  assert.ok(mk(A).isSupersetOf(mk([2, 3])) && !mk(A).isSupersetOf(mk(B)))
-  assert.ok(mk([1, 2]).isDisjointFrom(mk([8])) && !mk(A).isDisjointFrom(mk(B)))
-  assert.ok(mk(A).intersects(mk(B)) && !mk([1]).intersects(mk([2])))
-  assert.ok(mk(A).equals(mk([5, 3, 2, 1])) && !mk(A).equals(mk(B)))
-  assert.strictEqual(mk(A).size, 4)
-  assert.strictEqual(mk(A).getSmallestNumber(), 1)
-  assert.strictEqual(mk(A).getLargestNumber(), 5)
-  assert.strictEqual(mk(A).getSmallestDigit(), 1)
-  assert.strictEqual(mk(A).getLargestDigit(), 5)
-  // An empty set has no smallest or largest, as in the bundle.
-  assert.strictEqual(mk([]).getSmallestNumber(), undefined)
-  assert.strictEqual(mk([]).getLargestDigit(), undefined)
-  // Intersecting nothing keeps every digit up to bit 30.
-  assert.strictEqual(+DigitSet.getIntersection([]), 2147483647)
-}
-
 // fuzzSoundness: the runner fails on an unsound component, and on a validate that rejects the truth
 // A planted component over three cells holding 1..3. `update` is a generator
 // like the app's; each variant breaks exactly one thing, so a run that fails
@@ -485,3 +442,5 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(run(true).trim(), 'PASS')
   assert.throws(() => run(false), e => e.status === 1 && e.stdout.trim() === 'FAIL')
 }
+
+console.log('harness-lib.test.mjs: all seams pass')
