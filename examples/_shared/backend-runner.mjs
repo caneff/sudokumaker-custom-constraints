@@ -13,7 +13,16 @@
 // and with what, without a working implementation of it.
 //
 // `mockBoard` is the `puzzle` those tests hand it: one board mock, so the cell
-// layout is stated once.
+// layout is stated once. `mockRegistrar` is the same mock with no geometry, for
+// a backend that only registers: a geometry read there throws instead of
+// answering for a board the backend never asked about.
+
+// A board with only `addConstraintComponent`; whatever the backend registers
+// lands on `registered`.
+export function mockRegistrar () {
+  const registered = []
+  return { registered, addConstraintComponent: comp => registered.push(comp) }
+}
 
 // A `width` x `height` board as a backend reads it. Cell id = col + row * width,
 // the app's own layout (`getIdFromCoords(e){return e.x+e.y*this.width}` in the
@@ -23,14 +32,12 @@
 // needs another shape of a method (boxed ids, an off-board count) spreads this
 // and overrides that one.
 export function mockBoard ({ width, height = width, regions = undefined }) {
-  const registered = []
   const board = {
-    registered,
+    ...mockRegistrar(),
     spec: { size: { width, height } },
     getCellAt: (col, row) => col + row * width,
     getRow: cell => Math.floor(cell / width),
-    getColumn: cell => cell % width,
-    addConstraintComponent: comp => registered.push(comp)
+    getColumn: cell => cell % width
   }
   if (regions !== undefined) board.getRegions = () => regions
   return board

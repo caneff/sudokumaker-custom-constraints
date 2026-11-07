@@ -2,7 +2,7 @@
 //   node examples/_shared/backend-runner.test.mjs
 
 import assert from 'assert'
-import { mockBoard, runBackend } from './backend-runner.mjs'
+import { mockBoard, mockRegistrar, runBackend } from './backend-runner.mjs'
 
 // mockBoard's getCellAt takes the column first, as the app's does
 // (`getIdFromCoords(e){return e.x+e.y*this.width}` in the shipped bundle). On a
@@ -48,4 +48,20 @@ import { mockBoard, runBackend } from './backend-runner.mjs'
   assert.strictEqual(board.registered[1].ctor, 'OtherComponent')
 }
 
-console.log('backend-runner: column-first board mock, recorded and real constructors')
+// a name in `ctors` the source never writes as `new XComponent(` is still in
+// scope, so a backend that reaches a constructor another way finds it
+{
+  const Extra = function () {}
+  const { value } = runBackend('', { puzzle: mockBoard({ width: 1 }), ctors: { ExtraComponent: Extra }, returns: 'ExtraComponent' })
+  assert.strictEqual(value, Extra, 'a ctors name the source never calls is in scope')
+}
+
+// mockRegistrar records registrations and has no geometry: a read throws
+{
+  const board = mockRegistrar()
+  runBackend('puzzle.addConstraintComponent(new FooComponent("foo"))', { puzzle: board })
+  assert.deepStrictEqual(board.registered.map(c => c.args), [['foo']])
+  assert.throws(() => runBackend('puzzle.getCellAt(0, 0)', { puzzle: board }), TypeError, 'a geometry read throws')
+}
+
+console.log('backend-runner: column-first board mock, registrar mock, recorded and real constructors')

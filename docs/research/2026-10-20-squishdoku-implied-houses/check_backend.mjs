@@ -3,12 +3,12 @@
 //
 //   node check_backend.mjs backend.js houses.json
 import fs from 'node:fs'
+import { mockRegistrar, runBackend } from '../../../examples/_shared/backend-runner.mjs'
 
 const [code, housesJson] = process.argv.slice(2).map(f => fs.readFileSync(f, 'utf8'))
 const got = []
 class HouseComponent { constructor (name, cells) { got.push({ name, cells }) } }
-// eslint-disable-next-line no-new-func
-new Function('puzzle', 'HouseComponent', code)({ addConstraintComponent: () => {} }, HouseComponent)
+runBackend(code, { puzzle: mockRegistrar(), ctors: { HouseComponent } })
 const key = cells => [...cells].sort((a, b) => a - b).join(',')
 const want = new Set(JSON.parse(housesJson).houses.map(key))
 const have = new Set(got.map(g => key(g.cells)))
