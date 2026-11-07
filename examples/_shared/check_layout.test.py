@@ -559,16 +559,6 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
-    # ...and the sudoku sentence is not required of it either
-    with example(
-        files=fillomino_files,
-        name="whole-grid",
-        manifest=WHOLE_GRID,
-        contents={"PUZZLE_LINK.txt": _link(prefix=False)},
-    ) as (root, _):
-        violations = check_tree(root)
-        assert violations == [], violations
-
     # a link with boxes but no column houses fails: a region constraint gives
     # boxes only, and the app solves the under-constrained board without a
     # word

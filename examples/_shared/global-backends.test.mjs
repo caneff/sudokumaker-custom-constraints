@@ -403,5 +403,6 @@ for (const name of localDirs) {
       `${name}/main.js on ${W}x${H} must build from the drawn groups: a lone clue registered ${registered[', lone clue']}, the whole frame ${registered[', drawn frame']}`)
   }
 }
+assert.ok(localRuns > 0, 'no local backend was checked')
 
 console.log(`PASS (${dirs.length} global backends, ${localDirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)

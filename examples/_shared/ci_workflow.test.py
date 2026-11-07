@@ -28,7 +28,6 @@ WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 
 ZEROS = "0" * 40
-EVENTS = ("push", "pull_request", "schedule", "workflow_dispatch")
 
 
 def code_of(text):
@@ -178,22 +177,27 @@ if __name__ == "__main__":
     other_steps = [
         ln for name, body in jobs.items() if name != "gate" for ln in step_lines(body)
     ]
+    # An action step is matched by its name, not its pinned version: a routine
+    # bump must not fail the test, and a copy pinned to another version in
+    # another job must still be caught.
     for shared in (
-        "uses: actions/checkout@v4",
-        "uses: actions/setup-node@v4",
-        "run: npm ci",
-        "uses: astral-sh/setup-uv@v5",
-        "run: uv sync",
+        r"uses: actions/checkout@\S+",
+        r"uses: actions/setup-node@\S+",
+        r"run: npm ci",
+        r"uses: astral-sh/setup-uv@\S+",
+        r"run: uv sync",
         # The seam runner sends wired suites through Pants, and exits 2 on a
         # leg that has none installed.
-        "uses: pantsbuild/actions/init-pants@v11",
+        r"uses: pantsbuild/actions/init-pants@\S+",
     ):
-        assert gate_steps.count(shared) == 1, (
-            f"expected one shared '{shared}' step in the gate job, "
-            f"found {gate_steps.count(shared)}"
+        in_gate = [ln for ln in gate_steps if re.fullmatch(shared, ln)]
+        in_others = [ln for ln in other_steps if re.fullmatch(shared, ln)]
+        assert len(in_gate) == 1, (
+            f"expected one shared '{shared}' step in the gate job, found {len(in_gate)}"
         )
-        assert shared not in other_steps, (
-            f"'{shared}' is copied into another job; the gate matrix is the one home"
+        assert not in_others, (
+            f"'{shared}' is copied into another job ({in_others}); "
+            "the gate matrix is the one home"
         )
 
     # Every leg's Pants call uses the runner's 4 cores (#872): a job-level env

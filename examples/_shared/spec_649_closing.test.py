@@ -373,10 +373,17 @@ def sweep_fuzzed(tree):
 
 def sweep_registered_names(tree):
     names = {p.stem for p in (tree / "examples").rglob("*Component*.js")}
+    links = sorted((tree / "examples").rglob("PUZZLE_LINK*.txt"))
+    assert links, "no PUZZLE_LINK*.txt under examples/ to sweep"
+    registered = [
+        (link, name)
+        for link in links
+        for name in shipped_component_code(decode_puzzle(link.read_text().strip()))
+    ]
+    assert registered, "no link registers a component, so the sweep checked nothing"
     missing = [
         f"{link.relative_to(tree)}: {name}"
-        for link in sorted((tree / "examples").rglob("PUZZLE_LINK*.txt"))
-        for name in shipped_component_code(decode_puzzle(link.read_text().strip()))
+        for link, name in registered
         if name not in names
     ]
     assert not missing, f"links register components with no file: {missing}"
