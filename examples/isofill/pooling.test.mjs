@@ -50,6 +50,8 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
     const p = makePuzzle(truth, (c, v) => (c % 3 === 0 ? [v] : randomCandidates(makeRng(c).rnd, 0, 9, v)))
     const inst = {}
     mod.setParams(inst, CELLS, N, N)
+    // A field the component no longer reads would make the assignment a silent no-op.
+    assert.ok('visit' in inst && 'targetVisit' in inst, 'setParams must create instance.visit and instance.targetVisit')
     if (visit) { inst.visit = visit; inst.targetVisit = visit }
     fixpoint(mod, inst, p)
     return CELLS.map(c => [...p._cand.get(c)].join(''))
@@ -67,6 +69,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
       const inst = {}
       mod.setParams(inst, CELLS, N, N)
+      assert.ok('targetVisit' in inst, 'setParams must create instance.targetVisit')
       if (visit) inst.targetVisit = visit
       Array.from(mod.update(inst, p))
       out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
@@ -86,6 +89,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
       const inst = {}
       mod.setParams(inst, CELLS, N, N)
       Array.from(mod.update(inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))))
+      assert.ok('seenVisit' in inst.budget, 'the budget matcher must keep seenVisit')
       if (below !== null) inst.budget.seenVisit = 0xFFFFFFFF - below
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
       Array.from(mod.update(inst, p))
