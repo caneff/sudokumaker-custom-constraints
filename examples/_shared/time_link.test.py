@@ -1,5 +1,5 @@
 # time_link.py: argument handling, the interleaved schedule and row building,
-# with the browser call faked out (time_example.app_solve reassigned to a
+# with the browser call faked out (app_timing.app_solve reassigned to a
 # canned-median stub). No live browser. The real run is a manual check, see
 # docs/real-app-timing.md.
 #
@@ -15,9 +15,9 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-import time_example
+import app_timing
 import time_link
-from time_example import build_link_row, rep_order
+from app_timing import build_link_row, rep_order
 
 SECRET = "SECRETLINKCONTENTS" * 50
 VERSION = "v2026.08.14-d47fc4b"
@@ -28,7 +28,7 @@ def fake_solve(by_link):
     """Stub app_solve: per link file name, the next per-rep median from
     `by_link`. Yields the list of (name, ring_clues, after_logical) calls."""
     calls = []
-    real = time_example.app_solve
+    real = app_timing.app_solve
     pending = {name: list(v) for name, v in by_link.items()}
 
     def stub(link_path, reps, ring_clues=False, after_logical=False):
@@ -44,11 +44,11 @@ def fake_solve(by_link):
         }
         return f"JSON: {json.dumps(data)}\n"
 
-    time_example.app_solve = stub
+    app_timing.app_solve = stub
     try:
         yield calls
     finally:
-        time_example.app_solve = real
+        app_timing.app_solve = real
 
 
 def expect_raises(exc, fragment, fn, *args, **kw):
@@ -61,7 +61,7 @@ def expect_raises(exc, fragment, fn, *args, **kw):
 
 
 if __name__ == "__main__":
-    R = time_example.REPS
+    R = app_timing.REPS
 
     # the schedule: the lead alternates by round
     assert [rep_order(["a", "b"], r) for r in range(3)] == [
@@ -136,7 +136,7 @@ if __name__ == "__main__":
             assert time_link.main([str(a)]) == 0
         assert out.getvalue().count("\n") == 2 and SECRET[:20] not in out.getvalue()
 
-        real = time_example.app_solve
+        real = app_timing.app_solve
 
         def failing(link_path, reps, ring_clues=False, after_logical=False):
             raise RuntimeError(
@@ -144,13 +144,13 @@ if __name__ == "__main__":
                 f'page.goto: Timeout\n  navigating to "{SECRET}"'
             )
 
-        time_example.app_solve = failing
+        app_timing.app_solve = failing
         try:
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 reason = time_link.main([str(a)])
         finally:
-            time_example.app_solve = real
+            app_timing.app_solve = real
         assert isinstance(reason, str) and reason.startswith(
             "time-link: app-solve.mjs failed"
         )

@@ -26,8 +26,9 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from app_timing import app_solve
 from link_swap import swap_build
-from time_example import app_solve, empty_link_file
+from probe_link import empty_link_file
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
 HOOK = "function * update (instance, puzzle) {"
