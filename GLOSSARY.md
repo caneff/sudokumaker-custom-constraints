@@ -122,6 +122,12 @@ Use these terms exactly. Do not drift to synonyms.
 - **soundness harness** — a Node mock of the solver API that proves a component
   removes no true candidate. Ships beside the worked example. See
   `docs/testing-and-generation.md`.
+- **frame builder** — the shared Python that carves a ring board and builds
+  its links: `board.py` (the `Spec`, `Board` and `Geometry` types and the gen
+  JSON), `carve.py` (the uniqueness search), `document.py` (the rules text, the
+  frame backends and the document header) and `lanes.py` (the global and local
+  lanes and the `build_size.py` command line), all under `examples/_shared/`.
+  An example's `build_size.py` drives it.
 - **generation** — building a fresh grid, deriving clues, and proving a unique
   solution with OR-Tools CP-SAT (`generate.py`). See
   `docs/testing-and-generation.md`.
