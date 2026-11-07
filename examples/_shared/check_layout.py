@@ -36,6 +36,7 @@
 #   uv run examples/_shared/check_layout.py [root]
 
 import dataclasses
+import enum
 import json
 import pathlib
 import re
@@ -441,6 +442,24 @@ FRAME_BACKEND_TITLES = frozenset(
 )
 
 
+class LinkKind(enum.Enum):
+    """`LinkFacts.kind`: a misspelt member raises, a misspelt string would
+    compare unequal and pass."""
+
+    NO_RING = "no-ring"
+    SUDOKU_DOCUMENT = "sudoku-document"
+    FRAME = "frame"
+
+
+class HouseSource(enum.Enum):
+    """`LinkFacts.house_source`, an enum for the same reason as `LinkKind`."""
+
+    FRAME_BACKEND = "frame-backend"
+    NO_RING_BACKEND = "no-ring-backend"
+    SUDOKU_RULES = "sudoku-rules"
+    DOCUMENT = "document"
+
+
 @dataclasses.dataclass(frozen=True)
 class LinkFacts:
     """What the per-link checks need to know about one decoded link, worked out
@@ -461,11 +480,11 @@ class LinkFacts:
       (type 2003, which the app expands into them), or "document" -- a
       static read of the document's regions and cages is all there is."""
 
-    kind: str
+    kind: LinkKind
     backend_titles: tuple
     constraint_names: frozenset
     interior: frozenset | None
-    house_source: str
+    house_source: HouseSource
 
     @classmethod
     def of(cls, puzzle):
@@ -474,19 +493,19 @@ class LinkFacts:
         titles = tuple(n for n in names if n in FRAME_BACKEND_TITLES)
         no_ring = is_no_ring(puzzle)
         if no_ring:
-            kind = "no-ring"
+            kind = LinkKind.NO_RING
         elif is_sudoku_document(puzzle):
-            kind = "sudoku-document"
+            kind = LinkKind.SUDOKU_DOCUMENT
         else:
-            kind = "frame"
+            kind = LinkKind.FRAME
         if FRAME_ROWCOL_CONSTRAINT in names:
-            house_source = "frame-backend"
+            house_source = HouseSource.FRAME_BACKEND
         elif no_ring:
-            house_source = "no-ring-backend"
+            house_source = HouseSource.NO_RING_BACKEND
         elif any(c.get("type") == SUDOKU_RULES_TYPE for c in constraints):
-            house_source = "sudoku-rules"
+            house_source = HouseSource.SUDOKU_RULES
         else:
-            house_source = "document"
+            house_source = HouseSource.DOCUMENT
         w, h = puzzle.get("width"), puzzle.get("height")
         interior = (
             _interior_cells(constraints, titles, w, h)
@@ -500,7 +519,7 @@ class LinkFacts:
     @property
     def ringless(self):
         """No clue ring: a no-ring board or a "sudoku" document."""
-        return self.kind != "frame"
+        return self.kind is not LinkKind.FRAME
 
 
 def declares_rows_and_columns(manifest, facts):
@@ -515,7 +534,7 @@ def declares_rows_and_columns(manifest, facts):
     not by name alone: a name match on some other example's own unrelated
     constraint must not silently exempt it too. SudokuRules carries no name to
     match and is the app's own constraint, so it is recognised on any example."""
-    if facts.house_source != "document":
+    if facts.house_source is not HouseSource.DOCUMENT:
         return True
     return (
         manifest.rowcol_backend is not None
@@ -560,9 +579,9 @@ def check_houses(example_dir, link, puzzle, manifest, facts):
 
     A region constraint gives you BOXES ONLY -- rows and columns are not
     implied, and nothing in the app says so: it solves, times and counts
-    solutions on a board that is not the one you meant. The frame builder ships
-    them as two type-301 cage constraints; a builder that writes its own
-    constraint list has to do the same. This cost three tickets of quad-rank
+    solutions on a board that is not the one you meant. The frame builder
+    declares them as named houses through the frame-rowcol backend; a builder
+    that writes its own constraint list has to declare them itself. This cost three tickets of quad-rank
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
     a 6x6 whose true count is 2 came back as 5 (docs/gotchas.md #9).
 
@@ -586,7 +605,10 @@ def check_houses(example_dir, link, puzzle, manifest, facts):
     # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns).
-    if declares_rows_and_columns(manifest, facts) or facts.kind == "sudoku-document":
+    if (
+        declares_rows_and_columns(manifest, facts)
+        or facts.kind is LinkKind.SUDOKU_DOCUMENT
+    ):
         return []
 
     houses = declared_houses(puzzle)

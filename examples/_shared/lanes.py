@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import PurePath
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from board import Geometry, Spec, _ring_name, load_board, make_lines, save_board
+from board import Geometry, Spec, load_board, make_lines, ring_name, save_board
 from carve import generate
 from component_scan import describe_mismatch, mismatch
 from document import (
@@ -29,10 +29,10 @@ from document import (
     HOUSE_GAC_BACKEND_TITLE,
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
+    board_document,
     frame_backend_code,
     frame_groups,
     house_gac_constraint,
-    puzzle_document,
 )
 from frame import corner_cells, cosmetics, ring_cell
 from link_swap import frame_and_comment_only
@@ -160,7 +160,9 @@ class Lane:
         doc = self.build_doc(board)
         link = link_codec.encode_link(doc)
         self.check(link, doc, board)
-        link_path, gen_path = self.files(geo.n, height=geo.shape.get("height"))
+        link_path, gen_path = self.files(
+            geo.n, height=geo.height if geo.is_rect else None
+        )
         link_path.write_text(link + "\n")
         save_board(board, gen_path)
         print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
@@ -293,7 +295,7 @@ class _RingLane(Lane):
         # an entered digit, so the recipient opens the link with every clue
         # typed in.
         for key in board.lines:
-            ci = idx(*ring_cell(_ring_name(key), W, H))
+            ci = idx(*ring_cell(ring_name(key), W, H))
             cells[ci] = (
                 {"value": board.clue[key], "given": True} if key in board.active else {}
             )
@@ -334,7 +336,7 @@ class _RingLane(Lane):
             + spec.comment_fn(n, **board.shape)
             + self._rules_close(board)
         )
-        return puzzle_document(spec, board, W, cells, constraints, comment, H)
+        return board_document(spec, board, W, cells, constraints, comment, H)
 
 
 class RingGlobal(_RingLane):

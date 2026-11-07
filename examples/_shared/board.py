@@ -139,11 +139,16 @@ class Geometry:
         return cls(n, height, digits, None)
 
     @property
+    def is_rect(self):
+        """A rectangle: built by `rect`, so it names no box."""
+        return self.box is None
+
+    @property
     def shape(self):
         """The keywords a rectangular board hands its interior hooks:
-        `height` and `digits`, or none when both equal `n`, so a hook for a
-        square interior takes no keyword it does not know."""
-        if self.box is not None:
+        `height` and `digits`, or none for a square, so a hook for a square
+        interior takes no keyword it does not know."""
+        if not self.is_rect:
             return {}
         return {"height": self.height, "digits": self.digits}
 
@@ -208,7 +213,7 @@ def _ring_key(name):
     return (name[0], int(name[1:]))
 
 
-def _ring_name(key):
+def ring_name(key):
     """The inverse of `_ring_key`: ("T", 3) -> "T3". The one spelling of a ring
     key as a string, shared by the gen JSON, the ring-cell lookup and the
     CP-SAT variable tags."""
@@ -243,17 +248,16 @@ def save_board(board, path):
         "n": board.n,
         "box": [board.bh, board.bw],
         "grid": board.grid,
-        "clue": {_ring_name(k): v for k, v in board.clue.items()},
-        "active": [_ring_name(k) for k in sorted(board.active)],
+        "clue": {ring_name(k): v for k, v in board.clue.items()},
+        "active": [ring_name(k) for k in sorted(board.active)],
         "givens": {f"{r},{c}": v for (r, c), v in board.givens.items()},
     }
-    if board.shape:
+    if board.geo.is_rect:
         doc["height"] = board.height
         doc["digits"] = board.digits
     if board.lines != make_lines(board.n, board.height):
         doc["paths"] = {
-            _ring_name(k): [list(c) for c in board.lines[k]]
-            for k in sorted(board.lines)
+            ring_name(k): [list(c) for c in board.lines[k]] for k in sorted(board.lines)
         }
     with path.open("w") as f:
         json.dump(doc, f, indent=1)

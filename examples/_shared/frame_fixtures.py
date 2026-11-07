@@ -1,5 +1,5 @@
-# Fixtures shared by the frame builder's tests (board, carve, document and
-# lanes .test.py): a temp-directory Spec, a real n=4 board, a solver-backed
+# Fixtures shared by the frame builder's tests (board, carve and lanes
+# .test.py): a temp-directory Spec, a real n=4 board, a solver-backed
 # toy clue rule, and a non-sudoku toy interior.
 
 import contextlib

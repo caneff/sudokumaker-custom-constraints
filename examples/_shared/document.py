@@ -1,13 +1,13 @@
 # The document parts every frame board shares: the rules sentences a link opens
 # and closes with, the drawn groups of a local board (`frame_groups`), the
 # frame's own backends, the opt-in House GAC filter, and the header fields
-# around a board's cells (`puzzle_document`).
+# around a board's cells (`board_document`).
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from board import _ring_name
+from board import ring_name
 from frame import ring_cell
 from minify import minify_file
 from sm_document import code_constraint, find_constraint, puzzle_doc
@@ -49,7 +49,7 @@ def frame_groups(n, lines):
     return [
         {
             "cells": [
-                idx(*ring_cell(_ring_name(key), W)),
+                idx(*ring_cell(ring_name(key), W)),
                 *(idx(r + 1, c + 1) for r, c in lines[key]),
             ],
             "value": "",
@@ -139,7 +139,7 @@ def house_gac_constraint(n):
     )
 
 
-def puzzle_document(spec, board, width, cells, constraints, comment, height=None):
+def board_document(spec, board, width, cells, constraints, comment, height=None):
     """The document around one board's cells and constraints: the header
     fields every frame-builder link shares, in the order they are encoded. `height`
     is the document's, the frame included; None is as tall as it is wide."""

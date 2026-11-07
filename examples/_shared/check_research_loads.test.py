@@ -113,6 +113,17 @@ if __name__ == "__main__":
             code = check_research_loads.main(["check_research_loads.py", str(root)])
         assert code == 0 and out.getvalue().startswith("ok"), out.getvalue()
 
+    # a root with nothing to scan fails rather than reading as clean: a
+    # missing path, and a tree with no code under examples/
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        for arg in (root / "no-such-repo", root):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = check_research_loads.main(["check_research_loads.py", str(arg)])
+            assert code == 1, out.getvalue()
+            assert "no code under examples/" in out.getvalue(), out.getvalue()
+
     # the gate's own files name docs/research/ to police it, and pass
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)

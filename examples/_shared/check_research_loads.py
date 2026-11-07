@@ -76,6 +76,21 @@ def _js_code(text):
     return _blank(text, [m.span() for m in _JS_COMMENT.finditer(text)])
 
 
+def _sources(repo_root):
+    """Yield (path, repo-relative posix path) for every file the scan reads:
+    the code under examples/, less node_modules, dot directories (scratch)
+    and the gate's own files that name docs/research/ to police it."""
+    for path in sorted((repo_root / "examples").rglob("*")):
+        parts = path.relative_to(repo_root).parts
+        if path.suffix not in {".py", ".js", ".mjs", ".cjs"} or any(
+            p == "node_modules" or p.startswith(".") for p in parts
+        ):
+            continue
+        rel = path.relative_to(repo_root).as_posix()
+        if rel not in RESEARCH_INSPECTORS:
+            yield path, rel
+
+
 def check_research_loads(repo_root):
     """Return one violation string per load of a docs/research/ path from
     examples/ code: a path built in code, or a `// #include` that resolves
@@ -92,15 +107,7 @@ def check_research_loads(repo_root):
     repo_root = pathlib.Path(repo_root)
     research = (repo_root / "docs" / "research").resolve()
     violations = []
-    for path in sorted((repo_root / "examples").rglob("*")):
-        parts = path.relative_to(repo_root).parts
-        if path.suffix not in {".py", ".js", ".mjs", ".cjs"} or any(
-            p == "node_modules" or p.startswith(".") for p in parts
-        ):
-            continue
-        rel = path.relative_to(repo_root).as_posix()
-        if rel in RESEARCH_INSPECTORS:
-            continue
+    for path, rel in _sources(repo_root):
         text = path.read_text()
         loads = set()
         if path.suffix == ".py":
@@ -131,7 +138,12 @@ def check_research_loads(repo_root):
 
 
 def main(argv):
-    root = argv[1] if len(argv) > 1 else REPO_ROOT
+    root = pathlib.Path(argv[1] if len(argv) > 1 else REPO_ROOT)
+    # A root with nothing to scan is a wrong argument, not a clean tree: the
+    # scan would find no load there and report ok.
+    if not (root / "examples").is_dir() or next(_sources(root), None) is None:
+        print(f"FAILED — {root} has no code under examples/ to scan")
+        return 1
     violations = check_research_loads(root)
     for v in violations:
         print(v)

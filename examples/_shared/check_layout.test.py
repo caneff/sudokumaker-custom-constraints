@@ -20,7 +20,9 @@ import check_layout
 from check_layout import (
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
+    HouseSource,
     LinkFacts,
+    LinkKind,
     check_digit_range,
     check_gen_frame_backends,
     check_gen_json_parses,
@@ -215,6 +217,13 @@ REQUIRED = [
 # columns backend of its own, with a hand-made link.
 WHOLE_GRID = {"lanes": "single", "rules_prefix": "none", "houses": False}
 SINGLE_LANE = {"lanes": "single"}
+# A single-lane example's files: main.js alone, no main-global.js and no
+# local board pair.
+SINGLE_LANE_FILES = [
+    f
+    for f in REQUIRED
+    if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+]
 HAND_MADE = {"generator_less_links": ["PUZZLE_LINK.txt"]}
 SHARED_GAC = {
     "lanes": "single",
@@ -317,12 +326,7 @@ if __name__ == "__main__":
         assert "main-global.js" in violations[0]
 
     # a `lanes = "single"` example needs no main-global.js and no local board
-    no_lane_files = [
-        f
-        for f in REQUIRED
-        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
-    ]
-    with example(files=no_lane_files, name="whole-grid", manifest=WHOLE_GRID) as (
+    with example(files=SINGLE_LANE_FILES, name="whole-grid", manifest=WHOLE_GRID) as (
         root,
         _,
     ):
@@ -347,14 +351,11 @@ if __name__ == "__main__":
 
     # a `lanes = "single"` example ships main.js alone: a main-global.js, or
     # the local board pair, is a stray lane file and is named
-    single_files = [
-        f
-        for f in REQUIRED
-        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
-    ]
-    with example(files=single_files, manifest=SINGLE_LANE) as (root, _):
+    with example(files=SINGLE_LANE_FILES, manifest=SINGLE_LANE) as (root, _):
         assert check_tree(root) == []
-    with example(files=[*single_files, "main-global.js"], manifest=SINGLE_LANE) as (
+    with example(
+        files=[*SINGLE_LANE_FILES, "main-global.js"], manifest=SINGLE_LANE
+    ) as (
         root,
         _,
     ):
@@ -362,7 +363,7 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "single-lane" in violations[0] and "main-global.js" in violations[0]
     with example(
-        files=[*single_files, "PUZZLE_LINK_local.txt", "gen_local.json"],
+        files=[*SINGLE_LANE_FILES, "PUZZLE_LINK_local.txt", "gen_local.json"],
         manifest=SINGLE_LANE,
     ) as (root, _):
         violations = check_tree(root)
@@ -404,30 +405,6 @@ if __name__ == "__main__":
             assert any("widget" in v and pairing_text in v for v in violations), (
                 violations
             )
-
-    # the no-local-global-split example needs neither half of the local pair,
-    # and ships neither in reality -- dropping both leaves nothing unpaired
-    iso_missing = no_lane_files
-    with example(files=iso_missing, name="whole-grid", manifest=WHOLE_GRID) as (
-        root,
-        _,
-    ):
-        violations = check_tree(root)
-        assert violations == [], violations
-
-    # a global constraint with no drawn groups ships main.js alone and no local
-    # board.
-    fillomino_files = [
-        f
-        for f in REQUIRED
-        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
-    ]
-    with example(files=fillomino_files, name="whole-grid", manifest=WHOLE_GRID) as (
-        root,
-        _,
-    ):
-        violations = check_tree(root)
-        assert violations == [], violations
 
     # a gen*.json with no matching link is unpaired: the naming-follows-the-
     # rename bug this check exists to catch
@@ -607,9 +584,8 @@ if __name__ == "__main__":
 
     # `rules_prefix = "none"` exempts the rules-prefix check -- the example is
     # not sudoku, and its rules text must not mention sudoku
-    missing = fillomino_files
     with example(
-        files=missing,
+        files=SINGLE_LANE_FILES,
         name="whole-grid",
         manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
@@ -636,15 +612,7 @@ if __name__ == "__main__":
     # isofill and fillomino are exempt: whole-grid constraints on a bare
     # board, with no row, column or box rule to declare
     with example(
-        files=missing,
-        name="whole-grid",
-        manifest=WHOLE_GRID,
-        contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
-    ) as (root, _):
-        violations = check_tree(root)
-        assert violations == [], violations
-    with example(
-        files=fillomino_files,
+        files=SINGLE_LANE_FILES,
         name="whole-grid",
         manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
@@ -654,7 +622,7 @@ if __name__ == "__main__":
 
     # a no-ring example with a local lane only ships main.js and
     # PUZZLE_LINK.txt with no global lane and no _local pair
-    with example(files=fillomino_files, name="single-lane", manifest=SINGLE_LANE) as (
+    with example(files=SINGLE_LANE_FILES, name="single-lane", manifest=SINGLE_LANE) as (
         root,
         _,
     ):
@@ -1413,20 +1381,22 @@ if __name__ == "__main__":
         return {"definition": {"name": title}, **extra}
 
     no_ring_doc = LinkFacts.of(doc(named(GRID_BACKEND[1])))
-    assert no_ring_doc.kind == "no-ring" and no_ring_doc.ringless, no_ring_doc
-    assert no_ring_doc.house_source == "no-ring-backend", no_ring_doc
+    assert no_ring_doc.kind is LinkKind.NO_RING and no_ring_doc.ringless, no_ring_doc
+    assert no_ring_doc.house_source is HouseSource.NO_RING_BACKEND, no_ring_doc
     # a no-ring backend wins over the document type: it is the stronger claim
     both = LinkFacts.of(doc(named(GRID_BACKEND[1]), type="sudoku"))
-    assert both.kind == "no-ring", both
+    assert both.kind is LinkKind.NO_RING, both
     sudoku_doc = LinkFacts.of(doc(type="sudoku"))
-    assert sudoku_doc.kind == "sudoku-document" and sudoku_doc.ringless, sudoku_doc
+    assert sudoku_doc.kind is LinkKind.SUDOKU_DOCUMENT and sudoku_doc.ringless, (
+        sudoku_doc
+    )
     plain_frame = LinkFacts.of(doc())
-    assert plain_frame.kind == "frame" and not plain_frame.ringless, plain_frame
-    assert plain_frame.house_source == "document", plain_frame
+    assert plain_frame.kind is LinkKind.FRAME and not plain_frame.ringless, plain_frame
+    assert plain_frame.house_source is HouseSource.DOCUMENT, plain_frame
     rowcol = LinkFacts.of(doc(named(check_layout.FRAME_ROWCOL_CONSTRAINT)))
-    assert rowcol.house_source == "frame-backend", rowcol
+    assert rowcol.house_source is HouseSource.FRAME_BACKEND, rowcol
     assert rowcol.backend_titles == (check_layout.FRAME_ROWCOL_CONSTRAINT,), rowcol
-    assert LinkFacts.of(doc({"type": 2003})).house_source == "sudoku-rules"
+    assert LinkFacts.of(doc({"type": 2003})).house_source is HouseSource.SUDOKU_RULES
     # backend titles keep constraint order and skip unrelated names
     ordered = LinkFacts.of(
         doc(named(check_layout.CORNERS_TITLE), named("Mine"), named(GRID_BACKEND[1]))

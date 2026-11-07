@@ -9,6 +9,7 @@
 #
 #   uv run examples/_shared/lanes.test.py
 
+import copy
 import dataclasses
 import json
 import pathlib
@@ -46,6 +47,22 @@ def test_check_passes_when_the_backend_registers_the_declared_component():
     with temp_spec(["FooComponent.js"]) as spec:
         link, doc, board = _build(spec)
         RingGlobal(spec).check(link, doc, board)
+
+
+def test_check_catches_a_link_that_does_not_decode_back_to_the_document():
+    # the link is the built board's own, but the document it is checked
+    # against differs in its name alone: every other check reads that
+    # document and passes, so only the round trip catches it
+    with temp_spec(["FooComponent.js"]) as spec:
+        link, doc, board = _build(spec)
+        renamed = copy.deepcopy(doc)
+        renamed["puzzle"]["name"] += " (renamed)"
+        try:
+            RingGlobal(spec).check(link, renamed, board)
+        except AssertionError as e:
+            assert "round-trip" in str(e), e
+        else:
+            raise AssertionError("a link that does not round-trip was accepted")
 
 
 def test_check_catches_a_shipped_component_the_backend_never_registers():
@@ -959,6 +976,7 @@ if __name__ == "__main__":
     test_build_doc_without_box_regions_or_rowcol_houses_declares_neither()
     test_rebuild_reproduces_a_non_sudoku_interior_link()
     test_check_passes_when_the_backend_registers_the_declared_component()
+    test_check_catches_a_link_that_does_not_decode_back_to_the_document()
     test_check_catches_a_shipped_component_the_backend_never_registers()
     test_check_catches_a_document_that_is_not_the_board_s_size()
     test_check_accepts_a_backend_that_reaches_for_a_built_in_component()

@@ -11,7 +11,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from document import NO_RING_RULES_PREFIX, puzzle_document
+from document import NO_RING_RULES_PREFIX, board_document
 from lanes import Lane, named_files
 from minify import minify_file
 from sm_document import code_constraint
@@ -164,7 +164,7 @@ class NoRing(Lane):
             *([labels] if labels else []),
         ]
         comment = self.rules_prefix + spec.comment_fn(n)
-        return puzzle_document(spec, board, n, cells, constraints, comment)
+        return board_document(spec, board, n, cells, constraints, comment)
 
     def _check_lane(self, lc, doc, board):
         spec = self.spec

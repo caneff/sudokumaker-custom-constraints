@@ -9,7 +9,7 @@ import sys
 from dataclasses import replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from board import Board, _ring_name, make_lines
+from board import Board, make_lines, ring_name
 
 # Seconds per solve in `unique`. A sudoku frame board is proved in
 # milliseconds, so a solve anywhere near the cap is a carve that has gone
@@ -117,7 +117,7 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     if model_fn:
         m, x = model_fn(geo.n, geo.box, **geo.shape)
     else:
-        if geo.shape:
+        if geo.is_rect:
             raise ValueError("a rectangular board needs the Spec's own model_fn")
         m, x = cpsat.sudoku_model(geo.n, cpsat.boxes(geo.n, *geo.box))
     for (r, c), v in board.givens.items():
@@ -127,7 +127,7 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     # and so the CP-SAT search path, the same on every run.
     for k in sorted(board.active):
         cells = board.lines[k]
-        post_clue(m, x, cells, board.clue[k], board.digits, _ring_name(k), board.box)
+        post_clue(m, x, cells, board.clue[k], board.digits, ring_name(k), board.box)
     try:
         first, unique = cpsat.solve_unique(m, x, limit)
     except TimeoutError:
@@ -153,7 +153,7 @@ def generate(spec, geo, seeds, paths=False):
     `geo` is the board's `Geometry`. A rectangle needs an interior hook that takes both
     (`Spec.grid_fn` and `Spec.model_fn`), and draws straight lines only.
     """
-    if geo.shape and (paths or not (spec.grid_fn and spec.model_fn)):
+    if geo.is_rect and (paths or not (spec.grid_fn and spec.model_fn)):
         raise ValueError(
             "a rectangular board needs the Spec's own grid_fn and model_fn and "
             "the straight frame lines"

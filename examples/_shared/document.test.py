@@ -7,7 +7,7 @@ from document import house_gac_constraint
 
 
 def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
-    # build_doc's own cap check (test above) is not the only caller: a
+    # build_doc's own cap check (lanes.test.py) is not the only caller: a
     # hand-built board (running-start/build_link.py's build_from_template)
     # appends `house_gac_constraint()` directly, bypassing build_doc
     # entirely, so the cap has to live in the one function every caller goes
