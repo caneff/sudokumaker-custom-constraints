@@ -115,9 +115,7 @@ const { rnd } = makeRng()
 }
 
 // total: the candidate count of a puzzle
-{
-  assert.strictEqual(total(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1]))), 4)
-}
+assert.strictEqual(total(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1]))), 4)
 
 // strengthSweep: the never-weaker contract
 // A version that prunes as hard as the reference passes; one that keeps a
