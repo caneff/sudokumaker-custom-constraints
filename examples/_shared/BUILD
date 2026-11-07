@@ -42,6 +42,7 @@ files(name="data", sources=["*.toml", "*.har"])
 for file in [
     "app-dom.test.mjs",
     "app-strip-lib.test.mjs",
+    "backend-runner.test.mjs",
     "board.test.py",
     "board_checks.test.py",
     "bundle-behaviour.test.mjs",

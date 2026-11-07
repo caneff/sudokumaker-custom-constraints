@@ -6,7 +6,7 @@
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { runBackend } from '../_shared/backend-runner.mjs'
+import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 
 // `read` is makeIo's: main-global.js with its #include spliced in.
 export function combinedBoard (here, read, gen = JSON.parse(readFileSync(join(here, 'gen.json'), 'utf8'))) {
@@ -18,12 +18,8 @@ export function combinedBoard (here, read, gen = JSON.parse(readFileSync(join(he
   const H = rows + 2
   const at = (r, c) => c + r * W
 
-  const registered = []
-  const puzzle = {
-    spec: { size: { width: W, height: H } },
-    getCellAt: (a, b) => a + b * W,
-    addConstraintComponent: comp => registered.push(comp)
-  }
+  const puzzle = mockBoard({ width: W, height: H })
+  const { registered } = puzzle
   runBackend(read('main-global.js'), { puzzle, helpers: { naming: { getCellName: String } } })
 
   const truth = {}
