@@ -232,6 +232,26 @@ function fuzzBeating (label, { iters, draw }) {
   return { ...r, beaten: runs.filter(({ p, rivalLeft }) => total(p) < rivalLeft).length }
 }
 
+// One random full house of 1..n with its two true clues, the candidates seeded
+// around the truth. `dropClue` removes n - 1 from the clue seeds (the exclusion
+// draw below needs it gone); the rnd call order is the same either way.
+const drawFullHouseLine = dropClue => {
+  const n = 4 + ((rnd() * 6) | 0)
+  const perm = makeLine(rnd, 'fullHouse', n, n)
+  const cells = Array.from({ length: n }, (_, j) => j)
+  const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
+  for (let j = 0; j < n; j++) truth[j] = perm[j]
+  const lineSeed = seeder(1, n)
+  const clueSeed = seeder(0, n)
+  const cands = new Map()
+  for (const c of Object.keys(truth)) {
+    const isClue = +c === A || +c === B
+    const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
+    cands.set(+c, isClue && dropClue ? set.filter(d => d !== n - 1) : set)
+  }
+  return { n, perm, cells, truth, cands }
+}
+
 // The counters above show that SOMETHING pruned; this one names the rule. It
 // runs the same random state twice — once declared a full house, once bare —
 // and counts the states where the house run removed strictly more. The kind
@@ -241,19 +261,7 @@ function fuzzBeating (label, { iters, draw }) {
 const exclusion = fuzzBeating('mirrored-pair exclusion', {
   iters: 20000,
   draw: () => {
-    const n = 4 + ((rnd() * 6) | 0)
-    const perm = makeLine(rnd, 'fullHouse', n, n)
-    const cells = Array.from({ length: n }, (_, j) => j)
-    const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
-    for (let j = 0; j < n; j++) truth[j] = perm[j]
-    const lineSeed = seeder(1, n)
-    const clueSeed = seeder(0, n)
-    const cands = new Map()
-    for (const c of Object.keys(truth)) {
-      const isClue = +c === A || +c === B
-      const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
-      cands.set(+c, isClue ? set.filter(d => d !== n - 1) : set)
-    }
+    const { n, cells, truth, cands } = drawFullHouseLine(true)
     const part = () => {
       const inst = { cells: [A, B, ...cells] }
       pairComp.setParams(inst, A, B, cells)
@@ -278,18 +286,7 @@ const caseSweep = load(CASE_SWEEP_REF, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,
   draw: () => {
-    const n = 4 + ((rnd() * 6) | 0)
-    const perm = makeLine(rnd, 'fullHouse', n, n)
-    const cells = Array.from({ length: n }, (_, j) => j)
-    const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
-    for (let j = 0; j < n; j++) truth[j] = perm[j]
-    const lineSeed = seeder(1, n)
-    const clueSeed = seeder(0, n)
-    const cands = new Map()
-    for (const c of Object.keys(truth)) {
-      const isClue = +c === A || +c === B
-      cands.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
-    }
+    const { n, cells, truth, cands } = drawFullHouseLine(false)
     const part = component => {
       const inst = { cells: [A, B, ...cells] }
       component.setParams(inst, A, B, cells)

@@ -9,10 +9,9 @@ import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeRng, makePuzzle, fixpoint, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
 import { loadComponent } from './cut-profile.mjs'
+import { N, CELLS, rows, bent } from './fixture.mjs'
 
 const HERE = import.meta.dirname
-const N = 10
-const CELLS = Array.from({ length: N * N }, (_, i) => i)
 
 const SKIP = '  if (notNeeded[x]) return false // the filter cleared this cell: no cut\n'
 const WALKED = '  let cut = reachSize(instance, placed, depth, allowed, size).size < size\n'
@@ -53,17 +52,6 @@ function removals (mod, start) {
 
 // `bent` has L-shaped regions; the hard fixtures are where cut does the most
 // work.
-const rows = {}
-for (const c of CELLS) rows[c] = Math.floor(c / N)
-
-const bent = {}
-for (const c of CELLS) {
-  const r = Math.floor(c / N)
-  const x = c % N
-  const band = Math.floor(r / 2)
-  bent[c] = ((r % 2 === 0) ? x <= 5 : x <= 3) ? 2 * band : 2 * band + 1
-}
-
 const gridOf = name => {
   const out = {}
   JSON.parse(readFileSync(join(HERE, `${name}.json`), 'utf8')).grid
