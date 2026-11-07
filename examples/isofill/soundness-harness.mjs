@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
-import { N, CELLS, rows, bent } from './fixture.mjs'
+import { N, CELLS, rows, bent, shapeOf, tall, wide, rowsTall, colsWide, bentWide } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -256,18 +256,6 @@ const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
 installGlobals(0, 9)
 const ALL10 = Array.from({ length: 10 }, (_, d) => d)
 const seeder10 = makeSeeder(rnd, ALL10)
-const shapeCells = (w, h) => Array.from({ length: w * h }, (_, i) => i)
-const tall = { w: 6, h: 10, cells: shapeCells(6, 10) }
-const wide = { w: 10, h: 6, cells: shapeCells(10, 6) }
-const truthOf = (shape, at) => Object.fromEntries(shape.cells.map(c => [c, at(c % shape.w, Math.floor(c / shape.w))]))
-const rowsTall = truthOf(tall, (x, y) => y)
-const colsWide = truthOf(wide, x => x)
-// Column pair 2k, 2k+1: digit 2k takes rows 0-3 of the first and 0-1 of the
-// second; digit 2k+1 the rest. Six cells each, both connected.
-const bentWide = truthOf(wide, (x, y) => {
-  const first = x % 2 === 0
-  return (first ? y <= 3 : y <= 1) ? x - (x % 2) : x - (x % 2) + 1
-})
 let badRect = 0
 for (const [name, shape, truth] of [['rows 6x10', tall, rowsTall], ['cols 10x6', wide, colsWide], ['bent 10x6', wide, bentWide]]) {
   badRect += fuzzSoundness(`isofill ${name} fixture`, {
@@ -295,8 +283,8 @@ const rectCapOk = wide.cells.every(c => c % wide.w === 0 || !rectCap.getCandidat
 // 15x10, digit 0 sits at cells 141 and 143 and digit 1 at 142 and 145, read
 // 0, 1, 0, 1 round the border. A border walk that took the board for a
 // square would not have that row on the border.
-const wide2 = { w: 15, h: 10, cells: shapeCells(15, 10) }
-const tall2 = { w: 10, h: 15, cells: shapeCells(10, 15) }
+const wide2 = shapeOf(15, 10)
+const tall2 = shapeOf(10, 15)
 const zeros = shape => Object.fromEntries(shape.cells.map(c => [c, 0]))
 const rectArcBottom = rectOnce(wide2, zeros(wide2), c => (c === 141 || c === 143 ? [0] : c === 142 || c === 145 ? [1] : ALL10))
 const rectArcBottomOk = wide2.cells.some(c => rectArcBottom.getCandidates(c).size === 0)
@@ -304,7 +292,7 @@ const rectArcBottomOk = wide2.cells.some(c => rectArcBottom.getCandidates(c).siz
 const rectArcLeft = rectOnce(tall2, zeros(tall2), c => (c === 110 || c === 130 ? [0] : c === 120 || c === 140 ? [1] : ALL10))
 const rectArcLeftOk = tall2.cells.some(c => rectArcLeft.getCandidates(c).size === 0)
 // An uneven split stops the branch: seven cells do not divide among ten digits.
-const sevenCells = shapeCells(7, 1)
+const sevenCells = shapeOf(7, 1).cells
 const uneven = makePuzzle(Object.fromEntries(sevenCells.map(c => [c, 0])), () => ALL10)
 const unevenInst = {}
 mod.setParams(unevenInst, sevenCells, 7, 1)

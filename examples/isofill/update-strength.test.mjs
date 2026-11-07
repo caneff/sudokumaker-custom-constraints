@@ -8,7 +8,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
-import { N, rows, bent } from './fixture.mjs'
+import { N, rows, bent, shapeOf, tall, wide, rowsTall, bentWide } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -62,20 +62,7 @@ const shipped = {}
 JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid
   .forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
 
-// Boards that are not square: 6 wide by 10 high with one row per digit, and
-// 10 wide by 6 high with column pairs bent into regions of six.
-const shapeOf = (w, h) => ({ w, h, cells: Array.from({ length: w * h }, (_, i) => i) })
 const SQUARE = shapeOf(N, N)
-const tall = shapeOf(6, 10)
-const wide = shapeOf(10, 6)
-const rowsTall = {}
-for (const c of tall.cells) rowsTall[c] = Math.floor(c / tall.w)
-const bentWide = {}
-for (const c of wide.cells) {
-  const x = c % wide.w
-  const y = Math.floor(c / wide.w)
-  bentWide[c] = ((x % 2 === 0 ? y <= 3 : y <= 1) ? x - (x % 2) : x - (x % 2) + 1)
-}
 
 const apply = shape => (mod, p) => {
   const inst = {}
