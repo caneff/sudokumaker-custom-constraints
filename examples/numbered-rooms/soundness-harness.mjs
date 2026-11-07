@@ -98,9 +98,9 @@ const p = makePuzzle({ 0: 3, 1: 2, 2: 3, 3: 1, 4: 4 }, (c, v) => {
 }, { houses: [lineCells(4)] })
 const inst = {}
 mod.setParams(inst, CLUE, lineCells(4))
-let removals = 0; for (const s of p._cand.values()) removals += s.size
+let removals = p.total()
 fixpoint(mod, inst, p)
-for (const s of p._cand.values()) removals -= s.size
+removals -= p.total()
 const clueCands = [...p._cand.get(CLUE)]
 const strong = removals > 0 && clueCands.length === 1 && clueCands[0] === 3
 console.log('strength: clue pruned to', clueCands, `(was {1,2,3,4}), ${removals} removals with clue unsolved`)

@@ -8,7 +8,7 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
-import { runBackend } from '../_shared/backend-runner.mjs'
+import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -30,9 +30,10 @@ function houses () {
 }
 
 const SRC = readFileSync(join(HERE, 'main.js'), 'utf8')
-const registered = []
+const puzzle = mockBoard({ width: N, regions: houses().boxes })
+const { registered } = puzzle
 runBackend(SRC, {
-  puzzle: { addConstraintComponent: c => registered.push(c), getRegions: () => houses().boxes },
+  puzzle,
   helpers: { geometry: { getAllRows: () => houses().rows, getAllColumns: () => houses().cols } }
 })
 
@@ -46,7 +47,7 @@ assert.strictEqual(new Set(names).size, 27, 'house names are not distinct')
 assert.deepStrictEqual([names[0], names[9], names[18]], ['row 1', 'column 1', 'box 1'], 'misnamed')
 
 assert.throws(() => runBackend(SRC, {
-  puzzle: { addConstraintComponent: () => {}, getRegions: () => houses().boxes.slice(0, 8) },
+  puzzle: mockBoard({ width: N, regions: houses().boxes.slice(0, 8) }),
   helpers: { geometry: { getAllRows: () => houses().rows, getAllColumns: () => houses().cols } }
 }), /expected 9 rows, 9 columns and 9 boxes/, 'a short region list did not throw')
 

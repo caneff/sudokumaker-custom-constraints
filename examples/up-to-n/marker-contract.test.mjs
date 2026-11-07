@@ -1,23 +1,19 @@
 import { join } from 'path'
 import assert from 'assert'
-import { runBackend } from '../_shared/backend-runner.mjs'
+import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 import { assembleSource } from '../_shared/include.mjs'
 
 const HERE = import.meta.dirname
 const SRC = assembleSource(join(HERE, 'main.js'))
 
 function setup (groups, { W = 4, H = 4, lo = 1, hi = 4 } = {}) {
-  const registered = []
-  const puzzle = {
-    spec: { size: { width: W, height: H } },
-    addConstraintComponent: comp => registered.push(comp)
-  }
+  const puzzle = mockBoard({ width: W, height: H })
   const helpers = {
     digits: { minDigit: lo, maxDigit: hi },
     naming: { getCellName: c => `R${Math.floor(c / W) + 1}C${(c % W) + 1}` }
   }
   runBackend(SRC, { puzzle, helpers, input: { groups } })
-  return registered
+  return puzzle.registered
 }
 
 const id = (x, y, W = 4) => x + y * W
@@ -146,15 +142,14 @@ refuses([
   { cells: [id(0, 0), id(0, 1)], value: '4' }
 ], /same line and end/)
 {
-  const registered = []
-  const puzzle = { spec: { size: { width: 4, height: 4 } }, addConstraintComponent: c => registered.push(c) }
+  const puzzle = mockBoard({ width: 4 })
   const helpers = { digits: { minDigit: 1, maxDigit: 4 }, naming: { getCellName: c => String(c) } }
   assert.throws(() => runBackend(SRC, {
     puzzle,
     helpers,
     input: { groups: [{ cells: [id(0, 0), id(0, 1)], value: '3' }, { cells: [id(1, 1)], value: '3' }] }
   }))
-  assert.deepStrictEqual(registered, [])
+  assert.deepStrictEqual(puzzle.registered, [])
 }
 
 console.log('PASS')

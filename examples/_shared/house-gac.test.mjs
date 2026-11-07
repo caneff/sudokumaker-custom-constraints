@@ -20,7 +20,7 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, makeRng, housesOf, shuffle } from './harness-lib.mjs'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const here = import.meta.dirname
 const NAMES = ['getAffectedCells', 'setParams', 'update']
@@ -54,7 +54,7 @@ function runOnce (mod, cands, kind = 'fullHouse') {
   const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { houses: housesOf(kind, cells) })
   const inst = appInstance(mod, 'row 1', cells)
   Array.from(mod.update(inst, p))
-  if (p._stopped !== null) return 'stop'
+  if (p.stopMessage() !== null) return 'stop'
   return cells.map(c => [...p._cand.get(c)].sort((a, b) => a - b))
 }
 
@@ -276,9 +276,9 @@ function runFrameBackend (W, H, bw, bh, regionsOf = regions => regions) {
       ;(regions[r] ||= []).push(x + y * W)
     }
   }
-  const registered = []
+  const puzzle = mockBoard({ width: W, height: H, regions: regionsOf(regions) })
   runBackend(BACKEND_SRC, {
-    puzzle: { addConstraintComponent: c => registered.push(c), getRegions: () => regionsOf(regions) },
+    puzzle,
     helpers: {
       geometry: {
         * getAllRows () { for (let y = 0; y < H; y++) yield Array.from({ length: W }, (_, x) => id(x, y)) },
@@ -286,7 +286,7 @@ function runFrameBackend (W, H, bw, bh, regionsOf = regions => regions) {
       }
     }
   })
-  return { registered, regions }
+  return { registered: puzzle.registered, regions }
 }
 
 for (const [W, H, bw, bh] of [[11, 11, 3, 3], [8, 6, 3, 2]]) {

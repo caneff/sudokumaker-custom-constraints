@@ -2,7 +2,7 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, fixpoint, fuzzSoundness } from '../_shared/harness-lib.mjs'
-import { runBackend } from '../_shared/backend-runner.mjs'
+import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -19,12 +19,13 @@ const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 // id order instead of building by coordinates would register the wrong list.
 const SRC = readFileSync(join(HERE, 'main.js'), 'utf8')
 const SCRAMBLE = i => (i * 37) % (N * N) // 37 is coprime to 81: a permutation
-const registered = []
 const board = (width, height, idOf = (x, y) => SCRAMBLE(y * width + x)) => ({
-  puzzle: { spec: { size: { width, height } }, addConstraintComponent: c => registered.push(c) },
+  puzzle: mockBoard({ width, height }),
   helpers: { cellIds: { getIdFromCoordsSafe: ({ x, y }) => idOf(x, y) } }
 })
-runBackend(SRC, board(N, N))
+const square = board(N, N)
+runBackend(SRC, square)
+const { registered } = square.puzzle
 assert.strictEqual(registered.length, 1, 'expected one whole-grid component')
 assert.strictEqual(registered[0].ctor, 'DutchFlatmatesComponent', 'wrong component registered')
 assert.strictEqual(registered[0].args[0], 'Dutch Flatmates')

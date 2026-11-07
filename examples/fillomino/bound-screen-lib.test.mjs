@@ -59,6 +59,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
       assert.strictEqual(inst.placedBy[d], placed.filter(x => x === d).length, `placed ${d}s follow the board`)
     }
     if (row === OPEN || row === ONE) assert.strictEqual(dies, false, 'a roomy board is not killed')
+    if (row === SHORT) assert.strictEqual(dies, true, 'a reused instance still kills the short state')
   }
 }
 

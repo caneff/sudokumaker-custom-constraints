@@ -18,7 +18,7 @@
 //      supported digits off them. The component must remove no more than the
 //      oracle (sound); on `exact` shapes it must remove no less either.
 
-import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, total } from '../_shared/harness-lib.mjs'
+import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -121,8 +121,8 @@ function run (label, shape) {
   let removedOracle = 0
   let missedByGac = 0
   for (const { state, p, start } of records) {
-    const pruned = total(p) < [...start.values()].reduce((n, set) => n + set.size, 0)
-    if (pruned || p._stopped !== null) {
+    const pruned = p.total() < [...start.values()].reduce((n, set) => n + set.size, 0)
+    if (pruned || p.stopMessage() !== null) {
       const q = puzzleOf(state)
       for (const [cell, set] of start) q._cand.set(cell, new Set(set))
       if (builtin.validate(runComponent(builtin, state), q)) builtinBlind++
@@ -135,7 +135,7 @@ function run (label, shape) {
     for (const [cell, startSet] of start) {
       for (const digit of startSet) {
         const supportedHere = support.get(cell).has(digit)
-        const keptHere = p._stopped === null && p._cand.get(cell).has(digit)
+        const keptHere = p.stopMessage() === null && p._cand.get(cell).has(digit)
         if (!supportedHere) removedOracle++
         if (!supportedHere && keptHere) {
           missedByGac++

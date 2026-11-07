@@ -17,23 +17,23 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const SRC = readFileSync(join(import.meta.dirname, 'grid-rowcol.js'), 'utf8')
 
 // A W x H board whose geometry helpers yield boxed ids, as the app's own do:
 // numerically right, not plain numbers.
 function run (W, H, minDigit, maxDigit) {
-  const registered = []
+  const puzzle = mockBoard({ width: W, height: H })
   /* eslint-disable no-new-wrappers -- a boxed id is what the coercion check is for */
   const rows = function * () { for (let y = 0; y < H; y++) yield Array.from({ length: W }, (_, x) => new Number(x + y * W)) }
   const columns = function * () { for (let x = 0; x < W; x++) yield Array.from({ length: H }, (_, y) => new Number(x + y * W)) }
   /* eslint-enable no-new-wrappers */
   runBackend(SRC, {
-    puzzle: { addConstraintComponent: c => registered.push(c) },
+    puzzle,
     helpers: { geometry: { getAllRows: rows, getAllColumns: columns }, digits: { minDigit, maxDigit } }
   })
-  return registered
+  return puzzle.registered
 }
 
 // Written out, not derived from the backend's arithmetic: a 3-wide, 2-tall

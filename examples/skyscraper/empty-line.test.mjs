@@ -2,7 +2,7 @@
 // component must stand down: no throw, no removal, no stop, and validate holds on filled clues.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
 const { load } = makeIo(import.meta.dirname)
 const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
@@ -13,9 +13,9 @@ const CB = 101
 const p = makePuzzle({ [CA]: 1, [CB]: 1 }, (c, v) => (c === CA || c === CB ? [v] : [1, 2, 3, 4]), { houses: [[]] })
 const inst = {}
 mod.setParams(inst, CA, CB, [])
-const before = total(p)
+const before = p.total()
 assert.doesNotThrow(() => Array.from(mod.update(inst, p)))
-assert.strictEqual(total(p), before, 'an empty line removed a candidate')
-assert.strictEqual(p._stopped, null, 'an empty line stopped the branch')
+assert.strictEqual(p.total(), before, 'an empty line removed a candidate')
+assert.strictEqual(p.stopMessage(), null, 'an empty line stopped the branch')
 assert.strictEqual(mod.validate(inst, p), true)
 console.log('PASS')

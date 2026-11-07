@@ -23,7 +23,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const SRC = readFileSync(join(import.meta.dirname, 'frame-rowcol.js'), 'utf8')
 
@@ -48,15 +48,15 @@ function mockHelpers (W, H, minDigit = 1, maxDigit = null) {
 }
 
 function run (W, H, minDigit = 1, maxDigit = null) {
-  const registered = []
+  const puzzle = mockBoard({ width: W, height: H })
   const helpers = mockHelpers(W, H, minDigit, maxDigit)
   const { value: postprocessJSON } = runBackend(SRC, {
-    puzzle: { addConstraintComponent: c => registered.push(c) },
+    puzzle,
     helpers,
     globals: { SudokuDigitSet: null },
     returns: 'typeof postprocessJSON === "function" ? postprocessJSON : null'
   })
-  return { registered, postprocessJSON, helpers }
+  return { registered: puzzle.registered, postprocessJSON, helpers }
 }
 
 // The interior of a W x H frame board, written out rather than derived from

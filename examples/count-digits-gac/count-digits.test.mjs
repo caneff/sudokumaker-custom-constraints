@@ -53,12 +53,12 @@ function run (candidatesByCell, { digits = ONE_OR_TWO, targets = TARGETS } = {})
 
 {
   const { p } = run({ 0: [5], 1: [1], 2: [2], 3: [5], 4: [1, 5] })
-  assert.notStrictEqual(p._stopped, null, 'a counter above the possible count stops the branch')
+  assert.notStrictEqual(p.stopMessage(), null, 'a counter above the possible count stops the branch')
 }
 
 {
   const { p } = run({ 0: [1], 1: [1], 2: [2], 3: [5], 4: [1, 5] })
-  assert.notStrictEqual(p._stopped, null, 'a counter below the definite count stops the branch')
+  assert.notStrictEqual(p.stopMessage(), null, 'a counter below the definite count stops the branch')
 }
 
 {

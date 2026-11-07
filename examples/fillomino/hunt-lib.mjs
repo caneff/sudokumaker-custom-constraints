@@ -3,7 +3,7 @@
 // search. Offline scores only RANK candidate boards; the live app has the last
 // word on any board that ships (docs/real-app-timing.md).
 
-import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 import { seededShuffle } from '../_shared/app-strip-lib.mjs'
 
 export function loadComponent (here) {
@@ -24,10 +24,10 @@ const MAX_PASSES = 200
 
 function propagate (mod, inst, p) {
   for (let passes = 1; passes <= MAX_PASSES; passes++) {
-    const before = total(p)
+    const before = p.total()
     Array.from(mod.update(inst, p))
     if (dead(p)) return { passes, dead: true }
-    if (total(p) === before) return { passes, dead: false }
+    if (p.total() === before) return { passes, dead: false }
   }
   return { passes: MAX_PASSES, dead: false }
 }

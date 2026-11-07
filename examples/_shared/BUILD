@@ -42,6 +42,7 @@ files(name="data", sources=["*.toml", "*.har"])
 for file in [
     "app-dom.test.mjs",
     "app-strip-lib.test.mjs",
+    "backend-runner.test.mjs",
     "board.test.py",
     "board_checks.test.py",
     "bundle-behaviour.test.mjs",
@@ -99,6 +100,7 @@ for file in [
     "spec_855_closing.test.py",
     "spec_865_closing.test.py",
     "spec_896_closing.test.py",
+    "spec_897_closing.test.mjs",
 ]:
     suite(file, needs=["//:tree"])
 

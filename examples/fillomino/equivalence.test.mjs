@@ -19,7 +19,7 @@
 // ends, so the comparison does not hang on when the solver applies a change.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates, total } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
 import { fixtureBoards } from './bound-screen-lib.mjs'
 import { FIXTURES } from './fixture.mjs'
 
@@ -66,7 +66,7 @@ let removals = 0
 // state.
 function settle (a, b, pa, pb, label, deferred) {
   for (let pass = 0; pass < 200; pass++) {
-    const before = total(pa)
+    const before = pa.total()
     const la = oneCall(ref, a, pa, deferred)
     const lb = oneCall(cur, b, pb, deferred)
     calls++
@@ -74,7 +74,7 @@ function settle (a, b, pa, pb, label, deferred) {
     assert.deepStrictEqual(lb, la, `${label}: call ${pass} removed differently`)
     assert.deepStrictEqual(state(pb), state(pa), `${label}: call ${pass} left different candidates`)
     if (dead(pa)) return false
-    if (total(pa) === before) return true
+    if (pa.total() === before) return true
   }
   throw new Error(`${label}: did not settle in 200 calls`)
 }

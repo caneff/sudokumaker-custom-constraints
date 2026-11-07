@@ -8,10 +8,11 @@
 // The candidate state is a REASSIGNABLE map (state.cand), not a fixed one —
 // the DFS search clones it before a guess and restores it on backtrack. This
 // is a different map from the fixed one makePuzzle holds, so the two mocks
-// differ in who owns the map; the puzzle API over it is harness-lib's
-// makePuzzleApi either way.
+// differ in who owns the map; the puzzle API and its outcome (isDead,
+// stopMessage, reset, total) are harness-lib's makeMockCore either way.
 
-import { makeIo, makePuzzleApi } from './harness-lib.mjs'
+import { makeIo, makeMockCore } from './harness-lib.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
 // `state.cand` is meant to be reassigned wholesale (fresh seed, or restored
@@ -27,14 +28,8 @@ import { makeIo, makePuzzleApi } from './harness-lib.mjs'
 export function makeCandidateState ({ houses = [] } = {}) {
   const state = {
     cand: new Map(),
-    stopped: false, // a component declared the branch dead via puzzle.stop()
-    total () { let s = 0; for (const set of state.cand.values()) s += set.size; return s },
-    anyEmpty () { for (const set of state.cand.values()) if (set.size === 0) return true; return false },
     clone () { const m = new Map(); for (const [k, v] of state.cand) m.set(k, new Set(v)); return m },
-    puzzle: {
-      ...makePuzzleApi(c => state.cand.get(c), { houses }),
-      stop: (message = '', cells = []) => { state.stopped = true; return { message, cells } }
-    }
+    puzzle: makeMockCore(() => state.cand, { houses })
   }
   return state
 }
@@ -98,13 +93,11 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //   input: the object main.js reads as `input` (its groups/geometry). Empty
 //     for main-global.js, which builds its own frame instead of reading it.
 //   frame: { W, H, idx }, from frame-geometry.mjs's frameGeometry(). The
-//     registrar answers getCellAt(col, row) = idx(row, col)
-//     and spec.size.width = W, spec.size.height = H, the three calls
-//     main-global.js's own frame-building makes, so a probe can run that code
-//     instead of handing it a pre-built `groups` list. The app's getCellAt
-//     takes the column first and `idx` takes the row first, so the arguments
-//     swap here: a mock that fed them straight through would hand the backend
-//     the transposed frame.
+//     registrar is backend-runner.mjs's mockBoard of W x H, which answers
+//     getCellAt(col, row) and spec.size, the calls main-global.js's own
+//     frame-building makes, so a probe can run that code instead of handing it
+//     a pre-built `groups` list. Its getCellAt(col, row) is `idx(row, col)`:
+//     the app's getCellAt takes the column first and `idx` the row first.
 export function loadComponents ({ here, files, mainSrc, input, frame }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
@@ -113,16 +106,10 @@ export function loadComponents ({ here, files, mainSrc, input, frame }) {
     inst.__mod = mod
     return inst
   }
-  const comps = []
-  const registrar = {
-    addConstraintComponent: inst => comps.push(inst),
-    getCellAt: (a, b) => frame.idx(b, a),
-    spec: { size: { width: frame.W, height: frame.H } }
-  }
-  const ctors = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
-  const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func
-  run(input, globalThis.helpers, registrar, ...ctors.map(c => makeCtor(c.mod)))
-  return comps
+  const registrar = mockBoard({ width: frame.W, height: frame.H })
+  const ctors = Object.fromEntries(files.map(f => [f.ctorName, makeCtor(load(f.file, f.names))]))
+  runBackend(mainSrc, { puzzle: registrar, helpers: globalThis.helpers, input, ctors })
+  return registrar.registered
 }
 
 const MAX_PASSES = 500
@@ -135,12 +122,12 @@ const MAX_PASSES = 500
 export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null } = {}) {
   if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle))
   for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const before = state.total()
+    const before = state.puzzle.total()
     for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle))
-    if (state.stopped) return pass + 1 // the branch is dead; no point propagating on
+    if (state.puzzle.stopMessage() !== null) return pass + 1 // the branch is dead; no point propagating on
     for (const g of alldiffGroups) floorGroup(g)
     if (extra) extra()
-    if (state.total() === before) return pass + 1
+    if (state.puzzle.total() === before) return pass + 1
   }
   return -1
 }
@@ -150,7 +137,7 @@ export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init =
 // leaves an infeasible group untouched rather than emptying a cell, so a
 // caller doing search must test matchability itself.
 export function dead (state, alldiffGroups) {
-  if (state.stopped || state.anyEmpty()) return true
+  if (state.puzzle.isDead()) return true
   for (const g of alldiffGroups) if (maxMatch(g, c => state.cand.get(c)) !== g.length) return true
   return false
 }
@@ -182,7 +169,7 @@ export function search (state, { interior, comps, alldiffGroups, floorGroup, ext
       runToFixpoint(state, comps, alldiffGroups, floorGroup, { init: false, extra })
       if (!dead(state, alldiffGroups)) dfs()
       state.cand = saved
-      state.stopped = false
+      state.puzzle.reset()
       if (capped) return
     }
   }

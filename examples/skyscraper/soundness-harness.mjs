@@ -5,7 +5,7 @@
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
 import {
-  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, violates, fixpoint, fuzzSoundness, finishHarness
+  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, violates, fixpoint, fuzzSoundness, finishHarness
 } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
@@ -288,9 +288,9 @@ for (let iter = 0; iter < 2000; iter++) {
   const truth = { [CA]: visible(digits), [CB]: visible([...digits].reverse()) }
   for (const i of LINE) truth[i] = digits[i]
   const bp = makePuzzle(truth, seeder)
-  const before = total(bp)
+  const before = bp.total()
   fixpoint(mod, bareInst, bp)
-  bareRemovals += before - total(bp)
+  bareRemovals += before - bp.total()
 }
 console.log('bare line:', bareRemovals, 'candidates removed,', bareRepeats, 'of 2000 lines repeat a digit')
 
@@ -310,9 +310,9 @@ for (const pinClues of [false, true]) {
   const truth = { [CA]: 9, [CB]: 1 }
   for (const i of zeroLine) truth[i] = i
   const zp = makePuzzle(truth, c => (c === CA || c === CB ? (pinClues ? [truth[c]] : unclued) : [truth[c]]), zeroOpts)
-  const before = total(zp)
+  const before = zp.total()
   fixpoint(mod, zeroInst, zp)
-  const gone = before - total(zp)
+  const gone = before - zp.total()
   zeroRemovals += gone
   if (gone) console.log('zero-based board,', pinClues ? 'clued' : 'unclued', 'removed', gone, 'candidates')
 }
@@ -334,13 +334,13 @@ const liveTruth = { [CA]: visible(permOf19), [CB]: visible([...permOf19].reverse
 for (const i of zeroLine) liveTruth[i] = permOf19[i]
 const openLine = [...Array(10).keys()]
 const withZero = makePuzzle(liveTruth, (c, v) => (c === CA || c === CB ? [v] : openLine), zeroOpts)
-const zeroLiveBefore = total(withZero)
+const zeroLiveBefore = withZero.total()
 fixpoint(mod, liveZeroInst, withZero)
-const shutWhileZeroLive = total(withZero) === zeroLiveBefore
+const shutWhileZeroLive = withZero.total() === zeroLiveBefore
 for (const i of zeroLine) withZero._cand.get(i).delete(0)
-const afterZeroGone = total(withZero)
+const afterZeroGone = withZero.total()
 fixpoint(mod, liveZeroInst, withZero)
-const opensAfterZeroGoes = total(withZero) < afterZeroGone
+const opensAfterZeroGoes = withZero.total() < afterZeroGone
 console.log('0 live on the first update:', shutWhileZeroLive ? 'gate shut' : 'GATE OPEN',
   '/ after the 0 goes:', opensAfterZeroGoes ? 'gate opens' : 'STAYS SHUT')
 
@@ -379,9 +379,9 @@ for (let iter = 0; iter < 300; iter++) {
     const p = copyOf(start)
     const inst = {}
     version.setParams(inst, CA, CB, LINE)
-    const before = total(p)
+    const before = p.total()
     fixpoint(version, inst, p)
-    if (total(p) < before) { if (count === 'clue') clueQueryFired++; else lineQueryFired++ }
+    if (p.total() < before) { if (count === 'clue') clueQueryFired++; else lineQueryFired++ }
   }
 }
 console.log('clue cell in the house query:', clueQueryFired, 'states pruned, against', lineQueryFired, 'for the line alone')

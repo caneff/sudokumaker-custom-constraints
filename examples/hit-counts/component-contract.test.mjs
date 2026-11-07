@@ -85,7 +85,7 @@ const { load } = makeIo(HERE)
         const inst = { cells: [A, B, ...cells] }
         pairComp.setParams(inst, A, B, cells)
         Array.from(pairComp.update(inst, p))
-        if (p._stopped !== null) continue
+        if (p.stopMessage() !== null) continue
         removed.A += before.A - size(A)
         removed.B += before.B - size(B)
         removed.line += before.line - cells.reduce((s, c) => s + size(c), 0)
@@ -192,7 +192,9 @@ const { load } = makeIo(HERE)
   assert.deepEqual(m.calls, [], 'a position missing a digit is not swept')
   for (const c of LINES.flat()) m.p._cand.set(c, new Set(seed(c))) // the backtrack
   Array.from(side.update(im, m.p))
-  assert.equal(pins(m.calls).length, 4, 'after the backtrack the side pins the diagonal again')
+  for (let i = 0; i < 4; i++) {
+    assert.deepEqual([...m.p._cand.get(cell(i, i))], [i + 1], `after the backtrack the side pins line ${i} at position ${i} again`)
+  }
   console.log('hit-counts side matching: a backtrack makes the side deduce again')
 
   // The memo hashes which digits are live at each position and the clue masks,
@@ -210,9 +212,8 @@ const { load } = makeIo(HERE)
   Array.from(side.update(ifr, f.p))
   for (const [c, cands] of swept) f.p._cand.set(c, new Set(cands))
   f.p._cand.get(cell(0, 0)).add(2)
-  f.calls.length = 0
   Array.from(side.update(ifr, f.p))
-  assert.deepEqual(onDiagonal(f.calls, 0), [['filterCandidatesInCell', 1 << 1, cell(0, 0)]],
+  assert.deepEqual([...f.p._cand.get(cell(0, 0))], [1],
     'the restored swept state is swept again: cell (0, 0) is pinned once more')
   console.log('hit-counts side matching: the missing-digit exit forgets the last sweep')
 

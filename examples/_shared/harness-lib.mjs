@@ -143,9 +143,6 @@ export function shuffle (rnd, a) {
   return a
 }
 
-// The candidates left on a mock puzzle, summed over its cells.
-export const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
-
 // Run one starting state (cell -> candidate array) through two versions of a
 // component and report the candidates `cur` keeps that `ref` removed — the
 // cells where `cur` prunes less. `apply` sets a version's params and runs it.
@@ -161,8 +158,7 @@ export function compareStrength (cur, ref, apply, start, opts = {}, params) {
   const pRef = makePuzzle(cells, seed, opts); apply(ref, pRef, params)
   // A stop() is the same dead-state signal as an emptied cell (older pinned
   // versions empty a cell where current code stops).
-  if (pCur._stopped !== null || pRef._stopped !== null) return null
-  if ([...pCur._cand.values(), ...pRef._cand.values()].some(s => s.size === 0)) return null
+  if (pCur.isDead() || pRef.isDead()) return null
   const weaker = []
   for (const c of start.keys()) {
     for (const d of pCur._cand.get(c)) if (!pRef._cand.get(c).has(d)) weaker.push({ cell: c, digit: d })
@@ -285,6 +281,35 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
   }
 }
 
+// The mock puzzle a harness runs components on: makePuzzleApi over the map
+// `getMap()` returns, read live so a search may reassign it wholesale, plus
+// the stop a component calls and the outcome a harness asks about. makePuzzle
+// and recovery-lib's makeCandidateState are both built on it.
+//   stop(message, cells)  the app's stop(): aborts the branch as a
+//                         contradiction. Recording at call time is enough
+//                         here: every component yields the stop it just built.
+//   stopMessage()         the stop's message ('stopped' when it gave none),
+//                         or null while nothing has stopped
+//   isDead()              stopped, or some cell emptied: no solution here
+//   reset()               clears the stop, as a backtrack does; an emptied
+//                         cell stays empty
+//   total()               the candidates left, summed over every cell
+export function makeMockCore (getMap, { houses = [] } = {}) {
+  let stopped = null
+  return {
+    ...makePuzzleApi(c => getMap().get(c), { houses }),
+    stop: (message = '', cells = []) => { stopped = message || 'stopped'; return { message, cells } },
+    stopMessage: () => stopped,
+    isDead: () => {
+      if (stopped !== null) return true
+      for (const s of getMap().values()) if (s.size === 0) return true
+      return false
+    },
+    reset: () => { stopped = null },
+    total: () => { let n = 0; for (const s of getMap().values()) n += s.size; return n }
+  }
+}
+
 // A mock puzzle over a truth map (cell -> true value). Each cell starts with a
 // candidate set that always contains its true value. `seed(cell, value)` returns
 // the starting candidate array; `houses` is makePuzzleApi's. `width` names the
@@ -293,12 +318,10 @@ export function makePuzzle (truth, seed, { houses = [], width } = {}) {
   const cand = new Map()
   for (const [c, v] of Object.entries(truth)) cand.set(+c, new Set(seed(+c, v)))
   const p = {
-    ...makePuzzleApi(c => cand.get(c), { houses }),
+    ...makeMockCore(() => cand, { houses }),
+    // The map itself, for a harness that reads or edits one cell's
+    // candidates directly; the outcome questions go through the core.
     _cand: cand,
-    _stopped: null,
-    // The app's stop() aborts the branch as a contradiction. Recording at call
-    // time is enough here: every component yields the stop it just built.
-    stop: (message = '', cells = []) => { p._stopped = message || 'stopped'; return { message, cells } },
     // The whole-grid calls a region-building component makes. Neighbours come
     // from the rows the cells form, row-major, the way the app numbers a
     // custom board.
@@ -334,12 +357,12 @@ export const columnsOf = width => Array.from({ length: width }, (_, col) => Arra
 const MAX_PASSES = 20
 export function fixpointAll (parts, p) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const before = total(p)
+    const before = p.total()
     for (const { mod, inst } of parts) {
       Array.from(mod.update(inst, p)) // drain
-      if (p._stopped !== null) return
+      if (p.stopMessage() !== null) return
     }
-    if (total(p) === before) return
+    if (p.total() === before) return
   }
 }
 
@@ -373,7 +396,7 @@ export function violates (mod, inst, p, truth) {
 
 // What `violates` reads off a puzzle already run to a fixpoint.
 function lostTruth (p, truth) {
-  if (p._stopped !== null) return { stopped: p._stopped }
+  if (p.stopMessage() !== null) return { stopped: p.stopMessage() }
   for (const [c, v] of Object.entries(truth)) {
     if (!p._cand.get(+c).has(v)) return { cell: +c, lost: v }
     if (p._cand.get(+c).size === 0) return { cell: +c, empty: true }
@@ -406,9 +429,9 @@ export function fuzzSoundness (label, { iters, draw, log = console.log }) {
     const { truth, seed, parts, houses = [], note = '', inspect } = draw(iter)
     const p = makePuzzle(truth, seed, { houses })
     if (inspect) inspect(p)
-    const before = total(p)
+    const before = p.total()
     fixpointAll(parts, p)
-    if (total(p) < before) fired++
+    if (p.total() < before) fired++
     const v = lostTruth(p, truth)
     if (v) { violations++; if (violations <= 5) log(label, 'violation', v, note) }
     const filled = makePuzzle(truth, (c, val) => [val], { houses })

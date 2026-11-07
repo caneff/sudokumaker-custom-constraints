@@ -88,7 +88,7 @@ export function makeFrameProbe ({
 
   function report (mode) {
     freshState()
-    const start = st.total()
+    const start = st.puzzle.total()
     const passes = runToFixpoint(st, comps(mode), alldiffGroups, floorGroup, { init: true, extra: extraOf(mode) })
     const hiddenRecovered = hiddenKeys.filter(k => st.cand.get(clueOf(k)).size === 1).length
     let interiorSolved = 0
@@ -98,7 +98,7 @@ export function makeFrameProbe ({
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth.push([interior(r, c), grid[r][c]])
     for (const k of keys) truth.push([clueOf(k), clue[k]])
     const lost = countLost(st, truth)
-    const removed = start - st.total()
+    const removed = start - st.puzzle.total()
     console.log(reportLine(mode.label, { extra: `hidden ${hiddenRecovered}/${hiddenKeys.length}, interior ${interiorSolved}/${n * n}, `, removed, passes, lost }))
     return { hiddenRecovered, interiorSolved, removed, lost }
   }

@@ -7,17 +7,14 @@
 
 import { join } from 'path'
 import assert from 'assert'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
 const EXAMPLES = join(import.meta.dirname, '..')
 
-function boardFor (W, H, registered = []) {
+function boardFor (W, H) {
   return {
-    puzzle: {
-      spec: { size: { width: W, height: H } },
-      addConstraintComponent: c => registered.push(c)
-    },
+    puzzle: mockBoard({ width: W, height: H }),
     helpers: {
       cellIds: {
         getIdFromCoordsSafe: ({ x, y }) => (x < 0 || y < 0 || x >= W || y >= H ? undefined : x + y * W)
@@ -30,14 +27,16 @@ for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'Fill
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
 
   // What the backend hands the app, read from the puzzle's side.
-  const registered = []
-  runBackend(src, boardFor(4, 4, registered))
+  const square = boardFor(4, 4)
+  runBackend(src, square)
+  const { registered } = square.puzzle
   assert.deepStrictEqual(registered.map(c => c.ctor), [ctor], `${name}: a square board registers one ${ctor}`)
 
   // Any rectangle: the component gets the row-major cells, then width and height.
   for (const [W, H] of [[4, 3], [3, 4]]) {
-    const rect = []
-    runBackend(src, boardFor(W, H, rect))
+    const board = boardFor(W, H)
+    runBackend(src, board)
+    const rect = board.puzzle.registered
     assert.strictEqual(rect.length, 1, `${name}: a ${W}x${H} board registers one component`)
     const [, cells, ...size] = rect[0].args
     assert.deepStrictEqual(cells, Array.from({ length: W * H }, (_, i) => i), `${name} ${W}x${H}: cells`)
