@@ -1,15 +1,14 @@
 # app_timing.py: the paste-ready row builder and its PASS/FAIL verdict, the
 # two-row ship rule, the app-solve.mjs adapter and its result checks, and the
 # rep aggregation (combine_reps, run_app_solve) with the browser call faked out
-# (the app_solve adapter reassigned to a canned-median stub). Fake medians
-# only; no live browser. The CLI's real run against numbered-rooms is a manual
-# check, not here -- see docs/real-app-timing.md.
+# (app_timing_fake.fake_solve). Fake medians only; no live browser. app_timing
+# has no CLI of its own: its real run is `just time` or `just time-link` on the
+# recorded app, a manual check -- see docs/real-app-timing.md.
 #
 #   uv run examples/_shared/app_timing.test.py
 
 import contextlib
 import io
-import json
 import pathlib
 import subprocess
 import sys
@@ -26,32 +25,10 @@ from app_timing import (
     row_ratio,
     ship_verdict,
 )
+from app_timing_fake import fake_solve
 
 R = app_timing.REPS
 B, C = "baseline_probe.txt", "candidate_probe.txt"
-
-
-@contextlib.contextmanager
-def fake_solve(by_link):
-    """Replace the app_solve adapter with a stub printing, per link name, that
-    link's next per-rep median from `by_link` as the driver's JSON line."""
-    real = app_timing.app_solve
-    pending = {name: list(v) for name, v in by_link.items()}
-
-    def stub(link_path, reps, ring_clues=False, after_logical=False):
-        data = {
-            "median": pending[pathlib.Path(link_path).name].pop(0),
-            "version": "v2026.08.14-d47fc4b",
-            "repsRun": reps,
-            "repsTimedOut": 0,
-        }
-        return f"JSON: {json.dumps(data)}\n"
-
-    app_timing.app_solve = stub
-    try:
-        yield
-    finally:
-        app_timing.app_solve = real
 
 
 if __name__ == "__main__":

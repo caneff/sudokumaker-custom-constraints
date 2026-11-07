@@ -74,10 +74,10 @@ The rest of this doc is the mechanics behind that command: how the driver
 reads the app's readout, how to strip a link so the solver searches, and how
 the offline recording works.
 
-For an example with a `build_link.py` (every example; each one's command line
-is `examples/_shared/link_swap.swap_main`), `just time <example>` runs the whole loop below in
-one command: it builds a candidate link from the working-tree component,
-times baseline and candidate 3 reps each in both modes (one rep per variant per round, the lead alternating), and prints one
+`just time <example>` runs the whole loop below in one command: it builds a
+candidate link in-process (`link_swap.swap_build`, the call every
+`build_link.py --component` ends in), the committed link with the
+working-tree component and backend swapped in, times baseline and candidate 3 reps each in both modes (one rep per variant per round, the lead alternating), and prints one
 paste-ready row per mode (date, app version, board, both medians, ratio, and
 that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
 `two-row rule:` line. Byte-equal candidate code prints baseline-only rows.
@@ -99,8 +99,7 @@ and rebuild after.
 `--board <file>` times a different committed link in the example dir instead
 of `PUZZLE_LINK.txt` (`link_swap.swap_build` swaps the candidate into it),
 and the row's board column then names the file. The
-manual steps below are what it automates, and still apply to an example with
-no `build_link.py` yet.
+manual steps below are what it automates.
 
 An example that registers more than one component (hit-counts and
 running-start each register a `Pair` component alongside the main one)
@@ -173,8 +172,8 @@ To count how often the app calls a component's `update` on one run:
 `uv run examples/_shared/count_calls.py skyscraper
 examples/skyscraper/SkyscraperPairComponent.js --ring-clues`. It makes a probe
 copy of the component that `console.log('[probe] calls=...')` every 500
-calls, builds a link from it with `build_link.py --component`, and runs
-`app-solve.mjs` on the emptied link; the driver relays every browser console
+calls, swaps it into the example's link in-process (`link_swap.swap_build`),
+and runs `app-solve.mjs` on the emptied link; the driver relays every browser console
 line that starts with `[probe]` and drops the rest. To count anything else
 (how often a branch fires), patch the probe copy by hand the same way. Worked
 example: `docs/research/133-skip-unchanged.md`.

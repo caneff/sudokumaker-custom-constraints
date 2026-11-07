@@ -1,16 +1,13 @@
 # time_example.py: the offline seams — candidate resolution, the loud-fail
-# behavior for a missing PUZZLE_LINK.txt or build_link.py, and run()'s own
-# orchestration with the browser call faked out (app_timing's app_solve adapter
-# reassigned to a canned-median stub, which is the only thing in run() that
-# needs the app). The row builder, verdicts and rep aggregation are
+# behavior for a missing PUZZLE_LINK.txt, and run()'s own orchestration with
+# the browser call faked out (app_timing_fake.fake_solve: app_timing's
+# app_solve adapter, the only thing in run() that needs the app). The row builder, verdicts and rep aggregation are
 # app_timing.test.py's. Fake medians only; no live
 # browser. The CLI's real run against numbered-rooms is a manual check,
 # not here — see docs/real-app-timing.md.
 #
 #   uv run examples/_shared/time_example.test.py
 
-import contextlib
-import json
 import pathlib
 import subprocess
 import sys
@@ -20,6 +17,7 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 import app_timing
+from app_timing_fake import fake_solve
 from manifest import load_manifest
 from minify import minify_file, minify_js
 from sudoku_kit.link_codec import decode_puzzle, encode_link
@@ -30,18 +28,16 @@ from time_example import (
     run,
 )
 
+# The fixtures carry no build_link.py: `just time` swaps the candidate in
+# in-process (link_swap.swap_build) and reads no builder, so an example
+# without one still times.
 WIDGET_MANIFEST = 'timed_component = "WidgetComponent"\n'
-
-# `just time` swaps the candidate in-process (link_swap.swap_build), so an
-# example's build_link.py is never run for the build: this one fails loudly if
-# a subprocess ever calls it again.
-STUB_BUILD_LINK_PY = "raise SystemExit('build_link.py must not run')\n"
 
 
 def _widget_doc(backend_code, component_code):
     """A minimal decode_puzzle()-shaped doc: one constraint ("Widget Lines")
     with a code backend and one component, real enough to round-trip through
-    encode_link/decode_puzzle the way a build_link.py stub needs.
+    encode_link/decode_puzzle and link_swap.swap_build.
 
     It carries a 4x4 board too -- one ring clue, one interior given, one
     entered interior digit -- because the timing driver turns a link into a
@@ -104,9 +100,8 @@ def _make_widget_example(
     example_dir, backend_src, component_src, backend_file="main.js", extra_files=None
 ):
     """A working example_dir for build_candidate_doc: PUZZLE_LINK.txt built
-    from _widget_doc's minified backend/component, a build_link.py stub that
-    swaps only the component (mirrors skyscraper/hit-counts/running-start --
-    never the backend), a WidgetComponent.js source file, and backend_file
+    from _widget_doc's minified backend/component, an example.toml naming
+    WidgetComponent, a WidgetComponent.js source file, and backend_file
     ("main.js" or "main-global.js") holding the backend source. extra_files
     adds further committed files -- the other lane's file, for the
     local/global duality cases. Everything is committed, so a caller's
@@ -114,7 +109,6 @@ def _make_widget_example(
     example_dir.mkdir()
     base_doc = _widget_doc(minify_js(backend_src), minify_js(component_src))
     (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-    (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
     (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
     (example_dir / "WidgetComponent.js").write_text(component_src)
     (example_dir / backend_file).write_text(backend_src)
@@ -148,23 +142,11 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "no-baseline"
         example_dir.mkdir()
-        (example_dir / "build_link.py").write_text("# stub\n")
         try:
             run(example_dir)
             raise AssertionError("expected a missing-PUZZLE_LINK.txt failure")
         except FileNotFoundError as e:
             assert str(e) == f"missing {example_dir / 'PUZZLE_LINK.txt'}"
-
-    # missing build_link.py raises naming the file
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "no-builder"
-        example_dir.mkdir()
-        (example_dir / "PUZZLE_LINK.txt").write_text("stub\n")
-        try:
-            run(example_dir)
-            raise AssertionError("expected a missing-build_link.py failure")
-        except FileNotFoundError as e:
-            assert str(e) == f"missing {example_dir / 'build_link.py'}"
 
     # board= names a different board file; the default PUZZLE_LINK.txt is not
     # consulted -- the missing-file error names the requested board, not the
@@ -172,7 +154,6 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "other-board"
         example_dir.mkdir()
-        (example_dir / "build_link.py").write_text("# stub\n")
         (example_dir / "PUZZLE_LINK.txt").write_text("stub\n")  # present, but unused
         try:
             run(example_dir, board="PUZZLE_LINK_timing.txt")
@@ -295,9 +276,9 @@ if __name__ == "__main__":
         assert got.is_file(), (example_dir.name, got)
 
     # build_candidate_doc's byte-equal decision must cover the
-    # constraint's backend, not only registered component code --
-    # build_link.py stubs here mirror skyscraper/hit-counts/running-start,
-    # which never touch the backend on a --component swap. Assertions read
+    # constraint's backend, not only registered component code: a --component
+    # swap alone (skyscraper/hit-counts/running-start's build_link.py) never
+    # touches the backend, so the working-tree one is overlaid. Assertions read
     # the written candidate_link, the file `just time` actually probes and
     # times, not a value the function merely returns internally.
 
@@ -415,7 +396,6 @@ if __name__ == "__main__":
             minify_js("function update(){return 1}\n"),
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         (example_dir / "main.js").write_text("console.log('does not match')\n")
@@ -439,7 +419,6 @@ if __name__ == "__main__":
             minify_js("function update(){return 1}\n"),
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         (example_dir / "main.js").write_text("console.log('does not match')\n")
@@ -468,7 +447,6 @@ if __name__ == "__main__":
             minify_js("function update(){return 1}\n"),
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         _git_commit_all(example_dir)
@@ -565,41 +543,6 @@ if __name__ == "__main__":
     # `fake_solve` records how it was called, so these cases assert on the
     # driver arguments run() derives (which link, ring-clues, after-logical)
     # as well as on the rows it builds from the medians it gets back.
-    @contextlib.contextmanager
-    def fake_solve(by_link):
-        """Replace the app_solve adapter with a stub printing, per link name,
-        that link's next value from `by_link` ({name: [per-rep medians, in
-        call order]}) as the driver's JSON line. One call is one rep. A value
-        may be `(median, extra)`: extra's fields (`loads`, `busy`,
-        `loadThreshold`) ride on that rep's JSON line. Yields the list of
-        (link_name, ring_clues, after_logical) calls."""
-        calls = []
-        real = app_timing.app_solve
-        pending = {
-            name: [v if isinstance(v, tuple) else (v, {}) for v in reps]
-            for name, reps in by_link.items()
-        }
-
-        def stub(link_path, reps, ring_clues=False, after_logical=False):
-            assert reps == 1, "interleaving means one rep per driver call"
-            name = pathlib.Path(link_path).name
-            calls.append((name, ring_clues, after_logical))
-            median, extra = pending[name].pop(0)
-            data = {
-                "median": median,
-                "version": "v2026.08.14-d47fc4b",
-                "repsRun": reps,
-                "repsTimedOut": 0,
-                **extra,
-            }
-            return f"JSON: {json.dumps(data)}\n"
-
-        app_timing.app_solve = stub
-        try:
-            yield calls
-        finally:
-            app_timing.app_solve = real
-
     R = app_timing.REPS
     B, C = "baseline_probe.txt", "candidate_probe.txt"
 
@@ -679,13 +622,12 @@ if __name__ == "__main__":
 
     # a houses-only example has no component to swap: its rows are the
     # baseline alone, built from its committed link, with no candidate and no
-    # ship verdict -- and no build_link.py run
+    # ship verdict
     def houses_example(tmp, main_js="console.log('houses')\n"):
         example_dir = pathlib.Path(tmp) / "houses"
         example_dir.mkdir()
         base_doc = _widget_doc(minify_js(main_js), "")
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text("raise SystemExit('must not run')\n")
         (example_dir / "example.toml").write_text("houses_only = true\n")
         (example_dir / "main.js").write_text("console.log('houses')\n")
         return example_dir
@@ -750,7 +692,6 @@ if __name__ == "__main__":
             minify_file(example_dir / "main.js"), minify_js(component_src)
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
-        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
         (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text(component_src)
         _git_commit_all(example_dir)

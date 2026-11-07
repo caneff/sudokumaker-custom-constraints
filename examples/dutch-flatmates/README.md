@@ -197,8 +197,9 @@ Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
   needs no flag.
 - `check_searchable(..., ring_clues=False)` then insists every non-given cell is
   empty, which a stripped board is. The same strip mode serves isofill.
-- The candidate is built by `build_link.py --component FILE --out FILE`
-  (`link_swap.swap_main`), the baseline backend found by `resolve_backend_file`
+- The candidate is built in-process by `link_swap.swap_build`, the committed
+  link with the working-tree component and backend swapped in, the baseline
+  backend found by `resolve_backend_file`
   among `main.js`/`main-global.js` at git HEAD. Both are met here: `main.js`
   has to be committed before the run, or it refuses naming that.
 

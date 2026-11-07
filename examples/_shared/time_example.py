@@ -1,8 +1,9 @@
 # `just time <example>` -- the shared real-app timing driver. Builds a
 # same-board pair (docs/real-app-timing.md): the committed PUZZLE_LINK.txt is
-# the baseline, and the example's build_link.py rebuilds a candidate from the
-# working-tree component. Both become searchable links (probe_link.py) and are
-# timed (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
+# the baseline, and the candidate is that link with the working-tree component
+# and backend swapped in, in-process (link_swap.swap_build). Both become
+# searchable links (probe_link.py) and are timed through app_timing
+# (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
 # paste-ready row per mode -- cold, then after the app's own logical pass --
 # with date, app version, board, baseline median, candidate median, ratio and
 # that row's PASS/FAIL at 0.9x, then a SHIP line applying the two-row rule
@@ -30,13 +31,20 @@ HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from app_timing import build_row, busy_note, row_ratio, run_app_solve, ship_verdict
+import app_timing
 from link_swap import swap_build
 from manifest import load_manifest
 from minify import minify_file
 from probe_link import empty_link_file
 from sm_document import find_constraint, registering_constraint_name
 from sudoku_kit.link_codec import decode_puzzle
+
+
+def board_link(example_dir, board=None):
+    """The link file a run times: `board` (a file name in example_dir), or the
+    example's shipped PUZZLE_LINK.txt when None. The one place that default
+    is written, for `just time` and count_calls.py alike."""
+    return example_dir / (board or "PUZZLE_LINK.txt")
 
 
 def shipped_component_code(doc):
@@ -232,7 +240,7 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
     constraint_name = registering_constraint_name(base_doc, component_file.stem)
     backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
     swap_build(
-        example_dir / (board or "PUZZLE_LINK.txt"),
+        board_link(example_dir, board),
         component_file,
         out_path,
         backend=backend_file,
@@ -273,8 +281,8 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     ([(row, verdict), ...], ship) -- one entry per row (cold, then
     after-logical) and the two-row rule's verdict, or None when the code is
     byte-equal and there is nothing to judge. Raises
-    FileNotFoundError naming the file when the board link or build_link.py
-    is missing. Links become searchable links before timing; ring_clues
+    FileNotFoundError naming the board link when it is missing. Links become
+    searchable links before timing; ring_clues
     keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
     `board` names a link file (relative to example_dir) other than
     PUZZLE_LINK.txt to time; the printed row's board label then names it.
@@ -283,15 +291,12 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     to say. A houses_only example has no component: `component` is refused, and
     the rows are the baseline's alone (check_backend_current)."""
     mode = "empty" if ring_clues else "strip"
-    baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
+    baseline_link = board_link(example_dir, board)
     if not baseline_link.exists():
         raise FileNotFoundError(f"missing {baseline_link}")
-    build_link_py = example_dir / "build_link.py"
-    if not build_link_py.exists():
-        raise FileNotFoundError(f"missing {build_link_py}")
 
-    # The working-tree link, which is also what build_link.py bases the
-    # candidate on and what empty_link_file turns into the baseline's
+    # The working-tree link, which is also what build_candidate_doc swaps the
+    # candidate into and what empty_link_file turns into the baseline's
     # searchable link -- every link this function times comes from one tree.
     # Reading it from HEAD instead would leave the two TIMED searchable links
     # here in the working tree while only the decisions moved, and a
@@ -345,24 +350,26 @@ def run(example_dir, ring_clues=False, board=None, component=None):
         # own logical pass.
         for after_logical in (False, True):
             label = board_label + (" after-logical" if after_logical else "")
-            base, cand = run_app_solve(
+            base, cand = app_timing.run_app_solve(
                 baseline_probe,
                 None if baseline_only else candidate_probe,
                 ring_clues,
                 after_logical,
             )
-            note = busy_note(base, cand)
+            note = app_timing.busy_note(base, cand)
             if baseline_only:
-                row, verdict = build_row(date, base["version"], label, base["median"])
+                row, verdict = app_timing.build_row(
+                    date, base["version"], label, base["median"]
+                )
                 rows.append((_flag_busy(row, verdict, note), verdict))
                 continue
-            row, verdict = build_row(
+            row, verdict = app_timing.build_row(
                 date, base["version"], label, base["median"], cand["median"]
             )
             rows.append((_flag_busy(row, verdict, note), verdict))
-            ratios.append(row_ratio(base["median"], cand["median"]))
+            ratios.append(app_timing.row_ratio(base["median"], cand["median"]))
 
-        return rows, (ship_verdict(ratios) if ratios else None)
+        return rows, (app_timing.ship_verdict(ratios) if ratios else None)
 
 
 if __name__ == "__main__":

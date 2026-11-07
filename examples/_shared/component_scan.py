@@ -3,8 +3,8 @@
 # `framebuild.Lane.check` (checked at build time, before a link is committed)
 # and `check_layout.check_components` (checked at sweep time, over
 # already-committed links) so the two do not carry their own copies of the
-# same regex. stdlib `re` only, no ortools: `check_layout.py` imports this
-# module with `lzstring` as its only dependency.
+# same regex. stdlib `re` only: it adds no dependency to either importer
+# (the link codec they decode with is `sudoku_kit.link_codec`).
 
 import functools
 import pathlib

@@ -1,13 +1,12 @@
 # time_link.py: argument handling, the interleaved schedule and row building,
-# with the browser call faked out (app_timing.app_solve reassigned to a
-# canned-median stub). No live browser. The real run is a manual check, see
+# with the browser call faked out (app_timing_fake.fake_solve). No live
+# browser. The real run is a manual check, see
 # docs/real-app-timing.md.
 #
 #   uv run examples/_shared/time_link.test.py
 
 import contextlib
 import io
-import json
 import pathlib
 import sys
 import tempfile
@@ -18,37 +17,9 @@ sys.path.insert(0, str(HERE))
 import app_timing
 import time_link
 from app_timing import build_link_row, rep_order
+from app_timing_fake import fake_solve
 
 SECRET = "SECRETLINKCONTENTS" * 50
-VERSION = "v2026.08.14-d47fc4b"
-
-
-@contextlib.contextmanager
-def fake_solve(by_link):
-    """Stub app_solve: per link file name, the next per-rep median from
-    `by_link`. Yields the list of (name, ring_clues, after_logical) calls."""
-    calls = []
-    real = app_timing.app_solve
-    pending = {name: list(v) for name, v in by_link.items()}
-
-    def stub(link_path, reps, ring_clues=False, after_logical=False):
-        assert reps == 1
-        name = pathlib.Path(link_path).name
-        calls.append((name, ring_clues, after_logical))
-        assert pending.get(name), f"unexpected driver call on {name}"
-        data = {
-            "median": pending[name].pop(0),
-            "version": VERSION,
-            "repsRun": 1,
-            "repsTimedOut": 0,
-        }
-        return f"JSON: {json.dumps(data)}\n"
-
-    app_timing.app_solve = stub
-    try:
-        yield calls
-    finally:
-        app_timing.app_solve = real
 
 
 def expect_raises(exc, fragment, fn, *args, **kw):

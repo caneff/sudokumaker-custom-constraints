@@ -29,6 +29,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from app_timing import app_solve
 from link_swap import swap_build
 from probe_link import empty_link_file
+from time_example import board_link
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
 HOOK = "function * update (instance, puzzle) {"
@@ -80,7 +81,7 @@ def main(example, component, ring_clues, board=None):
         sys.exit(f"{component}: {e}")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        # build_link.py swaps by file stem, and the probe sits in an example
+        # swap_build swaps by file stem, and the probe sits in an example
         # directory beside a `_shared`, where a `// #include
         # ../_shared/...` in the component still resolves
         (tmp / "_shared").symlink_to(EXAMPLES / "_shared")
@@ -88,7 +89,7 @@ def main(example, component, ring_clues, board=None):
         probe = tmp / "probe" / component.name
         probe.write_text(hooked)
         link = tmp / "probe.txt"
-        swap_build(EXAMPLES / example / (board or "PUZZLE_LINK.txt"), probe, link)
+        swap_build(board_link(EXAMPLES / example, board), probe, link)
         emptied = tmp / "probe_empty.txt"
         empty_link_file(link, emptied, "empty" if ring_clues else "strip")
         try:
