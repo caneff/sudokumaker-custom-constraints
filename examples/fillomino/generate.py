@@ -228,16 +228,16 @@ def brute(board, givens):
         for p in cells:
             if p in seen:
                 continue
-            blob, stack = {p}, [p]
+            region, stack = {p}, [p]
             while stack:
                 r, c = stack.pop()
                 for q in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
-                    if q in g and g[q] == g[p] and q not in blob:
-                        blob.add(q)
+                    if q in g and g[q] == g[p] and q not in region:
+                        region.add(q)
                         stack.append(q)
-            if len(blob) != g[p]:
+            if len(region) != g[p]:
                 return False
-            seen |= blob
+            seen |= region
         return True
 
     out = []

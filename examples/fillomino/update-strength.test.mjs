@@ -193,7 +193,7 @@ console.log('fillomino silent-region demo: baseline keeps 6 at r0c0, the growth 
 // closes again at r1c1 and then runs on alone. The walk out of the island
 // covers six cells for a region of five, so the force is idle, and the
 // island has two doors, so the one-door rule is idle too; the merge rules
-// and the component bound find nothing. Drop r1c1 from the walk and it
+// and the pocket rule find nothing. Drop r1c1 from the walk and it
 // starves at three cells, drop r2c1 and it starves at four: both are in the
 // region, so both hold 5. Nothing in rung 2 reaches either, at a fixpoint or
 // otherwise.

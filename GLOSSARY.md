@@ -220,7 +220,7 @@ vocabulary. Where a term belongs to only one of them, the entry says so.
   region drops the candidate. It ships at **frontier-only** scope: the open
   cells asked about are the doors, not every open cell (#308's named fallback,
   taken because full scope failed the clock), paired with the per-digit
-  **component bound**, which is what reaches a silent region. There is no
+  **pocket** rule, which is what reaches a silent region. There is no
   forcing half. "A reach that stops at exactly the region size forces every
   cell it covers" is sound only from a *placed* island — that is rung 1's
   force — and unsound from an open cell, because the walk's budget already

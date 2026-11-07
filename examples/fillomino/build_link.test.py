@@ -40,8 +40,8 @@ if __name__ == "__main__":
         over.write_text(json.dumps({**spec, "cap": MAX_DIGIT + 1}))
         try:
             build(HERE / f"{TIMED_COMPONENT}.js", over)
-        except AssertionError:
-            pass
+        except AssertionError as refused:
+            assert "go past" in str(refused), refused
         else:
             raise SystemExit("a digit range past the app's solver must be refused")
     over_doc = {**doc, "puzzle": {**doc["puzzle"], "maxDigit": MAX_DIGIT + 1}}

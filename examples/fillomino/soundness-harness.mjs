@@ -27,7 +27,7 @@ const RULES = {
 }
 // Two checks two rules reach, so removing either owner alone leaves them
 // passing. Starve: a walk under k cells means the island's component of cells
-// allowing k is under k too, so the component bound empties it as well. One
+// allowing k is under k too, so the pocket rule empties it as well. One
 // door: dropping the only door starves the walk, so cut starve places it too.
 const SHARED = {
   starve: ['islandRules', 'smallPocketsRule'],

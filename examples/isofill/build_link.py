@@ -10,6 +10,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from bareboard import BareBoard
+from isofill_model import Board
 from manifest import load_manifest
 
 MANIFEST = load_manifest(pathlib.Path(__file__).parent)
@@ -26,8 +27,9 @@ def digit_range(spec, n):
     """`n` is the width; a gen JSON names `digits` when the digit count is not
     the width (a rectangle). The app's top digit is 9, so any top digit other
     than 9 ships `maxDigit`."""
-    lo = spec.get("minDigit", 0)
-    hi = lo + spec.get("digits", n) - 1
+    board = Board.of_doc(spec)
+    lo = board.lo
+    hi = lo + board.digits - 1
     return lo, hi, {"minDigit": lo, **({"maxDigit": hi} if hi != 9 else {})}
 
 

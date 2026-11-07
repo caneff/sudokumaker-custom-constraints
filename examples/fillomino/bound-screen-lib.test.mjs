@@ -6,6 +6,8 @@
 // never keeps a candidate on a state it does not kill that the baseline removed.
 
 import assert from 'assert'
+import { execFileSync } from 'child_process'
+import { join } from 'path'
 import { loadVariants, fixtureBoards, runScreen } from './bound-screen-lib.mjs'
 import { score } from './hunt-lib.mjs'
 import { installGlobals, makePuzzle, makeRng, makeSeeder, randomCandidates, fixpoint, compareStrength, fuzzSoundness } from '../_shared/harness-lib.mjs'
@@ -29,7 +31,7 @@ for (const board of [
   assert.deepStrictEqual(got.grid, want.grid)
 }
 
-// A 9x9, digits 1-12 state the island rules and the component bound all leave
+// A 9x9, digits 1-12 state the island rules and the pocket rule all leave
 // alive after one call, that has no room: the room check is the only rule that
 // kills it. Found by a random sweep of 9x12 states at a 30% placement rate.
 const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 3, 10, 0, 11, 0, 0, 0, 1, 0, 4, 0, 0, 1, 0, 5, 11, 0, 0, 0, 0, 7, 7, 4, 0, 0, 0, 0, 0, 0, 0, 1, 9, 0, 0, 2, 3, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 8]
@@ -88,6 +90,17 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   for (const b of boards) {
     assert.deepStrictEqual([b.width, b.height], [9, 9])
     assert.ok(Object.keys(b.givens).length >= 28 && Object.keys(b.givens).length <= 35)
+  }
+}
+
+// The link reader decodes many links in one process: one object keyed by file.
+{
+  const files = ['timing-fixture-9x9-cap12-seed10-rung25.txt', 'timing-fixture-9x9-cap12-seed11-rung25.txt'].map(f => join(HERE, f))
+  const both = JSON.parse(execFileSync('uv', ['run', '--project', join(HERE, '..', '..'), join(HERE, 'hunt_link.py'), ...files], { encoding: 'utf8' }))
+  assert.deepStrictEqual(Object.keys(both), files)
+  for (const f of files) {
+    assert.deepStrictEqual([both[f].width, both[f].height, both[f].cap], [9, 9, 12])
+    assert.ok(Object.keys(both[f].givens).length >= 28)
   }
 }
 

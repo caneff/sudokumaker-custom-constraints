@@ -6,10 +6,12 @@ the solution grid, which the share checklist keeps out of the blob. That is
 all the scorer needs: it solves from the givens.
 
     uv run examples/fillomino/hunt_link.py \
-        examples/fillomino/timing-fixture-9x9-cap12-seed10-rung25.txt
+        examples/fillomino/timing-fixture-9x9-cap12-seed10-rung25.txt [more files]
 
-Prints {"width": w, "height": h, "cap": d, "givens": {"<cell index>": digit, ...}}, cell
-index row-major, the same numbering main.js registers.
+Prints one object keyed by the file argument as given, each value
+{"width": w, "height": h, "cap": d, "givens": {"<cell index>": digit, ...}},
+cell index row-major, the same numbering main.js registers. One process reads
+any number of files, so a caller with many pays one start-up.
 """
 
 import json
@@ -35,6 +37,6 @@ def clues(link_text):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        raise SystemExit(f"usage: {sys.argv[0]} <link_file>")
-    print(json.dumps(clues(pathlib.Path(sys.argv[1]).read_text())))
+    if len(sys.argv) < 2:
+        raise SystemExit(f"usage: {sys.argv[0]} <link_file>...")
+    print(json.dumps({f: clues(pathlib.Path(f).read_text()) for f in sys.argv[1:]}))

@@ -39,7 +39,7 @@ function takeNodeCap (args) {
 }
 
 function readBoard (path) {
-  if (path.endsWith('.txt')) return py('hunt_link.py', [path])
+  if (path.endsWith('.txt')) return py('hunt_link.py', [path])[path]
   const doc = JSON.parse(readFileSync(path, 'utf8'))
   if (doc.givens) return doc
   const height = doc.grid.length
