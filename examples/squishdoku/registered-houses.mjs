@@ -5,14 +5,14 @@
 //
 //   node examples/squishdoku/registered-houses.mjs <backend.js>
 import fs from 'node:fs'
-import { runBackend } from '../_shared/backend-runner.mjs'
+import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 
 const [file] = process.argv.slice(2)
-const houses = []
-const puzzle = {
-  addConstraintComponent: house => houses.push({ name: house.args[0], cells: house.args[1] })
-}
+// The shipped 7-wide board; a squishdoku backend fixes its own width and reads
+// no board geometry, only addConstraintComponent.
+const puzzle = mockBoard({ width: 7 })
 const { ctorNames } = runBackend(fs.readFileSync(file, 'utf8'), { puzzle })
+const houses = puzzle.registered.map(house => ({ name: house.args[0], cells: house.args[1] }))
 if (ctorNames.join() !== 'HouseComponent') {
   throw new Error(`${file} registers ${ctorNames.join()}, not HouseComponent alone`)
 }

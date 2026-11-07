@@ -36,7 +36,7 @@ import { join } from 'path'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 import { boxRegions } from './box-regions.mjs'
 
@@ -51,23 +51,18 @@ const EXAMPLES = join(import.meta.dirname, '..')
 // assumed. The column bound is the width and the row bound is the height, so a
 // backend that reads one dimension twice walks off a rectangular board.
 function mockPuzzle (W, H) {
-  const registered = []
   const p = {
-    registered,
+    ...mockBoard({ width: W, height: H }),
     offBoard: 0,
-    spec: { size: { width: W, height: H } },
     getCellAt: (a, b) => {
       if (a < 0 || b < 0 || a >= W || b >= H) { p.offBoard++; return undefined }
       return new Number(a + b * W) // eslint-disable-line no-new-wrappers -- the point of the test
     },
-    getRow: c => Math.floor(c / W),
-    getColumn: c => c % W,
     // Real 3x3 boxes inside the one-cell ring, as outside-sudoku's own
     // backends.test.mjs runs them: ring cells have no region, so outside-sudoku's
     // window length is 3 -- a ring cell id, which a clue scan that goes by value
     // would read as a clue.
-    ...boxRegions(W, H),
-    addConstraintComponent: comp => registered.push(comp)
+    ...boxRegions(W, H)
   }
   return p
 }

@@ -19,19 +19,19 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const SRC = readFileSync(join(import.meta.dirname, 'frame-corners.js'), 'utf8')
 
 // Run the backend against a W x H board and return what it registered.
 function run (W, H, minDigit) {
-  const registered = []
+  const puzzle = mockBoard({ width: W, height: H })
   const { ctorNames } = runBackend(SRC, {
-    puzzle: { addConstraintComponent: c => registered.push(c) },
+    puzzle,
     helpers: { cellIds: { width: W, height: H }, digits: { minDigit } },
     globals: { SudokuDigitSet: { from: values => ({ digits: [...values] }) } }
   })
-  return { registered, ctorNames }
+  return { registered: puzzle.registered, ctorNames }
 }
 
 // A cell id is `x + y * width` (the app's own layout), so the corners of a

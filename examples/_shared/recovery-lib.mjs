@@ -12,6 +12,7 @@
 // makePuzzleApi either way.
 
 import { makeIo, makePuzzleApi } from './harness-lib.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
 // `state.cand` is meant to be reassigned wholesale (fresh seed, or restored
@@ -98,13 +99,11 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //   input: the object main.js reads as `input` (its groups/geometry). Empty
 //     for main-global.js, which builds its own frame instead of reading it.
 //   frame: { W, H, idx }, from frame-geometry.mjs's frameGeometry(). The
-//     registrar answers getCellAt(col, row) = idx(row, col)
-//     and spec.size.width = W, spec.size.height = H, the three calls
-//     main-global.js's own frame-building makes, so a probe can run that code
-//     instead of handing it a pre-built `groups` list. The app's getCellAt
-//     takes the column first and `idx` takes the row first, so the arguments
-//     swap here: a mock that fed them straight through would hand the backend
-//     the transposed frame.
+//     registrar is backend-runner.mjs's mockBoard of W x H, which answers
+//     getCellAt(col, row) and spec.size, the calls main-global.js's own
+//     frame-building makes, so a probe can run that code instead of handing it
+//     a pre-built `groups` list. Its getCellAt(col, row) is `idx(row, col)`:
+//     the app's getCellAt takes the column first and `idx` the row first.
 export function loadComponents ({ here, files, mainSrc, input, frame }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
@@ -113,16 +112,10 @@ export function loadComponents ({ here, files, mainSrc, input, frame }) {
     inst.__mod = mod
     return inst
   }
-  const comps = []
-  const registrar = {
-    addConstraintComponent: inst => comps.push(inst),
-    getCellAt: (a, b) => frame.idx(b, a),
-    spec: { size: { width: frame.W, height: frame.H } }
-  }
-  const ctors = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
-  const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func
-  run(input, globalThis.helpers, registrar, ...ctors.map(c => makeCtor(c.mod)))
-  return comps
+  const registrar = mockBoard({ width: frame.W, height: frame.H })
+  const ctors = Object.fromEntries(files.map(f => [f.ctorName, makeCtor(load(f.file, f.names))]))
+  runBackend(mainSrc, { puzzle: registrar, helpers: globalThis.helpers, input, ctors })
+  return registrar.registered
 }
 
 const MAX_PASSES = 500

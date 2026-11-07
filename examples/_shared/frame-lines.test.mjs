@@ -10,15 +10,13 @@
 
 import assert from 'assert'
 import { makeIo } from './harness-lib.mjs'
+import { mockBoard } from './backend-runner.mjs'
 
 const HERE = import.meta.dirname
 const { frameLines, framePairs } = makeIo(HERE).load('frame-lines.js', ['frameLines', 'framePairs'])
 
 // A board of plain integer ids, the shape frameLines reads: getCellAt(col, row).
-const board = (W, H) => ({
-  spec: { size: { width: W, height: H } },
-  getCellAt: (c, r) => r * W + c
-})
+const board = (W, H) => mockBoard({ width: W, height: H })
 
 // the pairs of a whole frame: L_i with R_i, T_i with B_i
 {

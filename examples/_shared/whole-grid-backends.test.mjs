@@ -11,25 +11,23 @@
 
 import { join } from 'path'
 import assert from 'assert'
-import { runBackend } from './backend-runner.mjs'
+import { mockBoard, runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
 const EXAMPLES = join(import.meta.dirname, '..')
 
 for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'FillominoComponent']]) {
   for (const side of [4, 9]) {
-    const registered = []
+    const puzzle = mockBoard({ width: side })
     runBackend(assembleSource(join(EXAMPLES, name, 'main.js')), {
-      puzzle: {
-        spec: { size: { width: side, height: side } },
-        addConstraintComponent: c => registered.push(c)
-      },
+      puzzle,
       helpers: {
         cellIds: {
           getIdFromCoordsSafe: ({ x, y }) => new Number(x + y * side) // eslint-disable-line no-new-wrappers -- the point of the test
         }
       }
     })
+    const { registered } = puzzle
     const where = `${name} ${side}x${side}`
     assert.strictEqual(registered.length, 1, `${where}: expected one component`)
     assert.strictEqual(registered[0].ctor, ctor, `${where}: wrong component`)
