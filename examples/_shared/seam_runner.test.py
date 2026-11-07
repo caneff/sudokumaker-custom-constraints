@@ -152,6 +152,7 @@ ALWAYS = [
     "uv run examples/_shared/s.test.py",
     "uv run examples/_shared/frame.test.py",
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/_shared/check_research_loads.py",
 ]
 
 AA = ["node examples/aa/a.test.mjs", "node examples/aa/soundness-harness.mjs"]
@@ -559,6 +560,7 @@ S_ALWAYS = [
     *LINT,
     "uv run examples/_shared/e.test.py",
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/_shared/check_research_loads.py",
     "uv run examples/fillomino/pipeline.test.py",
     "uv run examples/fillomino/generate.test.py",
     *SKYSCRAPER,
