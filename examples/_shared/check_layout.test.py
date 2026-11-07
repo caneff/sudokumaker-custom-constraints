@@ -16,7 +16,9 @@ import sys
 import tempfile
 import tomllib
 
+import check_layout
 from check_layout import (
+    LinkFacts,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
     check_digit_range,
@@ -27,6 +29,7 @@ from check_layout import (
 )
 from manifest import Manifest, load_manifest
 from minify import minify_file
+from no_ring import GRID_BACKEND
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
@@ -1086,7 +1089,7 @@ if __name__ == "__main__":
             manifest = load_manifest(d)
             return (
                 check_stale_backend_code(d, link, puzzle, manifest),
-                check_digit_range(d, link, puzzle, manifest),
+                check_digit_range(d, link, puzzle, manifest, LinkFacts.of(puzzle)),
             )
 
     stale_found, range_found = _checks(_link(frame_backend="stale", houses="none"))
@@ -1113,13 +1116,16 @@ if __name__ == "__main__":
         widget / "PUZZLE_LINK.txt",
         ring_no_boxes,
         Manifest(timed_component="WidgetComponent"),
+        LinkFacts.of(ring_no_boxes),
     )
     assert found == [], found
+    wide = dict(ring_no_boxes, maxDigit=5)
     found = check_digit_range(
         widget,
         widget / "PUZZLE_LINK.txt",
-        dict(ring_no_boxes, maxDigit=5),
+        wide,
         Manifest(timed_component="WidgetComponent"),
+        LinkFacts.of(wide),
     )
     assert len(found) == 1 and "3 cell interior lines" in found[0], found
 
@@ -1361,6 +1367,54 @@ if __name__ == "__main__":
     with example(contents={"PUZZLE_LINK.txt": _link(ringless=True)}) as (root, _):
         violations = check_tree(root)
         assert len(violations) == 1 and "rules prefix" in violations[0], violations
+
+    # LinkFacts classifies a decoded link once, from the raw document alone
+    def doc(*constraints, **top):
+        return {
+            "width": 3,
+            "height": 3,
+            "cells": [{} for _ in range(9)],
+            "constraints": list(constraints),
+            **top,
+        }
+
+    def named(title, **extra):
+        return {"definition": {"name": title}, **extra}
+
+    no_ring_doc = LinkFacts.of(doc(named(GRID_BACKEND[1])))
+    assert no_ring_doc.kind == "no-ring" and no_ring_doc.ringless, no_ring_doc
+    assert no_ring_doc.house_source == "no-ring-backend", no_ring_doc
+    # a no-ring backend wins over the document type: it is the stronger claim
+    both = LinkFacts.of(doc(named(GRID_BACKEND[1]), type="sudoku"))
+    assert both.kind == "no-ring", both
+    sudoku_doc = LinkFacts.of(doc(type="sudoku"))
+    assert sudoku_doc.kind == "sudoku-document" and sudoku_doc.ringless, sudoku_doc
+    plain_frame = LinkFacts.of(doc())
+    assert plain_frame.kind == "frame" and not plain_frame.ringless, plain_frame
+    assert plain_frame.house_source == "document", plain_frame
+    rowcol = LinkFacts.of(doc(named(check_layout.FRAME_ROWCOL_CONSTRAINT)))
+    assert rowcol.house_source == "frame-backend", rowcol
+    assert rowcol.backend_titles == (check_layout.FRAME_ROWCOL_CONSTRAINT,), rowcol
+    assert LinkFacts.of(doc({"type": 2003})).house_source == "sudoku-rules"
+    # backend titles keep constraint order and skip unrelated names
+    ordered = LinkFacts.of(
+        doc(named(check_layout.CORNERS_TITLE), named("Mine"), named(GRID_BACKEND[1]))
+    )
+    assert ordered.backend_titles == (check_layout.CORNERS_TITLE, GRID_BACKEND[1])
+    assert "Mine" in ordered.constraint_names, ordered
+    # interior: the region cells, or None when the size is not declared
+    regions = LinkFacts.of(doc({"type": 1, "regions": [0, 0, -1, 0, 0, -1, -1, -1, -1]}))
+    assert regions.interior == frozenset({0, 1, 3, 4}), regions
+    assert LinkFacts.of(doc(width=None)).interior is None
+    # reading the titles never minifies a backend (ARCH-8 a)
+    real = check_layout.frame_backend_files
+    check_layout.frame_backend_files = lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("LinkFacts minified the backends")
+    )
+    try:
+        LinkFacts.of(doc(named(check_layout.CORNERS_TITLE)))
+    finally:
+        check_layout.frame_backend_files = real
 
     # check_layout names no example: no string in its source equals the name
     # of a directory under examples/ -- a name-keyed table or an
