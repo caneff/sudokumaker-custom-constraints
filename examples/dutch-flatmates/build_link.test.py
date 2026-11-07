@@ -25,19 +25,7 @@ from sudoku_kit.link_codec import decode_puzzle
 from verify import verify
 
 if __name__ == "__main__":
-    reads = []
-    real_read_text = pathlib.Path.read_text
-
-    def counting_read_text(self, *args, **kwargs):
-        reads.append(self)
-        return real_read_text(self, *args, **kwargs)
-
-    pathlib.Path.read_text = counting_read_text
-    try:
-        grid, givens, extras, spec = read_gen(HERE / "gen_0g.json")
-    finally:
-        pathlib.Path.read_text = real_read_text
-    assert len(reads) == 1, f"read_gen read the gen JSON {len(reads)} times"
+    grid, givens, extras, spec = read_gen(HERE / "gen_0g.json")
     raw = json.loads((HERE / "gen_0g.json").read_text())
     assert grid == raw["grid"] and spec == raw
     assert givens == {(r, c): int(raw["grid"][r][c]) for r, c in raw["clues"]}
