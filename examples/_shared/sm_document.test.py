@@ -9,12 +9,15 @@ import pathlib
 import tempfile
 
 from sm_document import (
+    FORMAT_VERSION,
+    assert_round_trips,
     code_constraint,
     find_constraint,
+    puzzle_doc,
     registering_constraint_name,
     write_link,
 )
-from sudoku_kit.link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 
 def raises(fn, message):
@@ -92,5 +95,28 @@ if __name__ == "__main__":
             assert "round-trip" in str(e), e
         else:
             raise AssertionError("a document that does not round-trip was written")
+
+    # the skeleton: the format version first, then the puzzle exactly as given
+    # (key order is the encoded bytes, so it is never rearranged)
+    assert FORMAT_VERSION == "1.6.0"
+    puzzle = {"name": "P", "author": "", "type": "custom", "cells": []}
+    built = puzzle_doc(puzzle)
+    assert list(built) == ["formatVersion", "puzzle"], list(built)
+    assert built["formatVersion"] == FORMAT_VERSION
+    assert list(built["puzzle"]) == list(puzzle)
+    # `sudokupad_export` appends the export block as the puzzle's last key
+    exported = puzzle_doc(puzzle, sudokupad_export=True)["puzzle"]
+    assert list(exported) == [*puzzle, "export"]
+    assert exported["export"] == {"sudokuPad": {"useIncompleteGridAsSolution": True}}
+    assert "export" not in puzzle, "the caller's puzzle dict was mutated"
+
+    # the check: returns the decoded document, refuses a link of another one
+    assert assert_round_trips(encode_link(built), built) == built
+    raises_assertion = None
+    try:
+        assert_round_trips(encode_link(built), {**built, "formatVersion": "0"})
+    except AssertionError as e:
+        raises_assertion = str(e)
+    assert raises_assertion and "round-trip" in raises_assertion, raises_assertion
 
     print("ok")

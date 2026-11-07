@@ -36,7 +36,12 @@ from component_scan import describe_mismatch, mismatch
 from frame import corner_cells, cosmetics, ring_cell
 from link_swap import frame_and_comment_only
 from minify import minify_file
-from sm_document import code_constraint, find_constraint
+from sm_document import (
+    assert_round_trips,
+    code_constraint,
+    find_constraint,
+    puzzle_doc,
+)
 from sudoku_kit import link_codec
 
 # Every generated link opens with a rules sentence (project rule). The board's
@@ -684,9 +689,8 @@ def puzzle_document(spec, board, width, cells, constraints, comment, height=None
     """The document around one board's cells and constraints: the header
     fields every framebuild link shares, in the order they are encoded. `height`
     is the document's, the frame included; None is as tall as it is wide."""
-    return {
-        "formatVersion": "1.6.0",
-        "puzzle": {
+    return puzzle_doc(
+        {
             "name": f"{spec.title} {board.n}x{board.height}",
             "author": "",
             "comment": comment,
@@ -699,9 +703,9 @@ def puzzle_document(spec, board, width, cells, constraints, comment, height=None
             "maxDigit": board.digits,
             "cells": cells,
             "constraints": constraints,
-            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
         },
-    }
+        sudokupad_export=True,
+    )
 
 
 def save_board(board, path):
@@ -837,8 +841,7 @@ class Lane:
         from, so the size is compared against the board rather than read back
         out of the document."""
         spec = self.spec
-        back = link_codec.decode_puzzle(link)
-        assert back == doc, "link does not decode back to the built document"
+        assert_round_trips(link, doc)
         assert doc["puzzle"]["comment"].startswith(self.rules_prefix), (
             f"the rules text must open with the required sentence {self.rules_prefix!r}"
         )

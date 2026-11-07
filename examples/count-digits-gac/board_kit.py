@@ -6,6 +6,7 @@
 
 import random
 
+from sm_document import puzzle_doc
 from sudoku_kit.cpsat import SOLVED, boxes, solve_unique, solver, sudoku_model
 
 N = 9
@@ -101,9 +102,8 @@ def board_doc(name, comment, gen, constraints):
         for r in range(N)
         for c in range(N)
     ]
-    return {
-        "formatVersion": "1.6.0",
-        "puzzle": {
+    return puzzle_doc(
+        {
             "name": name,
             "author": "",
             "type": "sudoku",
@@ -117,4 +117,4 @@ def board_doc(name, comment, gen, constraints):
                 *constraints,
             ],
         },
-    }
+    )
