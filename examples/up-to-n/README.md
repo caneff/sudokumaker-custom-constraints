@@ -115,7 +115,7 @@ The line kind comes from
 
 ## The board
 
-`framebuild.py`'s no-ring mode builds it: a `"custom"` n×n document, its rows
+The frame builder's no-ring lane (`_shared/no_ring.py`) builds it: a `"custom"` n×n document, its rows
 and columns declared by `examples/_shared/grid-rowcol.js`, and all 4n markers
 drawn. The live editor opens a `"sudoku"` document as 9×9 whatever its width
 says, so the header cannot supply them

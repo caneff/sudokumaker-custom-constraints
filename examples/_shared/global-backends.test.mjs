@@ -6,7 +6,7 @@
 // Both lanes run here (docs/line-contract.md). The GLOBAL lane is
 // main-global.js with no `input`: it derives every cell id from the board size,
 // so it gets the frame checks as well. The LOCAL lane is main.js with
-// `input.groups` supplied in the shape framebuild.frame_groups ships --
+// `input.groups` supplied in the shape document.frame_groups ships --
 // `{ cells: [clueCell, ...line], value: '' }` -- and it gets the id checks
 // alone: a drawn board is whatever its author drew, and the shapes below are
 // two of the things an author can legitimately draw that a frame never is.
@@ -335,7 +335,7 @@ for (const name of dirs.filter(globalOnly)) {
     `${name} says lanes = "global" and must ship no main.js`)
 }
 
-// A drawn group as framebuild.frame_groups ships it: the clue's ring cell,
+// A drawn group as document.frame_groups ships it: the clue's ring cell,
 // then that line's cells inward, and the empty value the app stores on a group
 // the author has not typed into.
 const drawn = cells => ({ cells, value: '' })
@@ -348,7 +348,7 @@ const drawn = cells => ({ cells, value: '' })
 //    that pairs ends must still do something sane with a single one -- the
 //    author may be halfway through drawing the other.
 //  - BENT PATH: an L, `a` cells straight in from the clue then a turn and
-//    n - a across, n in all. That is the shape framebuild.make_paths generates
+//    n - a across, n in all. That is the shape carve.make_paths generates
 //    and the local boards of the bare-line examples ship. A bent path spans more
 //    than one row and more than one column, so it is not a house and the line
 //    kind checks in a component must not assume one (docs/line-contract.md).

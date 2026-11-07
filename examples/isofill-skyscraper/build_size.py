@@ -5,7 +5,7 @@
 # interior whose cells split evenly among its digits builds the same way
 # (--height and --digits; region size is cells / digits). Around it, one clue per
 # row and column end counts the buildings visible reading inward, ties hidden.
-# The shared frame builder (`_shared/framebuild.py`) does the rest through its
+# The shared frame builder (`_shared/lanes.py`) does the rest through its
 # interior hook: the solution grid comes from the ISOFILL sampler and every
 # uniqueness proof runs on the ISOFILL CP-SAT model (`_shared/isofill_model.py`,
 # shared with examples/isofill), with the clue rule below posted on top.
@@ -23,8 +23,9 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec, main
+from board import Spec
 from isofill_model import Board, model, sample
+from lanes import main
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["IsofillComponent.js", "SkyscraperOneSidedComponent.js"]
@@ -115,7 +116,7 @@ SPEC = Spec(
     rules_prefix="",
     # An ISOFILL proof takes seconds, not milliseconds: a carve step is kept
     # only when it proves inside 3 s a solve, so the shipped board proves
-    # with about 3x margin under framebuild's 10 s cap.
+    # with about 3x margin under carve.SOLVE_LIMIT's 10 s cap.
     carve_limit=3,
     # Spec #855 ruling 2: givens in the ring only, across every sampled
     # layout, before any interior given.

@@ -26,14 +26,14 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import rule_text
-from frame import cosmetics
-from framebuild import (
+from document import (
     HOUSE_GAC_BACKEND_TITLE,
     RULES_PREFIX,
     frame_backend_code,
     house_gac_constraint,
     refresh_frame_backends,
 )
+from frame import cosmetics
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
@@ -73,7 +73,7 @@ def build_from_template():
     # The shared house-GAC filter, on this 9x9 global board only: real-app
     # timing clears the two-row bar here (0.71x cold, ~0x after-logical;
     # docs/research/421-frame-link-timing.md). The local, 4x4 and 6x6 lanes are
-    # framebuild-native and were not timed, so they do not carry it.
+    # frame-builder-native and were not timed, so they do not carry it.
     cons[:] = [
         c
         for c in cons

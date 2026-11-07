@@ -47,7 +47,7 @@ COMPONENT = HERE.parent / "_shared/HouseGacComponent.js"
 BACKEND = HERE / "main.js"
 
 sys.path.insert(0, str(REPO / "examples/_shared"))
-from framebuild import NO_RING_RULES_PREFIX
+from document import NO_RING_RULES_PREFIX
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file

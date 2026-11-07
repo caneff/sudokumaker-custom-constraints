@@ -44,7 +44,7 @@ import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import describe_mismatch, mismatch
-from framebuild import (
+from document import (
     FRAME_BACKENDS,
     HOUSE_GAC_BACKEND_TITLE,
     HOUSE_GAC_COMPONENT_NAME,
@@ -335,11 +335,11 @@ def check_components(example_dir, link, puzzle):
     A component nothing in the link instantiates is dead weight, and the
     recipient reads its source as part of the rule; a component the link's
     code instantiates but the link omits fails inside the app, where the author
-    never sees it. `framebuild.Lane.check` asserts this when it builds a link, but
+    never sees it. `lanes.Lane.check` asserts this when it builds a link, but
     a committed link goes stale on its own: the builder's component list
     changes, the link is not regenerated, and nothing notices.
 
-    A lexical check, like the one in `framebuild.Lane.check`: it reads
+    A lexical check, like the one in `lanes.Lane.check`: it reads
     `new <Name>Component` (or `new customComponents.<Name>Component`) off that
     code, so a class reached through
     an alias, or named some other way, is invisible to it. SudokuMaker's own
@@ -393,7 +393,7 @@ def declared_houses(puzzle):
     return houses
 
 
-# The constraint name `framebuild`'s ring lanes' `build_doc` ships the row/column backend
+# The constraint name the ring lanes' `build_doc` ships the row/column backend
 # under, read off the one place that pairing lives so a rename reaches this
 # sweep too. It is the handle that says "this board meant to declare its lines
 # in JS" even when the code embedded under it is an old copy.
@@ -444,7 +444,7 @@ FRAME_BACKEND_TITLES = frozenset(
 @dataclasses.dataclass(frozen=True)
 class LinkFacts:
     """What the per-link checks need to know about one decoded link, worked out
-    once from the raw document alone (no framebuild builder is called).
+    once from the raw document alone (no frame-builder lane is called).
 
     - `kind`: "no-ring" (carries the whole-grid rows-and-columns backend,
       `is_no_ring`), "sudoku-document" (`is_sudoku_document`), else "frame".
@@ -560,7 +560,7 @@ def check_houses(example_dir, link, puzzle, manifest, facts):
 
     A region constraint gives you BOXES ONLY -- rows and columns are not
     implied, and nothing in the app says so: it solves, times and counts
-    solutions on a board that is not the one you meant. `framebuild.py` ships
+    solutions on a board that is not the one you meant. The frame builder ships
     them as two type-301 cage constraints; a builder that writes its own
     constraint list has to do the same. This cost three tickets of quad-rank
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
@@ -749,7 +749,7 @@ def check_gen_frame_backends(example_dir):
 
     A gen JSON is the board's record, and the shared frame backends are not
     part of a board: their code is read from the tree at build time
-    (`framebuild.refresh_frame_backends`), so a copy kept here is dead data no
+    (`document.refresh_frame_backends`), so a copy kept here is dead data no
     build reads and nothing rebuilds -- it can only drift from the file it
     copies, and a reader comparing the two has no way to tell which one runs.
     Keep the field empty. A gen JSON that does not parse is

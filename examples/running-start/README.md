@@ -77,7 +77,7 @@ about, because `frame-corners.js` pins them instead of a given.
   text, no fresh CP-SAT search, so a sized link never ships a stale component
   snapshot:
   `uv run examples/running-start/build_size.py --rebuild 4`.
-  The shipped 9x9 global board is not a framebuild board, so `build_link.py`
+  The shipped 9x9 global board is not a frame-builder board, so `build_link.py`
   rebuilds that one.
 - `build_size.py` — builds the whole document from scratch for any grid size,
   no template needed. It generates a grid, derives every line's clue, carves a
@@ -226,11 +226,11 @@ The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
 `HouseGacComponent.js`, #406/#408) is now a third constraint on this board,
 added in `build_link.py`'s `build_from_template` (this example's global 9x9
-is hand-templated, not `framebuild`-native, so it is not `Spec.house_gac`
+is hand-templated, not frame-builder-native, so it is not `Spec.house_gac`
 here). Both rows clear 0.9x -- full numbers and the same pass/fail read on
 every other shipped frame board are in
 `docs/research/421-frame-link-timing.md`. Its local board, 4x4 and 6x6 are
-`framebuild`-native and were not measured, so they do not carry the filter.
+frame-builder-native and were not measured, so they do not carry the filter.
 
 The #451 rows time the repeats latch (a cache, no new deduction), so the bar
 is <= 1.1x on both rows (`docs/real-app-timing.md`, "Bar for a gate change").

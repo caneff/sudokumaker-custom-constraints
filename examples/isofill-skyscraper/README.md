@@ -18,7 +18,7 @@ solve.
 
 ## How it is built
 
-`build_size.py` hands the shared ring builder (`_shared/framebuild.py`) a
+`build_size.py` hands the shared ring builder (`_shared/lanes.py`) a
 `Spec` that uses its interior hook:
 
 - **Grid**: `isofill_grid` draws a random ISOFILL solution from the sampler in
@@ -33,7 +33,7 @@ solve.
   The rules text opens on the ISOFILL rule, with no sudoku sentence
   (`rules_prefix=""`).
 - **Carve**: the ring-only search (`ring_only=True`,
-  `framebuild.ring_only_search`). Each seed draws a layout; a layout an
+  `carve.ring_only_search`). Each seed draws a layout; a layout an
   earlier seed drew is skipped. A layout unique on its full ring alone has its
   clues hidden while it stays unique, and the layout with the fewest shown
   clues ships. A step is kept only when it proves inside 3 s a solve

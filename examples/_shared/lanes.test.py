@@ -1,148 +1,49 @@
-# framebuild's generator half (make_grid, make_paths, unique, generate) and
-# its three lanes -- ring global, ring local and no ring (no_ring.py) -- each
-# with its own document build and check: a lane's `files` names a board's two
-# files, `save_board`/`load_board` are its round trip, a lane's `rebuild`
-# re-encodes a committed board against the code in the tree, and `main` is the
-# command line every build_size.py ends with. These fixtures build a minimal
-# doc via a lane's build_doc itself (a real n=4 board, one dummy component) rather than
-# reconstructing framebuild's document shape by hand, so a case tracks the
-# real builder instead of drifting from it. n=4 throughout: every uniqueness
-# proof is a real CP-SAT double solve, and a 4x4 keeps `just check` in the
-# tens of milliseconds.
+# The three lanes (lanes.py) -- ring global, ring local and no ring
+# (no_ring.py) -- each with its own document build and check: a lane's `files`
+# names a board's two files, a lane's `rebuild` re-encodes a committed board
+# against the code in the tree, and `main` is the command line every
+# build_size.py ends with. These fixtures build a minimal doc via a lane's
+# build_doc itself (a real n=4 board, one dummy component) rather than
+# reconstructing the document shape by hand, so a case tracks the real builder
+# instead of drifting from it.
 #
-#   uv run examples/_shared/framebuild.test.py
+#   uv run examples/_shared/lanes.test.py
 
-import contextlib
 import dataclasses
-import io
-import itertools
 import json
 import pathlib
 import random
 import sys
-import tempfile
 from unittest import mock
 
-import framebuild
 import no_ring
-from framebuild import (
-    LOCAL_RULES_SUFFIX,
-    RULES_PREFIX,
-    SOLVE_LIMIT,
-    Board,
-    Geometry,
-    RingGlobal,
-    RingLocal,
-    Spec,
-    generate,
-    house_gac_constraint,
-    lane_kinds,
-    load_board,
-    main,
-    make_grid,
-    make_lines,
-    make_paths,
-    repeating_lines,
-    save_board,
-    unique,
+from board import Geometry, load_board, make_lines
+from carve import make_paths, repeating_lines, unique
+from document import LOCAL_RULES_SUFFIX, RULES_PREFIX
+from frame_fixtures import (
+    TOY,
+    first_digit,
+    make_board,
+    post_first_digit,
+    temp_spec,
+    valid_sudoku,
 )
+from lanes import RingGlobal, RingLocal, lane_kinds, main
 from minify import minify_file, minify_js
 from no_ring import NoRing
 from sudoku_kit import link_codec
 
 
-@contextlib.contextmanager
-def _spec(
-    components,
-    main_global="puzzle.addConstraintComponent(new FooComponent())",
-    clue_fn=None,
-    cp_sat_clue_fn=None,
-    **fields,
-):
-    """A minimal Spec backed by a temp example dir: `main.js` /
-    `main-global.js` plus one `FooComponent.js` and one `BarComponent.js`
-    file (content unused by `check`; only the backend files' text matters).
-    `components` names the global lane's own declared list.
-    """
-    with tempfile.TemporaryDirectory() as tmp:
-        d = pathlib.Path(tmp)
-        (d / "main.js").write_text("puzzle.addConstraintComponent(new FooComponent())")
-        (d / "main-global.js").write_text(main_global)
-        (d / "FooComponent.js").write_text("class FooComponent {}")
-        (d / "BarComponent.js").write_text("class BarComponent {}")
-        yield Spec(
-            dir=d,
-            title="Widget",
-            constraint_name="Widget Lines",
-            components=components,
-            min_digit=1,
-            clue_fn=clue_fn or (lambda values, cells, box: 0),
-            cp_sat_clue_fn=cp_sat_clue_fn or (lambda *a, **k: None),
-            comment_fn=lambda n: "test rules",
-            **fields,
-        )
-
-
-# A real, solver-backed clue rule for the generator cases: the clue is the
-# digit in the cell nearest the clue, read inward. Trivial as a puzzle, but a
-# genuine constraint on the model -- which is all generate()/unique() need, and
-# it reads the same on a straight frame line and on a bent path.
-def _first_digit(values, cells, box):
-    return values[0]
-
-
-def _post_first_digit(m, x, cells, kk, n, tag, box):
-    m.Add(x[cells[0]] == kk)
-
-
-def _valid_sudoku(grid, n, bh, bw):
-    """True when every row, column and box of `grid` holds 1..n once."""
-    want = set(range(1, n + 1))
-    if any(set(row) != want for row in grid):
-        return False
-    if any({grid[r][c] for r in range(n)} != want for c in range(n)):
-        return False
-    return all(
-        {grid[br + dr][bc + dc] for dr in range(bh) for dc in range(bw)} == want
-        for br in range(0, n, bh)
-        for bc in range(0, n, bw)
-    )
-
-
-def _board(n=4, bh=2, bw=2, **fields):
-    """A real n x n board value: a valid grid, no givens, every ring clue
-    shown -- unit fixtures only, this board is never shared, so the "leave
-    most of the ring blank" rule for a shared board does not apply here.
-    """
-    grid = [[((r * bw + r // bh + c) % n) + 1 for c in range(n)] for r in range(n)]
-    lines = make_lines(n)
-    return dataclasses.replace(
-        Board(
-            n=n,
-            bh=bh,
-            bw=bw,
-            grid=grid,
-            clue=dict.fromkeys(lines, 0),
-            givens={},
-            active=set(lines),
-            lines=lines,
-            height=n,
-            digits=n,
-        ),
-        **fields,
-    )
-
-
 def _build(spec, board=None):
     """A real board built through the global lane's `build_doc`: no drawn
     groups."""
-    board = board or _board()
+    board = board or make_board()
     doc = RingGlobal(spec).build_doc(board)
     return link_codec.encode_link(doc), doc, board
 
 
 def test_check_passes_when_the_backend_registers_the_declared_component():
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         link, doc, board = _build(spec)
         RingGlobal(spec).check(link, doc, board)
 
@@ -152,7 +53,7 @@ def test_check_catches_a_shipped_component_the_backend_never_registers():
     # `new`: the other two checks both pass (names == want; registered is
     # a subset of shipped), so only the shipped-minus-registered assertion
     # catches it
-    with _spec(["FooComponent.js", "BarComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js", "BarComponent.js"]) as spec:
         link, doc, board = _build(spec)
         try:
             RingGlobal(spec).check(link, doc, board)
@@ -167,7 +68,7 @@ def test_check_accepts_a_backend_that_reaches_for_a_built_in_component():
     # ships no component file for it and the link is not missing anything.
     # `check_layout.check_components` says the same at the sweep seam; both
     # callers share `component_scan.mismatch`.
-    with _spec(
+    with temp_spec(
         ["FooComponent.js"],
         main_global=(
             "puzzle.addConstraintComponent(new FooComponent())\n"
@@ -182,7 +83,7 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
     # `check` takes the board the document was built from, so the size it
     # holds the document to comes from outside the document -- reading it back
     # out of the doc would make the comparison say nothing.
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         link, doc, board = _build(spec)
         try:
             RingGlobal(spec).check(
@@ -195,7 +96,7 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
 
 
 def test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane():
-    with _spec(
+    with temp_spec(
         ["FooComponent.js", "BarComponent.js"],
         main_global=(
             "puzzle.addConstraintComponent(new FooComponent())\n"
@@ -203,7 +104,7 @@ def test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane():
         ),
         local_components=["FooComponent.js"],
     ) as spec:
-        board = _board()
+        board = make_board()
         for lane in (RingGlobal, RingLocal):
             doc = lane(spec).build_doc(board)
             lane(spec).check(link_codec.encode_link(doc), doc, board)
@@ -249,7 +150,7 @@ def test_a_lane_refuses_a_spec_of_another_kind():
     # A no-ring Spec's clues live only in its drawn groups, so no ring lane
     # may build it, and the no-ring lane builds nothing else. Its one lane
     # has no second component set either.
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+    with temp_spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         for lane in (RingGlobal, RingLocal):
             try:
                 lane(spec)
@@ -257,14 +158,14 @@ def test_a_lane_refuses_a_spec_of_another_kind():
                 assert "builds no-ring only" in str(e), e
             else:
                 raise AssertionError(f"{lane.__name__} took a no-ring Spec")
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         try:
             NoRing(spec)
         except ValueError as e:
             assert "builds global, local only" in str(e), e
         else:
             raise AssertionError("NoRing took a ring Spec")
-    with _spec(
+    with temp_spec(
         ["FooComponent.js"],
         groups_fn=_column_markers,
         local_components=["FooComponent.js"],
@@ -287,8 +188,8 @@ def test_run_and_rebuild_check_the_link_before_writing_it():
             return doc
 
     n, bh, bw = 4, 2, 2
-    fields = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
-    with _spec(["FooComponent.js"], **fields) as spec:
+    fields = {"clue_fn": first_digit, "cp_sat_clue_fn": post_first_digit}
+    with temp_spec(["FooComponent.js"], **fields) as spec:
         try:
             Unruled(spec).run(Geometry.square(n, bh, bw), range(101, 103))
         except AssertionError as e:
@@ -296,7 +197,7 @@ def test_run_and_rebuild_check_the_link_before_writing_it():
         else:
             raise AssertionError("run wrote a link check rejects")
         assert not RingGlobal(spec).files(n)[0].exists()
-    with _spec(["FooComponent.js"], **fields) as spec:
+    with temp_spec(["FooComponent.js"], **fields) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         try:
             Unruled(spec).rebuild(n)
@@ -309,7 +210,7 @@ def test_run_and_rebuild_check_the_link_before_writing_it():
 def test_build_doc_ships_no_house_gac_constraint_by_default():
     # `Spec.house_gac` defaults to no size, so every already-shipped link
     # stays byte-unchanged until a board opts in.
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         _, doc, _ = _build(spec)
         names = [
             c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
@@ -321,7 +222,7 @@ def test_build_doc_house_gac_wires_the_shared_filter_onto_every_house():
     # Opting in adds one more constraint: the shared house-gac.js backend,
     # carrying HouseGacComponent.js as its one component (the shape of
     # docs/research/408-house-gac/house_gac_links.py).
-    with _spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
+    with temp_spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
         _, doc, _ = _build(spec)
         gac = next(
             c
@@ -345,8 +246,8 @@ def test_build_doc_refuses_house_gac_above_nine_cells():
     # HouseGacComponent.js refuses to register past a 9-cell house at setup
     # (MAX_CELLS); a board that would silently ship a house past that size
     # fails loud here instead, at build time.
-    with _spec(["FooComponent.js"], house_gac=frozenset({10})) as spec:
-        board = _board(n=10, bh=2, bw=5)
+    with temp_spec(["FooComponent.js"], house_gac=frozenset({10})) as spec:
+        board = make_board(n=10, bh=2, bw=5)
         try:
             RingGlobal(spec).build_doc(board)
         except ValueError as e:
@@ -355,42 +256,27 @@ def test_build_doc_refuses_house_gac_above_nine_cells():
             raise AssertionError("build_doc accepted a house_gac board above 9 cells")
 
 
-def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
-    # build_doc's own cap check (test above) is not the only caller: a
-    # hand-built board (running-start/build_link.py's build_from_template)
-    # appends `house_gac_constraint()` directly, bypassing build_doc
-    # entirely, so the cap has to live in the one function every caller goes
-    # through, not just in build_doc.
-    house_gac_constraint(9)  # does not raise
-    try:
-        house_gac_constraint(10)
-    except ValueError as e:
-        assert "9-cell house cap" in str(e), e
-    else:
-        raise AssertionError("house_gac_constraint accepted n=10")
-
-
 def test_build_doc_house_gac_names_one_board_not_the_whole_example():
     # A Spec is shared by every size and both lanes a build_size.py builds
-    # (framebuild.main), so naming one size must not silently carry onto a
+    # (lanes.main), so naming one size must not silently carry onto a
     # rebuild of another size or of the local lane: a plain bool would put
     # it on every rebuild of that example, sizes and lanes that were never
     # timed included.
-    with _spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
-        _, doc, _ = _build(spec, board=_board(n=4))
+    with temp_spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
+        _, doc, _ = _build(spec, board=make_board(n=4))
         names = [
             c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
         ]
         assert "House GAC" in names
 
-        _, other_size, _ = _build(spec, board=_board(n=6, bh=2, bw=3))
+        _, other_size, _ = _build(spec, board=make_board(n=6, bh=2, bw=3))
         names = [
             c.get("definition", {}).get("name")
             for c in other_size["puzzle"]["constraints"]
         ]
         assert "House GAC" not in names
 
-        local_doc = RingLocal(spec).build_doc(_board(n=4))
+        local_doc = RingLocal(spec).build_doc(make_board(n=4))
         names = [
             c.get("definition", {}).get("name")
             for c in local_doc["puzzle"]["constraints"]
@@ -403,7 +289,7 @@ def test_build_doc_leaves_the_frame_corners_empty():
     # only thing the document itself could hold it down with -- and a given is
     # a digit the recipient reads off the board. The document leaves the
     # corners empty and the frame backend pins them instead.
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         _, doc, board = _build(spec)
         W = board.n + 2
         corners = [0, W - 1, W * (W - 1), W * W - 1]
@@ -420,7 +306,7 @@ def test_build_doc_declares_the_interior_rows_and_columns_in_its_backends():
     # column 1. This pins that the link runs both frame backends -- the ones
     # `frame-rowcol.test.mjs` and `frame-corners.test.mjs` cover -- and that no
     # cage is left claiming to do the job.
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         _, doc, _ = _build(spec)
         backends = [
             c.get("definition", {}).get("backend", {}).get("code", "")
@@ -447,7 +333,7 @@ def _column_markers(board):
 
 
 def _no_ring_board():
-    return _board(
+    return make_board(
         givens={(3, 3): 3},
         clue={("T", c): 10 + c for c in range(4)},
         active={("T", 0), ("T", 2)},
@@ -455,7 +341,7 @@ def _no_ring_board():
 
 
 def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+    with temp_spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         board = _no_ring_board()
         p = NoRing(spec).build_doc(board)["puzzle"]
         assert (p["width"], p["height"]) == (4, 4), "no ring cells around the grid"
@@ -511,8 +397,8 @@ def _regions(puzzle):
 def test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row():
     # 2x3 boxes on a 6x6: two rows tall, three columns wide, so a square-box
     # board cannot tell box height from box width
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
-        board = _board(n=6, bh=2, bw=3, clue={("T", c): 0 for c in range(6)})
+    with temp_spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        board = make_board(n=6, bh=2, bw=3, clue={("T", c): 0 for c in range(6)})
         p = NoRing(spec).build_doc(board)["puzzle"]
         assert _regions(p) == (
             [0, 0, 0, 1, 1, 1] * 2 + [2, 2, 2, 3, 3, 3] * 2 + [4, 4, 4, 5, 5, 5] * 2
@@ -547,7 +433,7 @@ def test_build_doc_refuses_a_group_cell_off_the_grid():
     def off_grid(board):
         return [([(0, 3), (0, 5)], None)]
 
-    with _spec(["FooComponent.js"], groups_fn=off_grid) as spec:
+    with temp_spec(["FooComponent.js"], groups_fn=off_grid) as spec:
         try:
             NoRing(spec).build_doc(_no_ring_board())
         except ValueError as e:
@@ -557,13 +443,13 @@ def test_build_doc_refuses_a_group_cell_off_the_grid():
 
 
 def test_build_doc_opens_the_rules_text_with_the_lane_s_prefix():
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         _, doc, _ = _build(spec)
         assert doc["puzzle"]["comment"] == (
             "Normal sudoku rules apply on the inner grid. test rules"
         )
     # a no-ring board has no inner grid to name: the lane picks the sentence
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+    with temp_spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         doc = NoRing(spec).build_doc(_no_ring_board())
         assert doc["puzzle"]["comment"] == "Normal sudoku rules apply. test rules"
 
@@ -579,7 +465,7 @@ def _check_fails(spec, doc, board, fault):
 
 
 def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
-    with _spec(
+    with temp_spec(
         ["FooComponent.js"],
         groups_fn=_column_markers,
     ) as spec:
@@ -642,7 +528,7 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
             else:
                 cons[i]["definition"]["backend"]["code"] += ";"
             _check_fails(spec, broken, board, "grid-rowcol.js")
-    with _spec(
+    with temp_spec(
         ["FooComponent.js", "BarComponent.js"], groups_fn=_column_markers
     ) as spec:
         board = _no_ring_board()
@@ -656,10 +542,10 @@ def test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag():
     n, bh, bw = 4, 2, 2
     built = []
     for flags in ([], ["--local"]):
-        with _spec(
+        with temp_spec(
             ["FooComponent.js"],
-            clue_fn=_first_digit,
-            cp_sat_clue_fn=_post_first_digit,
+            clue_fn=first_digit,
+            cp_sat_clue_fn=post_first_digit,
             groups_fn=_column_markers,
         ) as spec:
             assert lane_kinds(spec) == (NoRing,)
@@ -673,10 +559,10 @@ def test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag():
 
 def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
     n, bh, bw = 4, 2, 2
-    with _spec(
+    with temp_spec(
         ["FooComponent.js"],
-        clue_fn=_first_digit,
-        cp_sat_clue_fn=_post_first_digit,
+        clue_fn=first_digit,
+        cp_sat_clue_fn=post_first_digit,
         groups_fn=_column_markers,
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
@@ -738,158 +624,8 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
             raise AssertionError("a no-ring board's typed clue moved without complaint")
 
 
-def test_make_grid_is_a_real_sudoku_reproducible_from_its_seed():
-    for seed in (1, 7, 101):
-        g = make_grid(random.Random(seed), 6, 2, 3)
-        assert _valid_sudoku(g, 6, 2, 3), f"seed {seed} is not a valid sudoku"
-    assert make_grid(random.Random(5), 4, 2, 2) == make_grid(random.Random(5), 4, 2, 2)
-    assert make_grid(random.Random(5), 4, 2, 2) != make_grid(random.Random(6), 4, 2, 2)
-
-
-def test_make_paths_draws_one_bent_l_per_ring_key():
-    n = 6
-    paths = make_paths(random.Random(3), n)
-    assert set(paths) == set(make_lines(n)), "a path per ring key, same keys"
-    for key, cells in paths.items():
-        assert len(cells) == n, f"{key} has {len(cells)} cells, want {n}"
-        assert len(set(cells)) == n, f"{key} visits a cell twice"
-        assert all(0 <= r < n and 0 <= c < n for r, c in cells), (
-            f"{key} leaves the grid"
-        )
-        # a straight run inward, then exactly one turn: two distinct steps in
-        # all, and the second never reverses the first
-        steps = {(b[0] - a[0], b[1] - a[1]) for a, b in itertools.pairwise(cells)}
-        assert len(steps) == 2, f"{key} is straight or turns twice: {steps}"
-        (d1, d2) = steps
-        assert d1 != (-d2[0], -d2[1]), f"{key} doubles back"
-        assert len({r for r, _ in cells}) > 1 and len({c for _, c in cells}) > 1, (
-            f"{key} is a straight line, not a bent path"
-        )
-    # the clue's own cell starts the path, so a clue reads its line inward
-    for (side, i), cells in paths.items():
-        assert (
-            cells[0]
-            == {
-                "L": (i, 0),
-                "R": (i, n - 1),
-                "T": (0, i),
-                "B": (n - 1, i),
-            }[side]
-        ), (side, i)
-
-
-def test_unique_is_the_cp_sat_double_solve():
-    n, bh, bw = 4, 2, 2
-    lines = make_lines(n)
-    grid = make_grid(random.Random(11), n, bh, bw)
-    bare = Board(
-        n=n,
-        bh=bh,
-        bw=bw,
-        grid=grid,
-        clue=dict.fromkeys(lines, 0),
-        givens={},
-        active=set(),
-        lines=lines,
-        height=n,
-        digits=n,
-    )
-    # a bare 4x4 with no givens and no clues has many solutions
-    assert unique(_post_first_digit, bare) is False
-    # every cell given: exactly one solution
-    full = {(r, c): grid[r][c] for r in range(n) for c in range(n)}
-    assert unique(_post_first_digit, dataclasses.replace(bare, givens=full)) is True
-    # an infeasible model (a given contradicting its own row) is neither: None,
-    # so the carve loop cannot read "no solution" as "unique"
-    broken = dict(full)
-    broken[(0, 1)] = broken[(0, 0)]
-    assert unique(_post_first_digit, dataclasses.replace(bare, givens=broken)) is None
-    # the clues alone do work: the whole ring pinned makes the border cells
-    # given, and dropping every clue on the same givens loses uniqueness
-    clue = {k: grid[cells[0][0]][cells[0][1]] for k, cells in lines.items()}
-    clued = dataclasses.replace(bare, clue=clue)
-    assert unique(
-        _post_first_digit, dataclasses.replace(clued, active=set(lines))
-    ) != unique(_post_first_digit, clued), "the active clue set must change the answer"
-
-
-def test_geometry_is_one_value_for_a_square_or_a_rectangle():
-    sq = Geometry.square(4, 2, 2)
-    assert (sq.n, sq.height, sq.digits, sq.box) == (4, 4, 4, (2, 2))
-    assert sq.shape == {}
-    rect = Geometry.rect(5, 3, 4)
-    assert (rect.n, rect.height, rect.digits, rect.box) == (5, 3, 4, None)
-    assert rect.shape == {"height": 3, "digits": 4}
-    try:
-        sq.n = 5
-    except dataclasses.FrozenInstanceError:
-        pass
-    else:
-        raise AssertionError("a Geometry was mutated")
-    # a Board derives its geometry from its flat fields, so gen JSON is unchanged
-    flat = {"grid": [], "clue": {}, "givens": {}, "active": set(), "lines": {}}
-    assert Board(n=4, bh=2, bw=2, height=4, digits=4, **flat).geo == sq
-    # a rectangle's recorded box is a stand-in nothing reads: geo drops it
-    assert Board(n=5, bh=1, bw=5, height=3, digits=4, **flat).geo == rect
-
-
-def test_generate_carves_a_unique_and_minimal_board():
-    n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
-    ) as spec:
-        board = generate(spec, Geometry.square(n, bh, bw), range(101, 104))
-        assert board.seed in range(101, 104)
-        assert (board.n, board.bh, board.bw) == (n, bh, bw)
-        assert _valid_sudoku(board.grid, n, bh, bw)
-        # every clue is read off the solution, never invented
-        for k, cells in board.lines.items():
-            assert board.clue[k] == _first_digit(
-                [board.grid[r][c] for r, c in cells], cells, (bh, bw)
-            ), k
-        # the carved board is unique...
-        assert unique(_post_first_digit, board) is True
-        # ...and minimal in both directions: put any dropped clue's line back
-        # out, or any given back out, and it stops being unique
-        for k in sorted(board.active):
-            fewer = dataclasses.replace(board, active=board.active - {k})
-            assert not unique(_post_first_digit, fewer), (
-                f"clue {k} is not load-bearing -- generate left a redundant clue"
-            )
-        for cell in sorted(board.givens):
-            fewer = dataclasses.replace(
-                board, givens={c: v for c, v in board.givens.items() if c != cell}
-            )
-            assert not unique(_post_first_digit, fewer), (
-                f"given {cell} is not load-bearing -- generate left a redundant given"
-            )
-
-        # paths=True draws bent paths instead of frame lines, and keeps only a
-        # seed whose lines repeat a digit -- the property that makes the board
-        # a bare-line fixture rather than a frame board in disguise
-        bent = generate(spec, Geometry.square(n, bh, bw), range(101, 106), paths=True)
-        assert repeating_lines(bent.grid, bent.lines), (
-            "a paths board must repeat a digit"
-        )
-        assert unique(_post_first_digit, bent) is True
-
-    # a rule whose clues constrain nothing forces the other half of generate:
-    # the interior-given carve, which the clue-only board above never reaches
-    with _spec(["FooComponent.js"]) as spec:  # clue_fn 0, cp_sat posts nothing
-        board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
-        assert board.givens, "a board its clues cannot pin needs interior givens"
-        assert unique(spec.cp_sat_clue_fn, board)
-        for cell in sorted(board.givens):
-            fewer = dataclasses.replace(
-                board, givens={c: v for c, v in board.givens.items() if c != cell}
-            )
-            assert not unique(spec.cp_sat_clue_fn, fewer), (
-                f"given {cell} is not load-bearing -- generate left a redundant given"
-            )
-
-
 def test_lane_files_plain_names_the_9x9_and_tags_every_other_size():
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         d = spec.dir
         assert RingGlobal(spec).files(9) == (d / "PUZZLE_LINK.txt", d / "gen.json")
         assert RingLocal(spec).files(9) == (
@@ -907,7 +643,7 @@ def test_lane_files_plain_names_the_9x9_and_tags_every_other_size():
     # an example whose plain names belong to a different board (numbered-rooms,
     # running-start) keeps the 9x9 tag on the global lane -- and its local 9x9
     # is still the plain-named one, because nothing else claims those names
-    with _spec(["FooComponent.js"], plain_global_9x9=False) as spec:
+    with temp_spec(["FooComponent.js"], plain_global_9x9=False) as spec:
         d = spec.dir
         assert RingGlobal(spec).files(9) == (
             d / "PUZZLE_LINK_9x9.txt",
@@ -919,7 +655,7 @@ def test_lane_files_plain_names_the_9x9_and_tags_every_other_size():
         )
     # a no-ring example has one lane, so its names carry no lane tag: the 9x9
     # is plain-named and every other size is tagged by size alone
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+    with temp_spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         d = spec.dir
         assert NoRing(spec).files(9) == (
             d / "PUZZLE_LINK.txt",
@@ -931,38 +667,10 @@ def test_lane_files_plain_names_the_9x9_and_tags_every_other_size():
         )
 
 
-def test_save_board_and_load_board_round_trip_a_frame_board():
-    with tempfile.TemporaryDirectory() as tmp:
-        path = pathlib.Path(tmp) / "gen.json"
-        board = dataclasses.replace(_board(), seed=101, givens={(0, 0): 1})
-        save_board(board, path)
-        back = load_board(path)
-        assert back == board
-        # the ring keys survive the JSON's flat "T3" spelling, parsed in one
-        # place: load_board
-        assert ("T", 3) in back.clue and ("L", 0) in back.active
-        # a straight-frame board records no geometry -- its lines are the ones
-        # n implies
-        assert "paths" not in json.loads(path.read_text())
-
-
-def test_save_board_records_bent_geometry_and_load_board_reads_it_back():
-    with tempfile.TemporaryDirectory() as tmp:
-        path = pathlib.Path(tmp) / "gen_local.json"
-        n = 6
-        lines = make_paths(random.Random(3), n)
-        board = dataclasses.replace(_board(n=6, bh=2, bw=3), lines=lines)
-        save_board(board, path)
-        assert "paths" in json.loads(path.read_text())
-        back = load_board(path)
-        assert back.lines == lines != make_lines(n)
-        assert back == board
-
-
 def test_main_generates_a_board_from_its_own_argv_and_writes_both_files():
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         link_path, gen_path = RingGlobal(spec).files(n)
@@ -978,9 +686,9 @@ def test_main_generates_a_board_from_its_own_argv_and_writes_both_files():
         ]
         # the gen JSON reads back as the board the link ships
         assert (board.bh, board.bw) == (bh, bw)
-        assert _valid_sudoku(board.grid, n, bh, bw)
+        assert valid_sudoku(board.grid, n, bh, bw)
         assert board.lines == make_lines(n), "a straight-frame run records no paths"
-        assert unique(_post_first_digit, board) is True, (
+        assert unique(post_first_digit, board) is True, (
             "the recorded board must be the unique one main proved"
         )
         assert link_codec.encode_link(RingGlobal(spec).build_doc(board)) == link, (
@@ -991,8 +699,8 @@ def test_main_generates_a_board_from_its_own_argv_and_writes_both_files():
 def test_main_builds_the_local_lane_under_either_flag_name():
     n, bh, bw = 4, 2, 2
     for flag in ("--paths", "--local"):
-        with _spec(
-            ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+        with temp_spec(
+            ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
         ) as spec:
             main(spec, [str(n), str(bh), str(bw), "4", flag])
             link_path, gen_path = RingLocal(spec).files(n)
@@ -1016,10 +724,10 @@ def test_a_spec_whose_local_lines_stay_straight_draws_the_frame():
     # draws the straight frame lines and its rules text must not say a line is
     # no house. The Spec says so, not the caller.
     n, bh, bw = 4, 2, 2
-    with _spec(
+    with temp_spec(
         ["FooComponent.js"],
-        clue_fn=_first_digit,
-        cp_sat_clue_fn=_post_first_digit,
+        clue_fn=first_digit,
+        cp_sat_clue_fn=post_first_digit,
         bent_lines=False,
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
@@ -1035,9 +743,9 @@ def test_the_rules_text_follows_the_board_not_the_spec():
     # lines really bend. A Spec that GENERATES bent paths still must not put it
     # on a board whose recorded lines are the straight frame lines -- there the
     # lines are houses.
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         assert spec.bent_lines
-        straight = _board()
+        straight = make_board()
         doc = RingLocal(spec).build_doc(straight)
         assert LOCAL_RULES_SUFFIX not in doc["puzzle"]["comment"]
         bent = dataclasses.replace(
@@ -1053,8 +761,8 @@ def test_rebuild_names_the_file_it_cannot_find():
     # size or the wrong lane needs to be told which file is missing -- not a
     # bare traceback out of a read.
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         # no board of this size has been built at all
         try:
@@ -1080,8 +788,8 @@ def test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines():
     # reaches the document, and the frame comparison clears them -- so moving
     # the recorded paths has to be caught on its own.
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "4", "--paths"])
         _, gen_path = RingLocal(spec).files(n)
@@ -1103,7 +811,7 @@ def test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search():
     # A rebuild re-encodes a committed board; a box shape belongs to a fresh
     # search. Accepting both silently discards one and prints a success line
     # for a search that never ran.
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         try:
             main(spec, ["4", "2", "2", "--rebuild"])
         except SystemExit as e:
@@ -1114,8 +822,8 @@ def test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search():
 
 def test_rebuild_reproduces_a_committed_link_byte_for_byte():
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         link_path, _ = RingGlobal(spec).files(n)
@@ -1127,8 +835,8 @@ def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
     # the guard must not read "new constraint appeared" as "the puzzle
     # changed".
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         opted_in = dataclasses.replace(spec, house_gac=frozenset({n}))
@@ -1142,8 +850,8 @@ def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
 
 def test_rebuild_refuses_a_gen_json_that_moved_the_board():
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         _, gen_path = RingGlobal(spec).files(n)
@@ -1162,8 +870,8 @@ def test_rebuild_refuses_a_gen_json_that_moved_the_board():
 
 def test_main_rebuild_writes_the_committed_link_back():
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         link_path, _ = RingGlobal(spec).files(n)
@@ -1182,8 +890,8 @@ def test_run_takes_its_arguments_and_never_reads_sys_argv():
     # so a `run` that read it would crash or build another board.
     n, bh, bw = 4, 2, 2
     with (
-        _spec(
-            ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+        temp_spec(
+            ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
         ) as spec,
         mock.patch.object(sys, "argv", ["build_size.py", "not-a-size", "--bogus"]),
     ):
@@ -1198,8 +906,8 @@ def test_main_reads_the_process_argv_only_when_handed_none():
     # `main(spec)` is how every build_size.py calls it: argv comes from the
     # process. Handed a list it must ignore the process's.
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    with temp_spec(
+        ["FooComponent.js"], clue_fn=first_digit, cp_sat_clue_fn=post_first_digit
     ) as spec:
         with mock.patch.object(
             sys, "argv", ["build_size.py", str(n), str(bh), str(bw), "2"]
@@ -1213,45 +921,8 @@ def test_main_reads_the_process_argv_only_when_handed_none():
         assert link_path.exists()
 
 
-# A toy non-sudoku interior: every cell of row r holds r + 1. Rows repeat a
-# digit, so neither the sudoku grid nor the sudoku model could ever agree with
-# it -- a pass proves the Spec's own grid and model were used.
-def _striped_grid(rng, n, bh, bw):
-    return [[r + 1] * n for r in range(n)]
-
-
-def _striped_model(n, box):
-    from ortools.sat.python import cp_model
-
-    m = cp_model.CpModel()
-    x = {(r, c): m.NewIntVar(1, n, f"x{r}{c}") for r in range(n) for c in range(n)}
-    for (r, _), v in x.items():
-        m.Add(v == r + 1)
-    return m, x
-
-
-_TOY = {
-    "grid_fn": _striped_grid,
-    "model_fn": _striped_model,
-    "box_regions": False,
-    "rowcol_houses": False,
-}
-
-
-def test_generate_and_unique_use_the_spec_s_own_grid_and_model():
-    n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], **_TOY) as spec:
-        board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
-        assert board.grid == _striped_grid(None, n, bh, bw)
-        # the model pins every cell, so no interior given is needed
-        assert not board.givens
-        assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
-        # the sudoku model, with nothing pinned, has many solutions
-        assert unique(spec.cp_sat_clue_fn, board) is False
-
-
 def test_build_doc_without_box_regions_or_rowcol_houses_declares_neither():
-    with _spec(["FooComponent.js"], **_TOY) as spec:
+    with temp_spec(["FooComponent.js"], **TOY) as spec:
         _, doc, _ = _build(spec)
         constraints = doc["puzzle"]["constraints"]
         assert not [c for c in constraints if c.get("type") == 1], "box regions"
@@ -1263,7 +934,7 @@ def test_build_doc_without_box_regions_or_rowcol_houses_declares_neither():
 
 def test_rebuild_reproduces_a_non_sudoku_interior_link():
     n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], **_TOY) as spec:
+    with temp_spec(["FooComponent.js"], **TOY) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         link_path, _ = RingGlobal(spec).files(n)
         assert RingGlobal(spec).rebuild(n) + "\n" == link_path.read_text()
@@ -1272,185 +943,19 @@ def test_rebuild_reproduces_a_non_sudoku_interior_link():
 def test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence():
     # A non-sudoku interior has no sudoku rules to name: its Spec opens the
     # rules text itself, and the lane's check holds the link to that opening.
-    with _spec(["FooComponent.js"], rules_prefix="", **_TOY) as spec:
+    with temp_spec(["FooComponent.js"], rules_prefix="", **TOY) as spec:
         lane = RingGlobal(spec)
         link, doc, board = _build(spec)
         assert doc["puzzle"]["comment"] == spec.comment_fn(board.n)
         lane.check(link, doc, board)
-    with _spec(["FooComponent.js"]) as spec:
+    with temp_spec(["FooComponent.js"]) as spec:
         assert spec.rules_prefix is None
         _, doc, _ = _build(spec)
         assert doc["puzzle"]["comment"].startswith(RULES_PREFIX)
 
 
-def test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit():
-    # A carve limit no solve can meet: every carve-time proof comes back with
-    # no verdict, so the carve keeps every given it adds and hides no clue --
-    # and the board it returns still proves unique under the full limit.
-    n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], carve_limit=1e-9, **_TOY) as spec:
-        board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
-        assert len(board.givens) == n * n
-        assert board.active == set(make_lines(n))
-        assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
-    with _spec(["FooComponent.js"], **_TOY) as spec:
-        assert spec.carve_limit is None
-        board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
-        assert not board.givens
-
-
-def test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues():
-    # Seeds 101 and 102 are both unique on their full ring of first-digit
-    # clues; carved alone, 101 keeps 5 clues shown and 102 keeps 4. The
-    # default search stops at the first board with no givens, so it ships
-    # 101; the ring-only search carves both rings and ships 102.
-    n, bh, bw = 4, 2, 2
-    rule = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
-    with _spec(["FooComponent.js"], **rule) as spec:
-        assert spec.ring_only is False
-        assert generate(spec, Geometry.square(n, bh, bw), range(101, 103)).seed == 101
-    with _spec(["FooComponent.js"], ring_only=True, **rule) as spec:
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
-        assert (board.seed, board.givens, len(board.active)) == (102, {}, 4)
-        assert unique(_post_first_digit, board) is True
-        assert "2 layouts tried, 2 unique on the ring alone" in out.getvalue()
-
-
-def test_a_ring_only_search_skips_a_layout_it_has_already_tried():
-    # The toy interior draws the same striped grid for every seed: one layout,
-    # however many seeds.
-    n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            board = generate(spec, Geometry.square(n, bh, bw), range(101, 104))
-        assert board.seed == 101 and not board.givens
-        assert "1 layouts tried, 1 unique on the ring alone" in out.getvalue()
-
-
-def test_a_ring_only_search_falls_back_to_interior_givens():
-    # Clues that constrain nothing: no layout is unique on its ring, so the
-    # search falls back to the default carve, which adds interior givens.
-    n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], ring_only=True) as spec:
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
-        assert board.givens
-        assert unique(spec.cp_sat_clue_fn, board) is True
-        assert "2 layouts tried, none proved unique on the ring alone" in out.getvalue()
-
-
-def _no_verdict_unless(keep):
-    """`framebuild.unique` with every proof `keep(board, limit)` refuses
-    answered None, the verdict a solve that spent its limit returns."""
-    real = framebuild.unique
-
-    def proof(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
-        return real(post_clue, board, model_fn, limit) if keep(board, limit) else None
-
-    return mock.patch.object(framebuild, "unique", proof)
-
-
-def test_a_ring_only_search_proves_a_no_verdict_layout_again_at_the_full_limit():
-    # Every carve-limit proof times out. The layout is not read as "not
-    # unique": it is proved again at SOLVE_LIMIT and ships ring-only, every
-    # clue kept, since no hiding step could be proved.
-    n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], ring_only=True, carve_limit=1, **_TOY) as spec:
-        out = io.StringIO()
-        with (
-            _no_verdict_unless(lambda b, limit: limit == SOLVE_LIMIT),
-            contextlib.redirect_stdout(out),
-        ):
-            board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
-        assert not board.givens and board.active == set(make_lines(n))
-        log = out.getvalue()
-        assert "seed 101: no verdict on the ring alone inside the carve limit" in log
-        assert "1 layouts tried, 1 unique on the ring alone" in log
-
-
-def test_a_ring_only_fallback_reports_the_layouts_that_never_reached_a_verdict():
-    # No ring-only proof reaches a verdict at any limit: the search falls back
-    # to interior givens and says the layout was unproved, not "not unique".
-    n, bh, bw = 4, 2, 2
-    with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
-        out = io.StringIO()
-        with (
-            _no_verdict_unless(lambda b, limit: bool(b.givens)),
-            contextlib.redirect_stdout(out),
-        ):
-            board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
-        assert board.givens
-        log = out.getvalue()
-        assert "seed 101: still no verdict on the ring alone" in log
-        assert (
-            "none proved unique on the ring alone (1 with no verdict at "
-            f"{SOLVE_LIMIT} s); falling back to interior givens"
-        ) in log
-        assert "not unique on the ring alone" not in log
-
-
-def test_a_ring_only_fallback_carves_the_layouts_the_search_drew():
-    # The fallback carves the grids the search tried, not a fresh draw: a
-    # sampler need not redraw a seed's grid the same way twice.
-    n, bh, bw = 4, 2, 2
-    draws = itertools.count()
-
-    def drifting_grid(rng, n, bh, bw):
-        grid = make_grid(rng, n, bh, bw)
-        if next(draws):
-            grid = grid[::-1]  # a second draw of the same seed lands elsewhere
-        return grid
-
-    with _spec(["FooComponent.js"], ring_only=True, grid_fn=drifting_grid) as spec:
-        with contextlib.redirect_stdout(io.StringIO()):
-            board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
-        assert board.grid == make_grid(random.Random(101), n, bh, bw)
-        assert next(draws) == 1, "the fallback drew the layout again"
-
-
-def test_generate_refuses_a_board_its_final_proof_does_not_confirm():
-    # The carve proves at its own limit; the board ships only when the full
-    # limit proves it too.
-    n, bh, bw = 4, 2, 2
-    with (
-        _spec(["FooComponent.js"], carve_limit=1, **_TOY) as spec,
-        _no_verdict_unless(lambda b, limit: limit != SOLVE_LIMIT),
-        contextlib.redirect_stdout(io.StringIO()),
-    ):
-        try:
-            generate(spec, Geometry.square(n, bh, bw), range(101, 102))
-        except AssertionError as e:
-            assert "not proved unique" in str(e)
-        else:
-            raise AssertionError("shipped a board the full limit never proved")
-
-
-def test_a_ring_only_search_refuses_bent_paths():
-    with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
-        try:
-            generate(spec, Geometry.square(4, 2, 2), range(101, 102), paths=True)
-        except ValueError as e:
-            assert "straight frame lines" in str(e)
-        else:
-            raise AssertionError("a ring-only search drew bent paths")
-
-
 if __name__ == "__main__":
-    test_a_ring_only_search_proves_a_no_verdict_layout_again_at_the_full_limit()
-    test_a_ring_only_fallback_reports_the_layouts_that_never_reached_a_verdict()
-    test_a_ring_only_fallback_carves_the_layouts_the_search_drew()
-    test_generate_refuses_a_board_its_final_proof_does_not_confirm()
-    test_a_ring_only_search_refuses_bent_paths()
-    test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues()
-    test_a_ring_only_search_skips_a_layout_it_has_already_tried()
-    test_a_ring_only_search_falls_back_to_interior_givens()
-    test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit()
     test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence()
-    test_generate_and_unique_use_the_spec_s_own_grid_and_model()
     test_build_doc_without_box_regions_or_rowcol_houses_declares_neither()
     test_rebuild_reproduces_a_non_sudoku_interior_link()
     test_check_passes_when_the_backend_registers_the_declared_component()
@@ -1462,7 +967,6 @@ if __name__ == "__main__":
     test_build_doc_ships_no_house_gac_constraint_by_default()
     test_build_doc_house_gac_wires_the_shared_filter_onto_every_house()
     test_build_doc_refuses_house_gac_above_nine_cells()
-    test_house_gac_constraint_refuses_above_nine_cells_on_its_own()
     test_build_doc_house_gac_names_one_board_not_the_whole_example()
     test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups()
     test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row()
@@ -1475,14 +979,7 @@ if __name__ == "__main__":
     test_a_lane_refuses_a_spec_of_another_kind()
     test_run_and_rebuild_check_the_link_before_writing_it()
     test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues()
-    test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
-    test_make_paths_draws_one_bent_l_per_ring_key()
-    test_unique_is_the_cp_sat_double_solve()
-    test_geometry_is_one_value_for_a_square_or_a_rectangle()
-    test_generate_carves_a_unique_and_minimal_board()
     test_lane_files_plain_names_the_9x9_and_tags_every_other_size()
-    test_save_board_and_load_board_round_trip_a_frame_board()
-    test_save_board_records_bent_geometry_and_load_board_reads_it_back()
     test_main_generates_a_board_from_its_own_argv_and_writes_both_files()
     test_main_builds_the_local_lane_under_either_flag_name()
     test_a_spec_whose_local_lines_stay_straight_draws_the_frame()
@@ -1496,4 +993,4 @@ if __name__ == "__main__":
     test_main_rebuild_writes_the_committed_link_back()
     test_run_takes_its_arguments_and_never_reads_sys_argv()
     test_main_reads_the_process_argv_only_when_handed_none()
-    print("framebuild self-check OK")
+    print("lanes self-check OK")

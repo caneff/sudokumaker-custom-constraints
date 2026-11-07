@@ -18,7 +18,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_size import COMPONENTS, SPEC
-from framebuild import RingGlobal
+from lanes import RingGlobal
 from link_swap import swap_build
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 # Build an Outside Sudoku (interactive outside clue) puzzle link for any grid
-# size, on the shared interactive-outside frame (`_shared/framebuild.py`):
+# size, on the shared interactive-outside frame (`_shared/lanes.py`):
 # fresh grid, the true clue for every line, minimal interior givens and a
 # minimal shown-clue set carved to a unique solution (OR-Tools).
 #
@@ -15,7 +15,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import Spec, main
+from board import Spec
+from lanes import main
 from outside_rule import post_membership, window_length_by_box
 
 HERE = pathlib.Path(__file__).parent

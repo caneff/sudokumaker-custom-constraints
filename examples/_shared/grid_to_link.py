@@ -10,7 +10,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import NO_RING_RULES_PREFIX
+from document import NO_RING_RULES_PREFIX
 from no_ring import grid_backend_constraint
 from sm_document import puzzle_doc
 from sudoku_kit.link_codec import encode_link

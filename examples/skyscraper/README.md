@@ -45,7 +45,7 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
 
 Each link ships what its own backend registers, and nothing else: a global
 link carries the two-clue DP, a local link the one-sided DP. `build_size.py` names the two sets as `COMPONENTS` and
-`LOCAL_COMPONENTS`, and each lane's `check` (`framebuild.Lane.check`) asserts both that the link matches
+`LOCAL_COMPONENTS`, and each lane's `check` (`lanes.Lane.check`) asserts both that the link matches
 its lane and that no backend registers a component the link left out.
 
 ## What the components deduce
@@ -242,7 +242,7 @@ The three mechanical criteria, checked by `check_layout.py`:
   the point of the board, and the 4 corners carry nothing.
 - **Rules prefix** ✓ — "Normal sudoku rules apply on the inner grid."
 
-1. **Uniqueness proven on the shipped board** ✓ — CP-SAT (`framebuild.unique`,
+1. **Uniqueness proven on the shipped board** ✓ — CP-SAT (`carve.unique`,
    the same model `build_size.py` carves against) run on the exact `gen.json`
    behind this link: unique, 0.5 s, 2026-09-08. The link decodes back to that
    board — the 7 interior givens and the 20 shown clue values match `gen.json`

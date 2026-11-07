@@ -142,7 +142,9 @@ def a_rectangular_isofill_builds_from_the_setter_s_tools():
 
 def a_rectangular_isofill_skyscraper_builds_and_proves():
     build_size = _load("isofill-skyscraper", "build_size")
-    from framebuild import Geometry, RingGlobal, generate, unique
+    from board import Geometry
+    from carve import generate, unique
+    from lanes import RingGlobal
     from ring_link import mismatches
     from sudoku_kit import link_codec
 

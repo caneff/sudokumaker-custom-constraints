@@ -1,6 +1,6 @@
 # Build an Up to N board at any size, or re-encode a committed one.
 #
-# The board is a plain n x n sudoku with no ring: framebuild's no-ring mode
+# The board is a plain n x n sudoku with no ring: the frame builder's no-ring lane
 # draws all 4n markers, fills every clue from a fresh grid, carves givens and
 # then shown clues while CP-SAT still proves one solution, and encodes the
 # link.
@@ -11,7 +11,7 @@
 #
 # Args: n box_height box_width [seed_count] --local, or --rebuild n --local.
 # `--local` is required: a no-ring board has only the drawn-groups lane, and
-# framebuild refuses the other. --rebuild re-encodes a committed board against
+# the frame builder refuses the other. --rebuild re-encodes a committed board against
 # the code in the tree, with no fresh CP-SAT search.
 #
 # The 9x9 has two boards. The carve's minimal one, PUZZLE_LINK_9x9.txt /
@@ -34,13 +34,9 @@ import sys
 from dataclasses import replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import (
-    Spec,
-    load_board,
-    main,
-    save_board,
-    unique,
-)
+from board import Spec, load_board, save_board
+from carve import unique
+from lanes import main
 from no_ring import NoRing
 from sudoku_kit import link_codec
 

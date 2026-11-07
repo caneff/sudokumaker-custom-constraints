@@ -95,7 +95,7 @@ Run when present, skipped when absent:
 | --- | --- |
 | `.golden/` | Regression goldens for the recovery/speed probes, and the strength tests' frozen floors |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
-| `build_size.py` | Builds boards at other sizes, and re-encodes a committed one with `--rebuild <n>` — current component code, no fresh CP-SAT search (`framebuild.main`) |
+| `build_size.py` | Builds boards at other sizes, and re-encodes a committed one with `--rebuild <n>` — current component code, no fresh CP-SAT search (`lanes.main`) |
 | `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and isofill-skyscraper's one proof of a few seconds (its README has the time), both named in `tests/all.sh`, which `just test` runs, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed; it needs its name in the `suites=[...]` of the example's `BUILD`. A test named in a `heavy_*` list in `tests/all.sh` runs under `just test-heavy` instead, so only `check-full` runs it |
 
@@ -160,7 +160,7 @@ It also checks each link's component set against the code embedded in
 that same link: a link ships exactly the components its backend registers,
 plus any a shipped component constructs through `customComponents` (a
 wrapper that swaps itself out, as `count-digits-gac/required-digits/` does).
-The builder asserts this when it writes a link (`framebuild.Lane.check`), but a
+The builder asserts this when it writes a link (`lanes.Lane.check`), but a
 committed link goes stale on its own — the builder's list changes and the
 link is never regenerated (#287, #289, #290, #291). Regenerate the stale
 link from its committed `gen_*.json` with the example's
@@ -235,7 +235,7 @@ the interior with a look-and-say cage, so its lines are all-different by
 design.
 
 A `gen*.json` records the board, not the frame backends' code — those come from
-the tree at build time (`framebuild.refresh_frame_backends`), so a copy kept in
+the tree at build time (`document.refresh_frame_backends`), so a copy kept in
 a template is dead data that can only drift. `check_gen_frame_backends` requires
 the field to be empty.
 
@@ -245,7 +245,7 @@ no arguments, and `numbered-rooms/PUZZLE_LINK.txt`, which is hand-built and
 takes `build_link.py --refresh` (that also pins its digit range and rewrites its
 rules text — nothing else writes either; both values belong to that one board,
 so `--refresh` touches this example's own links only and refuses `--board`).
-Both go through `framebuild.refresh_frame_backends`. numbered-rooms has three
+Both go through `document.refresh_frame_backends`. numbered-rooms has three
 more hand-built links derived from `PUZZLE_LINK.txt` (`_original`, `_clued`,
 `_clued_original`); `--refresh` drives `build_original` and `build_clued`
 itself after the rewrite, so one refresh leaves all four in step. After such a
@@ -262,7 +262,7 @@ rebuild, re-check every link in the live app and record what it said:
   (`gen_35g_silent.json` pairs with `PUZZLE_LINK_35g_silent.txt`).
 - A generator may keep extra input files; they are inputs, not "the board."
 - On the shared interactive-outside frame that pairing is stated once in code:
-  each lane's `files(n)` (`framebuild.RingGlobal`, `framebuild.RingLocal`,
+  each lane's `files(n)` (`lanes.RingGlobal`, `lanes.RingLocal`,
   `no_ring.NoRing`). The 9x9 is plain-named on both
   lanes (`PUZZLE_LINK.txt` / `PUZZLE_LINK_local.txt`), every other size carries
   its `NxN` tag, and an example whose `PUZZLE_LINK.txt` is some other,

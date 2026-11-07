@@ -104,7 +104,7 @@ too, with every whole row and column declared by
 `examples/_shared/grid-rowcol.js`: the live editor opens a `"sudoku"` document
 as 9x9 whatever its width says, so the header only works at 9x9
 (`research/368-up-to-n-setup-throw.md`). Wire type 0 is the givens, type 1
-the regions (`research/validate-only-probe.md`, last section). `framebuild.py` registers one named component per
+the regions (`research/validate-only-probe.md`, last section). The frame builder (`examples/_shared/lanes.py`) registers one named component per
 interior line (`examples/_shared/frame-rowcol.js`), which is how a line gets a
 name the app can use in an explanation -- a `type: 301` cage cannot be named,
 the app hard-codes `the cage at <cell>` and gives row 1 and column 1 the same

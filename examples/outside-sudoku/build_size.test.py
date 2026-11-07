@@ -6,15 +6,11 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from board import make_lines
 from build_size import SPEC
+from document import LOCAL_RULES_SUFFIX, RULES_PREFIX
 from frame import ring_cell
-from framebuild import (
-    LOCAL_RULES_SUFFIX,
-    RULES_PREFIX,
-    RingGlobal,
-    RingLocal,
-    make_lines,
-)
+from lanes import RingGlobal, RingLocal
 from minify import minify_file
 from outside_rule import window_length_by_box, window_length_by_region
 from sm_document import find_constraint

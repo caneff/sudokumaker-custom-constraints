@@ -8,7 +8,7 @@ name no shared file has ever seen, in a throwaway copy of `examples/` and
      it once the manifest is gone;
   2. the timing driver resolves its timed component from that manifest, and
      refuses a name the board does not register;
-  3. its 4x4 board rebuilds byte-for-byte through framebuild and the
+  3. its 4x4 board rebuilds byte-for-byte through the frame builder and the
      document module, and every custom-constraint entry on it carries
      `input` and `style`;
   4. its soundness harness passes, and the shared fuzz runner fails a run of
@@ -40,8 +40,8 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
 
 Left to their own suites, not driven here: the CP-SAT base model and
 solve_unique (the sudoku-kit library's own tests), loadBundle and the bundle-solve
-import (bundle-load.test.mjs, bundle-solve.test.mjs), the framebuild lanes
-(framebuild.test.py), and the stamp guard (the fillomino and isofill stamp
+import (bundle-load.test.mjs, bundle-solve.test.mjs), the frame builder's lanes
+(lanes.test.py), and the stamp guard (the fillomino and isofill stamp
 tests).
 
     uv run examples/_shared/spec_649_closing.test.py
