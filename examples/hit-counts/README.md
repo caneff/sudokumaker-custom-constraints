@@ -54,9 +54,9 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `build_size.py` — builds the whole document from scratch for any grid size. It
   generates a grid, derives every line's hit count, carves a unique puzzle
   (OR-Tools), and encodes the link:
-  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py 4 2 2`
-  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py 6 2 3`
-  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3`
+  `uv run examples/hit-counts/build_size.py 4 2 2`
+  `uv run examples/hit-counts/build_size.py 6 2 3`
+  `uv run examples/hit-counts/build_size.py 9 3 3`
   The three args are the grid size and the box height and width (`box_height *
   box_width == size`). `--paths` builds the local board instead — see
   "The local board" below.
@@ -71,12 +71,12 @@ no ordering. That makes Hit Counts simpler than Running Start.
   code and backend as they stand in the repo now, on the same board and givens
   (no fresh CP-SAT search). Run it after any component edit, or the shipped
   links keep an old snapshot:
-  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py --rebuild 9`
-  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py --rebuild 9 --paths`
+  `uv run examples/hit-counts/build_size.py --rebuild 9`
+  `uv run examples/hit-counts/build_size.py --rebuild 9 --paths`
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
   swapped for a candidate file, leaving the board and the sibling components
   untouched. It is the same-board pair `just time hit-counts` needs:
-  `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsPairComponent.js --out /tmp/candidate.txt`
+  `uv run examples/hit-counts/build_link.py --component HitCountsPairComponent.js --out /tmp/candidate.txt`
 - `../_shared/frame.py`, `../_shared/minify.py` — build helpers shared with
   Running Start (the interactive-outside frame cosmetics and the link-shrinking
   pass). `../_shared/harness-lib.mjs` holds the soundness-harness scaffold.
@@ -305,7 +305,7 @@ every line is a full house and the rules that need one always fire. That hides
 every bare-line bug. `PUZZLE_LINK_local.txt` is the board that does not:
 
 ```
-uv run --with ortools --with lzstring \
+uv run \
     examples/hit-counts/build_size.py 9 3 3 3 --paths
 ```
 
@@ -334,7 +334,7 @@ A second local board ships at 6x6 (`PUZZLE_LINK_6x6_local.txt`,
 `gen_6x6_local.json`), built the same way:
 
 ```
-uv run --with ortools --with lzstring \
+uv run \
     examples/hit-counts/build_size.py 6 2 3 --paths
 ```
 

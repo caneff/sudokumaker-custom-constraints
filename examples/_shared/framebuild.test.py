@@ -10,7 +10,7 @@
 # proof is a real CP-SAT double solve, and a 4x4 keeps `just check` in the
 # tens of milliseconds.
 #
-#   uv run --with lzstring --with ortools examples/_shared/framebuild.test.py
+#   uv run examples/_shared/framebuild.test.py
 
 import contextlib
 import dataclasses

@@ -21,7 +21,7 @@ in the `puzzle=` parameter. Resolve the redirect, then decompress:
 
 ```python
 import urllib.parse
-from lzstring import LZString   # uv run --with lzstring
+from lzstring import LZString
 raw = LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(link.split("puzzle=")[-1]))
 doc = json.loads(raw)
 # code lives at doc["puzzle"]["constraints"][*]["definition"]["backend"]["code"]

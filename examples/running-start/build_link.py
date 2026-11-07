@@ -6,7 +6,7 @@
 # tree). Only the embedded code changes when you edit main-global.js or a
 # component, so this path injects the current files and re-encodes.
 #
-#   uv run --with lzstring examples/running-start/build_link.py
+#   uv run examples/running-start/build_link.py
 #
 # Writes PUZZLE_LINK.txt next to this script.
 #

@@ -6,7 +6,7 @@
 # browser. The CLI's real run against numbered-rooms is a manual check,
 # not here — see docs/real-app-timing.md.
 #
-#   uv run --with lzstring examples/_shared/time_example.test.py
+#   uv run examples/_shared/time_example.test.py
 
 import contextlib
 import io

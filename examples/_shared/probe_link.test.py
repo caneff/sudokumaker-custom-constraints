@@ -2,7 +2,7 @@
 # ring. empty_link_file wraps it as a file-to-file step (used by both this
 # module's own CLI and examples/_shared/time_example.py).
 #
-#   uv run --with lzstring examples/_shared/probe_link.test.py
+#   uv run examples/_shared/probe_link.test.py
 
 import pathlib
 import tempfile

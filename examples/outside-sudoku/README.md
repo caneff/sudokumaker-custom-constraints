@@ -109,7 +109,7 @@ link runs", #268).
   cells). `verify.py` re-runs that proof against the committed link, so the
   claim is checkable from the tree:
 
-      uv run --with lzstring --with ortools examples/outside-sudoku/verify.py
+      uv run examples/outside-sudoku/verify.py
 
   The rule states itself three times — the component, the soundness harness,
   and `outside_rule.py` for the Python side, which the generator and
@@ -137,14 +137,14 @@ in the blank clue cells, each set to the digit its window's first cell holds in
 the board's own CP-SAT solution (`build_clued.py`, which fails if the board is
 not unique or a filled clue is not in its window). The app reads all four
 unique (`docs/frame-link-verdicts.md`). Rebuild them with
-`uv run --with lzstring --with ortools examples/outside-sudoku/build_link.py --refresh`.
+`uv run examples/outside-sudoku/build_link.py --refresh`.
 
 ### Regenerating
 
 To re-encode the shipped link after a component change, swap the component
 into the committed board:
 
-    uv run --with lzstring examples/outside-sudoku/build_link.py \
+    uv run examples/outside-sudoku/build_link.py \
       --component examples/outside-sudoku/OutsideSudokuComponent.js \
       --out examples/outside-sudoku/PUZZLE_LINK.txt
 
@@ -152,7 +152,7 @@ The `_clued` twins carry the component code too, so swapping alone leaves them
 stale. `build_link.py --refresh` re-encodes the four boards from their seeds and
 then rebuilds the twins:
 
-    uv run --with lzstring --with ortools examples/outside-sudoku/build_link.py --refresh
+    uv run examples/outside-sudoku/build_link.py --refresh
 
 ## The local board
 
@@ -161,9 +161,9 @@ all 36 lines shipped as **drawn groups**, so `main.js` registers one component
 per group. Seed 101, recorded in `gen_local.json`: 11 interior givens and 21 of
 the 36 clues shown. It carries the local timing row.
 
-    uv run --with ortools --with lzstring \
+    uv run \
       examples/outside-sudoku/build_size.py 9 3 3 1 --local
-    uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 9 --local
+    uv run examples/outside-sudoku/build_size.py --rebuild 9 --local
 
 ### Why its lines are straight, not bent (#268)
 
@@ -193,9 +193,9 @@ itself). Three sizes ship, each carved to a unique solution by OR-Tools:
 | `PUZZLE_LINK.txt` (the 9x9) | 123 | 10 | 23 of 36 | 3 either way |
 | `PUZZLE_LINK_local.txt` (9x9, local lane) | 101 | 11 | 21 of 36 | 3 either way |
 
-    uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 4 2 2
-    uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 6 2 3
-    uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 9 3 3
+    uv run examples/outside-sudoku/build_size.py 4 2 2
+    uv run examples/outside-sudoku/build_size.py 6 2 3
+    uv run examples/outside-sudoku/build_size.py 9 3 3
 
 The carve loop drops a given, then a shown clue, whenever the board stays
 unique without it, so the ring stays sparse: every clue left blank is one the
@@ -204,14 +204,14 @@ finds one solution, is told to avoid it, and finds no other. `verify.py`
 re-runs that proof against any committed link, so the claim is checkable from
 the tree:
 
-    uv run --with lzstring --with ortools examples/outside-sudoku/verify.py \
+    uv run examples/outside-sudoku/verify.py \
       examples/outside-sudoku/PUZZLE_LINK_6x6.txt
 
 After a component change, re-encode a sized link from its recorded seed rather
 than searching again — the clue of a line is a pure function of the line, so
 the same board comes back out:
 
-    uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 6
+    uv run examples/outside-sudoku/build_size.py --rebuild 6
 
 `build_size.test.py` holds that to a byte: each committed link must equal what
 the lane's `rebuild(n)` (`framebuild.RingGlobal`, `framebuild.RingLocal`) produces from its gen JSON, the local board
@@ -242,9 +242,9 @@ size. Clue functions on other examples ignore both arguments.
     node examples/outside-sudoku/soundness-harness.mjs
     node examples/outside-sudoku/update-strength.test.mjs
     node examples/outside-sudoku/backends.test.mjs
-    uv run --with lzstring examples/outside-sudoku/build_link.test.py
-    uv run --with lzstring examples/outside-sudoku/build_size.test.py
-    uv run --with lzstring --with ortools examples/outside-sudoku/verify.test.py
+    uv run examples/outside-sudoku/build_link.test.py
+    uv run examples/outside-sudoku/build_size.test.py
+    uv run examples/outside-sudoku/verify.test.py
 
 All of these run under `just check`. Only `verify.test.py` needs OR-Tools:
 `framebuild` imports the solver inside its search, so the clue functions, the

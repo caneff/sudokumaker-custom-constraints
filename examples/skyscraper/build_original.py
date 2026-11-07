@@ -5,7 +5,7 @@
 # the same grid, givens, and clues. No solving: it re-encodes. Run it after
 # every component change so the shipped link carries the code in the repo.
 #
-#   uv run --with lzstring examples/skyscraper/build_original.py 9
+#   uv run examples/skyscraper/build_original.py 9
 #
 # Writes PUZZLE_LINK_<n>x<n>.txt and PUZZLE_LINK_<n>x<n>_original.txt next to
 # this script (PUZZLE_LINK.txt / PUZZLE_LINK_original.txt for n=9, the

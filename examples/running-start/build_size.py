@@ -6,10 +6,10 @@
 # Clues that stay hidden are the interactive ones: the solver reads them off
 # the line as it solves.
 #
-#   uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2
-#   uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3
-#   uv run --with ortools --with lzstring examples/running-start/build_size.py 9 3 3 --paths
-#   uv run --with ortools --with lzstring examples/running-start/build_size.py --rebuild 4
+#   uv run examples/running-start/build_size.py 4 2 2
+#   uv run examples/running-start/build_size.py 6 2 3
+#   uv run examples/running-start/build_size.py 9 3 3 --paths
+#   uv run examples/running-start/build_size.py --rebuild 4
 #
 # Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script.

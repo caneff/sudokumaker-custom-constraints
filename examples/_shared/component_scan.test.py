@@ -3,7 +3,7 @@
 # Tested in isolation here so a change to the scan itself does not
 # need a full link/doc fixture to exercise.
 #
-#   uv run --with lzstring examples/_shared/component_scan.test.py
+#   uv run examples/_shared/component_scan.test.py
 
 from component_scan import builtin_components, mismatch, registered_components
 

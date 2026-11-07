@@ -11,8 +11,8 @@
 # filter yet) and re-proves uniqueness with CP-SAT so the AutoStep readout can
 # be checked cell for cell.
 #
-#   uv run --with lzstring examples/house-gac/build_link.py
-#   uv run --with lzstring examples/house-gac/build_link.py \
+#   uv run examples/house-gac/build_link.py
+#   uv run examples/house-gac/build_link.py \
 #       --component /path/HouseGacComponent.js --out /tmp/candidate.txt
 #
 # --keep-comments builds the annotated sibling link: same board, same givens,
@@ -21,7 +21,7 @@
 # SudokuMaker and reads the code in its own box. Regenerate
 # PUZZLE_LINK_annotated.txt with
 #
-#   uv run --with lzstring examples/house-gac/build_link.py \
+#   uv run examples/house-gac/build_link.py \
 #       --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
 #
 # --component swaps a candidate's code into PUZZLE_LINK.txt, or into --board,
