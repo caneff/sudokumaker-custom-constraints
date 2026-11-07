@@ -144,8 +144,7 @@ def the_dutch_flatmates_comment_and_counter():
 def the_wrapper_test_runs_in_the_gate():
     moved = EXAMPLES / "count-digits-gac" / "required-digits-wrapper.test.mjs"
     assert moved.exists()
-    old = EXAMPLES.parent / "docs/research/required-digits-gac"
-    assert not (old / "required-digits-wrapper.test.mjs").exists()
+    assert "BY_HAND = set()" in (HERE / "gate.test.py").read_text()
     assert (
         "required-digits-wrapper.test.mjs"
         in (EXAMPLES / "count-digits-gac" / "BUILD").read_text()
