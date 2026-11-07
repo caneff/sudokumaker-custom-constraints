@@ -91,7 +91,7 @@ per-line component below carries the whole example.
   half the ring is shown. After a `main.js` or `NumberedRoomsComponent.js`
   change, re-encode from the recorded seed instead of a fresh search:
   `uv run examples/numbered-rooms/build_size.py --rebuild 9`
-  (`framebuild.Lane.rebuild`) loads `gen_<n>x<n>.json` and calls the shared frame's
+  (`lanes.Lane.rebuild`) loads `gen_<n>x<n>.json` and calls the shared frame's
   `build_doc` directly, so the link's grid, givens, and shown clues stay
   exactly what the seed produced and only the embedded code changes.
 - `main.js`, `main-global.js`, `NumberedRoomsComponent.js` — paste

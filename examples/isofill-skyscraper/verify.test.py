@@ -19,8 +19,9 @@ sys.path.insert(0, str(HERE))
 import dataclasses
 import tempfile
 
+from board import load_board
 from build_size import SPEC
-from framebuild import RingGlobal, load_board
+from lanes import RingGlobal
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 from verify import ROWCOL_TITLE, check, grid_problems, house_problems
 

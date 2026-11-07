@@ -44,7 +44,7 @@ author builds a grid one ring larger than the puzzle (an 11×11 board around a
   ONLY, so undeclared rows and columns are not houses at all, and the app
   answers **not unique in 400 ms** where it answered unique in seconds (#394;
   the same fact cost three tickets of quad-rank work, docs/gotchas.md #9).
-  `framebuild.py` declares them in `examples/_shared/frame-rowcol.js` as named
+  The frame builder (`examples/_shared/lanes.py`) declares them in `examples/_shared/frame-rowcol.js` as named
   `HouseComponent`s -- `row 4`, `column 7` -- rather than as the transparent
   `type: 301` cages it used to ship. Two reasons: a cage **cannot be named**
   (the app hard-codes `the cage at <cell>`, the identical string for row 1 and
@@ -67,7 +67,7 @@ with `given: true` and its value; a hidden (interactive) clue is an **empty**
 ring cell, `{}`; an interior cell that is not a given is `{}` too. Never store
 the solution or a hidden clue's value: a non-given value is an *entered* digit,
 so the shared link opens with the grid and clues already typed in.
-`framebuild.py` enforces this; the "n entered values on the board" refusal in
+The frame builder's `lanes.Lane.check` enforces this; the "n entered values on the board" refusal in
 `app-solve.mjs` is the symptom when a link gets it wrong.
 
 ## Encoding a puzzle

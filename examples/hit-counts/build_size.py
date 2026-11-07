@@ -5,7 +5,8 @@
 # (OR-Tools), then assembles the whole SudokuMaker document parametrically and
 # encodes it. Clues that stay hidden are the interactive ones: the solver reads
 # them off the line as it solves. The shared machinery (grid, CP-SAT model,
-# carve loop, frame assembly, round-trip check) lives in `_shared/framebuild.py`.
+# carve loop, frame assembly, round-trip check) lives in the shared frame builder
+# (`_shared/board.py`, `carve.py`, `document.py`, `lanes.py`).
 #
 #   uv run examples/hit-counts/build_size.py 4 2 2
 #   uv run examples/hit-counts/build_size.py 6 2 3
@@ -19,7 +20,7 @@
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except that the 9x9 is the board the timing loop and build_link.py reuse, so
-# it lands as PUZZLE_LINK.txt and gen.json (framebuild.RingGlobal.files).
+# it lands as PUZZLE_LINK.txt and gen.json (lanes.RingGlobal.files).
 # --rebuild re-encodes a committed board against the code in the tree right
 # now, with no fresh CP-SAT search.
 #
@@ -40,7 +41,8 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec, main
+from board import Spec
+from lanes import main
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [

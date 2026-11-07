@@ -36,7 +36,7 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
   `examples/_shared/` already does the job, call it; when it almost does,
   extend it. Two kinds of copy are deliberate. A checker re-derives what its
   builder computes, because a check built from the builder's own code passes
-  when that code breaks (`framebuild.Lane.check`). Each frame backend's JS
+  when that code breaks (`lanes.Lane.check`). Each frame backend's JS
   stands alone, because the app runs every backend with no shared scope.
 
 ## Fail loud, never silently no-op

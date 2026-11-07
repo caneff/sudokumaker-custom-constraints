@@ -20,7 +20,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
-from framebuild import RingGlobal, frame_groups, load_board
+from board import load_board
+from document import frame_groups
+from lanes import RingGlobal
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
 from sm_document import GROUPS_INPUT, find_constraint, write_link

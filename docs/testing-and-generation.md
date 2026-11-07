@@ -62,7 +62,8 @@ To generate a puzzle:
    while it stays unique. Carve clues too if you want fewer.
 
 `examples/running-start/build_size.py` does all of this — through the shared
-`_shared/framebuild.py` machinery — and scans several seeds for the leanest
+frame-builder machinery (`_shared/board.py`, `carve.py`, `document.py`,
+`lanes.py`) — and scans several seeds for the leanest
 grid. Note a real finding there: running-start clues are weak,
 so all four sides with **no** interior givens is *not* unique — a few givens are
 unavoidable.

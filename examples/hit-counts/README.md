@@ -344,7 +344,7 @@ finishes it inside the rep cap, which the 9x9 does not. See "Timing" below.
 
 Its rules text carries one extra sentence the global board does not — the
 line is drawn, so it is not a house and a digit may repeat along it
-(`framebuild.LOCAL_RULES_SUFFIX`, shared by every example's local link).
+(`document.LOCAL_RULES_SUFFIX`, shared by every example's local link).
 
 The committed 9x9 board is seed 103: 2 interior givens, 32 shown clues, 4
 interactive. The 6x6 board is seed 102: 0 interior givens, 11 shown clues, 13

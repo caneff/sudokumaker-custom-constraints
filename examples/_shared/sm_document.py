@@ -43,7 +43,7 @@ def find_constraint(doc, constraint_name):
     """The constraint `doc` ships under `constraint_name`.
 
     Raises naming the constraint it could not find: a caller that reaches
-    through this -- `framebuild.refresh_frame_backends`, `frame_and_comment_only`
+    through this -- `document.refresh_frame_backends`, `frame_and_comment_only`
     -- is asserting the board carries it, and a bare StopIteration names
     nothing to go and look for.
     """

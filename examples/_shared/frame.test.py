@@ -75,7 +75,7 @@ def _cells_with_given_ring(W, shown):
     """A board's cell list: every corner is a given, and `shown` names the ring
     keys whose clue cell is a shown given.
 
-    `framebuild` leaves the corners empty, so this is a board it never
+    The frame builder leaves the corners empty, so this is a board it never
     builds -- deliberately, because the guard under test is what stops a
     corner given being drawn as a clue, and only a corner given exercises it.
     """

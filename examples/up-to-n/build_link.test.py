@@ -9,6 +9,7 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from board import load_board, make_lines
 from build_size import (
     CONSTRAINT_NAME,
     MINIMAL_9X9,
@@ -18,12 +19,8 @@ from build_size import (
     shipped_9x9,
     up_to_n,
 )
-from framebuild import (
-    NO_RING_RULES_PREFIX,
-    load_board,
-    make_lines,
-    unique,
-)
+from carve import unique
+from document import NO_RING_RULES_PREFIX
 from link_swap import swap_build
 from minify import minify_file
 from no_ring import NoRing

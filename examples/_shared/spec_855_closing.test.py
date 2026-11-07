@@ -16,7 +16,7 @@ meets it:
      the example;
   4. the backend registers one IsofillComponent and one one-sided skyscraper
      component per clue, and the link ships both components with ties hidden;
-  5. framebuild's interior hook left unset still builds every sudoku ring
+  5. the frame builder's interior hook left unset still builds every sudoku ring
      board: skyscraper's committed 9x9 link rebuilds byte for byte.
 
 WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
@@ -26,7 +26,7 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
     both; the README records the rows.
   - the uniqueness proof itself: verify.py runs it in the seam (about 5 s a
     board); step 2 checks the board is the one that proof ran on.
-  - the ring-only search: framebuild.test.py drives it on toy interiors; the
+  - the ring-only search: carve.test.py drives it on toy interiors; the
     shipped board's search ran once, on 200 seeds, and its result is in the
     README, not re-run here.
 
@@ -49,9 +49,11 @@ EXAMPLE = EXAMPLES / "isofill-skyscraper"
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(EXAMPLE))
 
+from board import load_board
 from build_size import SPEC
 from check_layout import check_example
-from framebuild import FRAME_BACKENDS, RULES_PREFIX, RingGlobal, load_board
+from document import FRAME_BACKENDS, RULES_PREFIX
+from lanes import RingGlobal
 from manifest import load_manifest
 from ring_link import mismatches
 from sudoku_kit.link_codec import decode_puzzle

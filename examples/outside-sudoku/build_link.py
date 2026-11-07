@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_clued
 from build_size import SPEC
-from framebuild import lane_kinds
+from lanes import lane_kinds
 from link_swap import swap_main
 from manifest import load_manifest
 from sudoku_kit.link_codec import decode_puzzle

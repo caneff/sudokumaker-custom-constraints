@@ -19,7 +19,7 @@
 #      corrupted grid -- the solver would simply find the one solution the
 #      clues do describe.
 #   3. The board has exactly one solution, under the same CP-SAT model
-#      build_size.py carved it with (framebuild.unique, SPEC's cp_sat_clue_fn).
+#      build_size.py carved it with (carve.unique, SPEC's cp_sat_clue_fn).
 #
 # So this is a staleness check, not a second opinion on the rule: it shares the
 # generator's model on purpose, and what it catches is a board that outlived
@@ -29,7 +29,7 @@
 # What it deliberately leaves to the neighbours, one home per rule: that a link
 # opens clean (no non-given cell carrying a value) is check_layout.py's, run in
 # the same gate; that a link ships its lane's own components and input is
-# the lanes' own check (framebuild.Lane.check), run by build_size.py.
+# the lanes' own check (lanes.Lane.check), run by build_size.py.
 #
 # Global boards only. A local (--paths) board carries its clues on drawn bent
 # groups rather than on ring keys, so its clue set is not read the way this
@@ -43,8 +43,10 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from board import load_board
 from build_size import SPEC
-from framebuild import RingGlobal, load_board, unique
+from carve import unique
+from lanes import RingGlobal
 from ring_link import interior_index, mismatches, stale_against_grid
 from sudoku_kit.link_codec import decode_puzzle
 

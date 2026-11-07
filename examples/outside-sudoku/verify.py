@@ -19,8 +19,8 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from board import make_lines
 from frame import ring_cell
-from framebuild import make_lines
 from manifest import load_manifest
 from outside_rule import post_membership, window_length_by_region
 from sm_document import find_constraint
