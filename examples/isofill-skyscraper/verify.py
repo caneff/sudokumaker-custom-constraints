@@ -33,7 +33,7 @@ from build_size import MIN_DIGIT, SPEC
 from framebuild import FRAME_BACKENDS, RingGlobal, load_board, unique
 from isofill_model import Board as IsofillBoard
 from isofill_model import model
-from ring_link import mismatches
+from ring_link import mismatches, stale_against_grid
 from sudoku_kit import cpsat
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -73,23 +73,10 @@ def grid_problems(board):
         for key, cells in board.lines.items()
     }
     return (
-        (
-            []
-            if status in cpsat.SOLVED
-            else ["the recorded grid is not an ISOFILL solution"]
-        )
-        + [
-            f"given {key}: gen says {v}, the recorded grid has {grid[key[0]][key[1]]}"
-            for key, v in sorted(board.givens.items())
-            if grid[key[0]][key[1]] != v
-        ]
-        + [
-            f"clue {key[0]}{key[1]}: gen says {board.clue[key]}, "
-            f"the recorded grid reads {read[key]}"
-            for key in sorted(board.lines)
-            if read[key] != board.clue[key]
-        ]
-    )
+        []
+        if status in cpsat.SOLVED
+        else ["the recorded grid is not an ISOFILL solution"]
+    ) + stale_against_grid(board, read)
 
 
 def check(board, link_file):

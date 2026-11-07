@@ -91,6 +91,12 @@ class BareBoard:
         return encode_link(doc), doc, len(clues)
 
     def check(self, link, doc, n_clues):
+        """What a houseless link must satisfy: it decodes back to `doc`, is
+        type `custom`, offers a digit range within 0..MAX_DIGIT, has width x
+        height cells and no houses key, stores no value on a non-given cell,
+        holds exactly `n_clues` givens, and carries the given-digits constraint
+        plus one global constraint with no groups whose only component is
+        `self.component`. Raises AssertionError on the first that fails."""
         back = assert_round_trips(link, doc)
         p = back["puzzle"]
         width, height = p["width"], p["height"]

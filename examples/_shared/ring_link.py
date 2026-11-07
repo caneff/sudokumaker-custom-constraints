@@ -38,6 +38,9 @@ def link_board(doc):
 
 
 def mismatches(doc, givens, shown):
+    """Readable mismatch lines between the link and the gen JSON: the link's
+    interior givens against `givens`, its shown ring clues against `shown`
+    (both keyed as `link_board` keys them). An empty list means they match."""
     link_givens, link_shown = link_board(doc)
     return [
         f"interior given {key}: link {link_givens.get(key)}, gen {givens.get(key)}"
@@ -47,4 +50,21 @@ def mismatches(doc, givens, shown):
         f"shown clue {key[0]}{key[1]}: link {link_shown.get(key)}, gen {shown.get(key)}"
         for key in sorted(set(link_shown) | set(shown))
         if link_shown.get(key) != shown.get(key)
+    ]
+
+
+def stale_against_grid(board, read):
+    """Lines for every gen given or clue the recorded grid contradicts. `board`
+    carries `grid`, `givens` and `clue`; `read` maps each clue key to the value
+    the grid reads there. An empty list means the grid agrees with the gen."""
+    grid = board.grid
+    return [
+        f"given {key}: gen says {v}, the recorded grid has {grid[key[0]][key[1]]}"
+        for key, v in sorted(board.givens.items())
+        if grid[key[0]][key[1]] != v
+    ] + [
+        f"clue {key[0]}{key[1]}: gen says {board.clue[key]}, "
+        f"the recorded grid reads {read[key]}"
+        for key in sorted(board.lines)
+        if read[key] != board.clue[key]
     ]
