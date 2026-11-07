@@ -162,7 +162,7 @@ ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
 `build_original.py`. Empty each and time them.
 
 To count how often the app calls a component's `update` on one run:
-`uv run --with lzstring examples/_shared/count_calls.py skyscraper
+`uv run examples/_shared/count_calls.py skyscraper
 examples/skyscraper/SkyscraperPairComponent.js --ring-clues`. It makes a probe
 copy of the component that `console.log('[probe] calls=...')` every 500
 calls, builds a link from it with `build_link.py --component`, and runs
@@ -254,9 +254,9 @@ node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK.txt 3
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original.txt 3
 
 # Skyscraper: the shipped same-board pairs, emptied first so the solver searches.
-uv run --with lzstring examples/_shared/probe_link.py empty \
+uv run examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK.txt /tmp/sky_ours.txt
-uv run --with lzstring examples/_shared/probe_link.py empty \
+uv run examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK_original.txt /tmp/sky_orig.txt
 node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3 --ring-clues
 node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
@@ -264,9 +264,9 @@ node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
 # ISOFILL: no ring clues, so STRIP (givens only), never `empty`. "Original" is
 # the count-floor-only component before #79; take its link from history.
 git show c5569cd~1:examples/isofill/PUZZLE_LINK.txt > /tmp/iso_orig_full.txt
-uv run --with lzstring examples/_shared/probe_link.py strip \
+uv run examples/_shared/probe_link.py strip \
   examples/isofill/PUZZLE_LINK.txt /tmp/iso_strip.txt
-uv run --with lzstring examples/_shared/probe_link.py strip \
+uv run examples/_shared/probe_link.py strip \
   /tmp/iso_orig_full.txt /tmp/iso_orig_strip.txt
 node examples/_shared/app-solve.mjs /tmp/iso_strip.txt 3
 node examples/_shared/app-solve.mjs /tmp/iso_orig_strip.txt 3

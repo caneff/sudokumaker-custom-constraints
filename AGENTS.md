@@ -136,8 +136,7 @@ the gate (2026-11-04).
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
 - Every test is a standalone script run by name.
 - Python runs in the one project environment (`pyproject.toml`, `uv.lock`):
-  `uv run <file>`. The `uv run --with ...` usage lines in older file headers
-  and READMEs still work; the justfile never passes `--with`.
+  `uv run <file>`; the justfile never passes `--with`.
 - Real-app timing for one example: `just time <example>` — prints a
   paste-ready row; drives the recorded app (HAR replay; `SM_LIVE=1`
   re-records it), so it stays out of both gates. See `docs/real-app-timing.md`.

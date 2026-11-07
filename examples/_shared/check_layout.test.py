@@ -5,7 +5,7 @@
 # trees rather than reuse the real examples/, so a case (a missing file, a
 # bad link name, a dirty link) is exact and does not drift with the repo.
 #
-#   uv run --with lzstring examples/_shared/check_layout.test.py
+#   uv run examples/_shared/check_layout.test.py
 
 import ast
 import contextlib

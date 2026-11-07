@@ -7,12 +7,12 @@
 # them off the line as it solves. The shared machinery (grid, CP-SAT model,
 # carve loop, frame assembly, round-trip check) lives in `_shared/framebuild.py`.
 #
-#   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 4 2 2
-#   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 6 2 3
-#   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3
-#   uv run --with ortools --with lzstring \
+#   uv run examples/hit-counts/build_size.py 4 2 2
+#   uv run examples/hit-counts/build_size.py 6 2 3
+#   uv run examples/hit-counts/build_size.py 9 3 3
+#   uv run \
 #       examples/hit-counts/build_size.py 9 3 3 3 --paths
-#   uv run --with ortools --with lzstring \
+#   uv run \
 #       examples/hit-counts/build_size.py --rebuild 9
 #
 # Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]

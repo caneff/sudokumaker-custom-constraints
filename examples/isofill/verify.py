@@ -1,7 +1,7 @@
 """ISOFILL uniqueness checker (OR-Tools CP-SAT).
 
-    uv run --with ortools examples/isofill/verify.py            # self-check
-    uv run --with ortools examples/isofill/verify.py gen.json
+    uv run examples/isofill/verify.py            # self-check
+    uv run examples/isofill/verify.py gen.json
 
 gen.json: {"grid": [N strings of digits], "clues": [[r, c], ...],
 "minDigit": 0}. The clues name the given cells; their digits come from the

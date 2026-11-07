@@ -4,7 +4,7 @@
 # and `check_layout.check_components` (checked at sweep time, over
 # already-committed links) so the two do not carry their own copies of the
 # same regex. stdlib `re` only, no ortools: `check_layout.py` imports this
-# module under `--with lzstring` alone.
+# module with `lzstring` as its only dependency.
 
 import functools
 import pathlib

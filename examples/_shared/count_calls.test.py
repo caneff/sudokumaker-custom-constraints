@@ -5,7 +5,7 @@
 # live sudokumaker.app is out of reach here; every decision main() makes
 # about what to build and what argv to hand the driver is not.
 #
-#   uv run --with lzstring examples/_shared/count_calls.test.py
+#   uv run examples/_shared/count_calls.test.py
 
 import contextlib
 import io

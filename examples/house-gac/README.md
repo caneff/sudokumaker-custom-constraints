@@ -92,7 +92,7 @@ as the backend and the shipped `examples/_shared/HouseGacComponent.js` as the
 one component:
 
 ```
-uv run --with lzstring examples/house-gac/build_link.py
+uv run examples/house-gac/build_link.py
 ```
 
 `--keep-comments` builds `PUZZLE_LINK_annotated.txt` instead: same board, same
@@ -102,7 +102,7 @@ rather than the usual full strip -- every comment and blank line survives,
 bar the `/* eslint-disable` directive:
 
 ```
-uv run --with lzstring examples/house-gac/build_link.py \
+uv run examples/house-gac/build_link.py \
     --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
 ```
 
@@ -157,7 +157,7 @@ already takes a second committed link with no code change needed here.
   the current code never prunes less than that commit did.
 
 ```
-uv run --with lzstring examples/house-gac/build_link.test.py
+uv run examples/house-gac/build_link.test.py
 node examples/house-gac/soundness-harness.mjs
 node examples/house-gac/update-strength.test.mjs
 node examples/_shared/house-gac.test.mjs

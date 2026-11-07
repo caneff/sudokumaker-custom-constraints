@@ -2,12 +2,12 @@
 shape app-strip.mjs and the link builders read; app-strip.mjs does the
 stripping, in the app.
 
-    uv run --with ortools examples/fillomino/generate.py               # self-check
-    uv run --with ortools examples/fillomino/generate.py sample 7      # a full grid
-    uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # side 9, cap 12
-    uv run --with ortools examples/fillomino/generate.py sample 7 6 9 4 # 6 wide, 4 high, cap 9
-    uv run --with ortools examples/fillomino/generate.py unique gen.json
-    uv run --with ortools examples/fillomino/generate.py unique gen.json 30  # 30s cap
+    uv run examples/fillomino/generate.py               # self-check
+    uv run examples/fillomino/generate.py sample 7      # a full grid
+    uv run examples/fillomino/generate.py sample 7 9 12 # side 9, cap 12
+    uv run examples/fillomino/generate.py sample 7 6 9 4 # 6 wide, 4 high, cap 9
+    uv run examples/fillomino/generate.py unique gen.json
+    uv run examples/fillomino/generate.py unique gen.json 30  # 30s cap
 
 gen.json: {"grid": [H rows of W digits], "clues": [[r, c], ...], "cap": N}. Each
 row is a list of ints -- a joined char string is ambiguous once a digit can

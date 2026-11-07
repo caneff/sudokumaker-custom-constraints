@@ -5,7 +5,7 @@ A link records which cells are GIVEN and what digit each given holds -- not
 the solution grid, which the share checklist keeps out of the blob. That is
 all the scorer needs: it solves from the givens.
 
-    uv run --with lzstring examples/fillomino/hunt_link.py \
+    uv run examples/fillomino/hunt_link.py \
         examples/fillomino/timing-fixture-9x9-cap12-seed10-rung25.txt
 
 Prints {"width": w, "height": h, "cap": d, "givens": {"<cell index>": digit, ...}}, cell
