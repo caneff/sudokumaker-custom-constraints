@@ -124,6 +124,7 @@ suites() {
     run_file test "$f"
   done
   run_file test examples/_shared/check_layout.py
+  run_file test examples/_shared/check_research_loads.py
   for dir in examples/*/; do
     [ "$dir" = examples/_shared/ ] && continue
     for f in "$dir"*.test.mjs "$dir"*.test.py; do

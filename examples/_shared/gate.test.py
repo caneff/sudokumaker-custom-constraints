@@ -78,6 +78,7 @@ LINT = {
 
 SCRIPTS = {
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/_shared/check_research_loads.py",
     "uv run examples/skyscraper/verify.py",
     "uv run examples/isofill-skyscraper/verify.py",
 }

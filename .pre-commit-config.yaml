@@ -39,14 +39,21 @@ repos:
         files: '\.(js|mjs)$'
         pass_filenames: false
 
-  # The layout gate (#879): check_layout's research-load rule (#659) also runs
-  # on a docs-only change, and it reads the whole tree, so the hook takes no
+  # The layout gate (#879): check_layout and the research-load scan (#659) run
+  # on a docs-only change, and each reads the whole tree, so the hooks take no
   # filenames. About 3 s. See docs/testing-and-generation.md.
   - repo: local
     hooks:
       - id: check-layout
         name: check_layout
         entry: uv run examples/_shared/check_layout.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+      - id: check-research-loads
+        name: check_research_loads
+        entry: uv run examples/_shared/check_research_loads.py
         language: system
         pass_filenames: false
         always_run: true

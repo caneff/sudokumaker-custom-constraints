@@ -88,6 +88,8 @@ suite("precommit_layout_hook.test.py", needs=["//:precommit-config"])
 for file in [
     "check_layout.py",
     "check_layout.test.py",
+    "check_research_loads.py",
+    "check_research_loads.test.py",
     "global-backends.test.mjs",
     "size_builders.test.py",
     "spec_855_closing.test.py",
