@@ -18,9 +18,9 @@ import tomllib
 
 import check_layout
 from check_layout import (
-    LinkFacts,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
+    LinkFacts,
     check_digit_range,
     check_gen_frame_backends,
     check_gen_json_parses,
@@ -368,9 +368,9 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 2, violations
         for stray in ("PUZZLE_LINK_local.txt", "gen_local.json"):
-            assert any(
-                "single-lane" in v and stray in v for v in violations
-            ), violations
+            assert any("single-lane" in v and stray in v for v in violations), (
+                violations
+            )
 
     # a `lanes = "global"` example carries neither local file either
     with example(
@@ -380,9 +380,9 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 2, violations
         for stray in ("PUZZLE_LINK_local.txt", "gen_local.json"):
-            assert any(
-                "global-lane" in v and stray in v for v in violations
-            ), violations
+            assert any("global-lane" in v and stray in v for v in violations), (
+                violations
+            )
 
     # a split example ships a local board: both halves of the pair are
     # required, and each is named on its own. Dropping one half also
@@ -1434,7 +1434,9 @@ if __name__ == "__main__":
     assert ordered.backend_titles == (check_layout.CORNERS_TITLE, GRID_BACKEND[1])
     assert "Mine" in ordered.constraint_names, ordered
     # interior: the region cells, or None when the size is not declared
-    regions = LinkFacts.of(doc({"type": 1, "regions": [0, 0, -1, 0, 0, -1, -1, -1, -1]}))
+    regions = LinkFacts.of(
+        doc({"type": 1, "regions": [0, 0, -1, 0, 0, -1, -1, -1, -1]})
+    )
     assert regions.interior == frozenset({0, 1, 3, 4}), regions
     assert LinkFacts.of(doc(width=None)).interior is None
     # reading the titles never minifies a backend (ARCH-8 a)
