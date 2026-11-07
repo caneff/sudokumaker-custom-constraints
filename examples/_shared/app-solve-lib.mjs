@@ -108,7 +108,7 @@ export function loadSummary (rows, loadLog, cpus) {
   }
 }
 
-// Each verdict the app can print, in the order readVerdict tries them: a
+// Each verdict the app can print, in the order verdictOf tries them: a
 // timeout first, since a stopped search can still have printed "unique".
 const VERDICTS = [
   ['timeout', /stopped (solving|counting)/i],
@@ -121,7 +121,7 @@ const VERDICTS = [
 // `.flags` in and rebuild it there.
 export const VERDICT_PATTERN = new RegExp(VERDICTS.map(([, re]) => re.source).join('|'), 'i')
 
-function readVerdict (text) {
+function verdictOf (text) {
   const hit = VERDICTS.find(([, re]) => re.test(text))
   return hit ? hit[0] : '?'
 }
@@ -132,7 +132,7 @@ function readVerdict (text) {
 // null. A timeout still names the first-solve time when the app printed it,
 // so a [timeout] row does not hide whether the app found a first solution.
 export function parseReadout (text) {
-  const verdict = readVerdict(text)
+  const verdict = verdictOf(text)
   if (verdict === '?') return { first: null, unique: null, sum: null, verdict }
   const ms = [...text.matchAll(/took\s+([\d.]+)\s*(ms|s)\b/gi)]
     .map(m => (m[2].toLowerCase() === 's' ? parseFloat(m[1]) * 1000 : parseFloat(m[1])))
@@ -221,16 +221,12 @@ export function marksRejected (text, marksExpected) {
 // -- can also draw a non-black <svg text>, but never at this exact transform.
 // This is the one definition of that layout: the cell reader (parseCells), the
 // click point (cellCenter) and the entered-value count all build on it.
-export const CELL_TRANSFORM = /^translate\((\d+) (\d+)\) scale\(25\)$/
+const CELL_TRANSFORM = /^translate\((\d+) (\d+)\) scale\(25\)$/
 export const isBlack = fill => /^(#000|black|rgb\(0, 0, 0\))$/i.test(fill)
 
 // Where the app draws cell (row, col): its center in the grid <g>'s local
-// coordinates, and the transform of the group that holds its digit.
+// coordinates.
 export const cellCenter = (row, col) => ({ x: 25 + 50 * col, y: 25 + 50 * row })
-export function cellTransform (row, col) {
-  const { x, y } = cellCenter(row, col)
-  return `translate(${x} ${y}) scale(25)`
-}
 
 // The cell list: `raw` is one { content, fill, transform } per <svg text> on
 // the page (`transform` is its closest transformed ancestor <g>'s, or null).
@@ -245,10 +241,10 @@ export function parseCells (raw) {
 }
 
 // A board's digits as strings of single digits ('.' for a cell with none).
-// `size` is the board's side; left out, it is the farthest cell found + 1, so
-// a board of any size reads whole, but one whose last row or column holds no
-// digit reads smaller: a caller that knows the size passes it.
-export function gridRows (cells, size = 1 + Math.max(-1, ...cells.map(c => Math.max(c.row, c.col)))) {
+// `size` is the board's side, and the caller must pass it: the cells alone
+// cannot tell a board whose last row or column is empty from a smaller one.
+export function gridRows (cells, size) {
+  if (!Number.isInteger(size) || size < 1) throw new Error(`gridRows: board size required, got ${size}`)
   const rows = Array.from({ length: size }, () => Array(size).fill('.'))
   for (const c of cells) {
     const v = c.content.trim()

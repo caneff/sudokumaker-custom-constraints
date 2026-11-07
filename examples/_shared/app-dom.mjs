@@ -46,8 +46,8 @@ export async function readCells (page) {
   return parseCells(raw)
 }
 
-// The digits the app draws, as one string per row ('.' for a cell with none);
-// see gridRows for `size`.
+// The digits the app draws on a `size`-wide board, as one string per row ('.'
+// for a cell with none). The caller gives the size: see gridRows.
 export const readGrid = async (page, size) => gridRows(await readCells(page), size)
 
 // Screen point of cell (row, col)'s center, via the grid <g>'s own CTM: this

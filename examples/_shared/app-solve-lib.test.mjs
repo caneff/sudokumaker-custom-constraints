@@ -5,7 +5,7 @@
 import assert from 'assert'
 import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
-import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, cellTransform, cellCenter, parseCells, gridRows, solveSummary, busyThreshold, readLoad, busyMessage, isBusy, timeReps, loadSummary } from './app-solve-lib.mjs'
+import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, cellCenter, parseCells, gridRows, solveSummary, busyThreshold, readLoad, busyMessage, isBusy, timeReps, loadSummary } from './app-solve-lib.mjs'
 
 // first "took" only, no verdict yet: all three times report null
 // The solve phase printed its "took" but the uniqueness search has not
@@ -229,7 +229,6 @@ assert.strictEqual(parseVersion('no footer here'), null)
 // The cell reader: one parse of the page's `svg text` elements feeds the grid
 // read, the click point and the entered-value count.
 {
-  assert.strictEqual(cellTransform(2, 3), 'translate(175 125) scale(25)')
   assert.deepStrictEqual(cellCenter(2, 3), { x: 175, y: 125 })
   const raw = [
     { content: '5', fill: '#000', transform: 'translate(25 75) scale(25)' },
@@ -239,14 +238,18 @@ assert.strictEqual(parseVersion('no footer here'), null)
   ]
   const cells = parseCells(raw)
   assert.deepStrictEqual(cells.map(c => [c.row, c.col, c.content]), [[1, 0, '5'], [0, 10, '7']])
-  assert.strictEqual(cells[0].transform, cellTransform(1, 0))
+  assert.strictEqual(cells[0].transform, 'translate(25 75) scale(25)')
   assert.strictEqual(countEnteredValues(cells), 1)
-  // size follows the farthest cell, so an 11-wide board is not clipped to 9
-  const rows = gridRows(cells)
-  assert.strictEqual(rows.length, 11)
+  // an 11-wide board is not clipped to 9, and an empty last row and column
+  // still read as part of the board
+  const rows = gridRows(cells, 12)
+  assert.strictEqual(rows.length, 12)
   assert.strictEqual(rows[1][0], '5')
   assert.strictEqual(rows[0][10], '7')
-  assert.strictEqual(gridRows(cells, 12).length, 12)
+  assert.strictEqual(rows[11], '............')
+  // the size is the caller's to give: the cells cannot tell an empty edge
+  // row from a smaller board
+  assert.throws(() => gridRows(cells), /board size required, got undefined/)
   // 9x9 grid with one digit, written out
   assert.deepStrictEqual(gridRows(parseCells([raw[0]]), 9), ['.........', '5........', ...Array(7).fill('.........')])
 }
@@ -312,7 +315,7 @@ assert.strictEqual(parseVersion('no footer here'), null)
 
 // VERDICT_PATTERN: the one readout the drivers wait for
 // app-solve.mjs and app-strip.mjs both wait in the page for a verdict. Every
-// readout readVerdict classifies must end that wait, and nothing else may: a
+// readout parseReadout classifies must end that wait, and nothing else may: a
 // wait that ends on a first-solve "took" times half the run.
 {
   const readouts = {

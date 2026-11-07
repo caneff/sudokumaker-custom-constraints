@@ -16,6 +16,7 @@ const live = process.argv.includes('--live')
 const linkFile = process.argv.slice(2).find(a => !a.startsWith('--')) ?? join(HERE, 'PUZZLE_LINK.txt')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 const gen = JSON.parse(fs.readFileSync(join(HERE, 'gen.json'), 'utf8'))
+const size = gen.grid.length
 
 await withApp({ live }, async app => {
   const page = await app.newPage()
@@ -23,7 +24,7 @@ await withApp({ live }, async app => {
 
   let opening, title, rules
   const readOpening = async openPage => {
-    opening = await readGrid(openPage)
+    opening = await readGrid(openPage, size)
     title = await openPage.title()
 
     // The rules text shows on the play page, which "Playtest" opens in a new tab.
@@ -39,7 +40,7 @@ await withApp({ live }, async app => {
 
   const { first, unique, sum, verdict, version } = await solveInApp(page, link, { afterOpen: readOpening, ringClues: true, deterministic: false, name: linkFile })
   if (verdict === '?') throw new Error('no verdict from the app')
-  const solved = await readGrid(page)
+  const solved = await readGrid(page, size)
 
   console.log(JSON.stringify({
     source: live ? 'live sudokumaker.app' : 'recorded app',

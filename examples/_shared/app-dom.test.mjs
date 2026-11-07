@@ -59,7 +59,9 @@ await assert.rejects(solveLogically(endless, { now: endless.now }), /did not set
     text('4', '#000', 'translate(25 25) scale(25)'),
     text('8', 'rgb(82, 116, 234)', 'translate(275 75) scale(25)'),
     text('2', '#fff', 'translate(1 1) scale(0.02)'),
-    text('6', '#000', null)
+    text('6', '#000', null),
+    // no fill attribute: the reader falls back to the computed style
+    text('3', null, 'translate(125 75) scale(25)')
   ]
   const outerG = { getScreenCTM: () => 'ctm' }
   const svg = {
@@ -70,11 +72,12 @@ await assert.rejects(solveLogically(endless, { now: endless.now }), /did not set
   const doc = {
     querySelectorAll: sel => (sel === 'svg text' ? texts : sel === 'svg' ? [svg] : [])
   }
-  const page = { evaluate: async (fn, arg) => { globalThis.document = doc; globalThis.window = { getComputedStyle: () => ({ fill: '' }) }; return fn(arg) } }
+  const page = { evaluate: async (fn, arg) => { globalThis.document = doc; globalThis.window = { getComputedStyle: t => ({ fill: t.textContent === '3' ? 'rgb(0, 0, 0)' : '' }) }; return fn(arg) } }
 
   const cells = await readCells(page)
-  assert.deepStrictEqual(cells.map(c => [c.row, c.col, c.content, c.fill]), [[0, 0, '4', '#000'], [1, 5, '8', 'rgb(82, 116, 234)']])
-  assert.deepStrictEqual(await readGrid(page), ['4.....', '.....8', '......', '......', '......', '......'])
+  assert.deepStrictEqual(cells.map(c => [c.row, c.col, c.content, c.fill]), [[0, 0, '4', '#000'], [1, 5, '8', 'rgb(82, 116, 234)'], [1, 2, '3', 'rgb(0, 0, 0)']])
+  // a 7-wide board whose last row and column are empty reads whole
+  assert.deepStrictEqual(await readGrid(page, 7), ['4......', '..3..8.', '.......', '.......', '.......', '.......', '.......'])
   assert.deepStrictEqual(await cellScreenPoint(page, 1, 5), { x: 550, y: 150 })
 }
 

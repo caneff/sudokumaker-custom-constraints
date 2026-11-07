@@ -51,22 +51,16 @@
 
 import fs from 'fs'
 import path from 'path'
-import { isBlack } from './app-solve-lib.mjs'
+import { fileURLToPath } from 'url'
+import { ALREADY_ENTERED, isBlack } from './app-solve-lib.mjs'
 import { withApp, readVerdict } from './app-session.mjs'
 import { clickText, clickIcon, makeDeterministic, openWidePad, enterDigit, readCells, cellScreenPoint } from './app-dom.mjs'
 import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
 
-const { linkFile, outFile, gridFile, seed } = parseArgs(process.argv.slice(2))
-
-const link = fs.readFileSync(linkFile, 'utf8').trim()
-const spec = JSON.parse(fs.readFileSync(gridFile, 'utf8'))
-const grid = spec.grid
-const startClues = spec.clues.map(([r, c]) => [r, c])
-
-// The digit drawn at cell (row, col) and its fill, or null when it holds none.
-async function cellFill (page, row, col) {
-  const cell = (await readCells(page)).find(c => c.row === row && c.col === col && c.content.trim() !== '')
-  return cell ? { content: cell.content, fill: cell.fill } : null
+// The cell the app draws a digit in at (row, col), as readCells returns it,
+// or undefined when it holds none.
+async function cellDigit (page, row, col) {
+  return (await readCells(page)).find(c => c.row === row && c.col === col && c.content.trim() !== '')
 }
 
 async function selectCell (page, row, col) {
@@ -106,63 +100,83 @@ async function trySolveWithout (page, row, col) {
   await page.waitForTimeout(200)
 
   if (!await clickIcon(page, 'ShowCandidates')) throw new Error('solve button not found: Icon ShowCandidates')
-  // a missing verdict within the cap reads as '?'
-  return readVerdict(page, { timeout: 30000, settleMs: 200, name: `(${row},${col})` })
+  return readTrialVerdict(page, row, col)
+}
+
+// One trial's verdict for removing (row, col)'s given. A missing verdict
+// within the 30 s cap reads as '?'. A verdict judged from entered values or
+// marks is refused: settleAfterSolve clears them before every trial.
+export function readTrialVerdict (page, row, col) {
+  return readVerdict(page, {
+    timeout: 30000,
+    settleMs: 200,
+    refusal: `(${row},${col}): verdict was judged "${ALREADY_ENTERED} and pencil marks" -- ` +
+      'the board was not clean before this solve; settleAfterSolve should have caught this'
+  })
 }
 
 async function restoreGiven (page, row, col, digit) {
   await selectCell(page, row, col)
   await enterDigit(page, digit)
   await page.waitForTimeout(150)
-  const restored = await cellFill(page, row, col)
+  const restored = await cellDigit(page, row, col)
   if (!restored || restored.content !== String(digit) || !isBlack(restored.fill)) {
-    throw new Error(`(${row},${col}): restore failed -- expected given "${digit}" (fill #000), ` +
-      `got ${JSON.stringify(restored)}`)
+    throw new Error(`(${row},${col}): restore failed -- expected given "${digit}" (a black fill), ` +
+      `got ${JSON.stringify(restored ?? null)}`)
   }
 }
 
-const order = seededShuffle(startClues, seed)
-const kept = order.slice()
-const outPath = path.resolve(outFile)
+async function main () {
+  const { linkFile, outFile, gridFile, seed } = parseArgs(process.argv.slice(2))
+  const link = fs.readFileSync(linkFile, 'utf8').trim()
+  const spec = JSON.parse(fs.readFileSync(gridFile, 'utf8'))
+  const grid = spec.grid
+  const startClues = spec.clues.map(([r, c]) => [r, c])
+  const order = seededShuffle(startClues, seed)
+  const kept = order.slice()
+  const outPath = path.resolve(outFile)
 
-await withApp({ live: false }, async app => {
-  const page = await app.newPage()
-  await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
-  await page.waitForTimeout(1500)
-  await makeDeterministic(page)
-  if (grid.some(row => row.some(v => v > 9))) await openWidePad(page)
+  await withApp({ live: false }, async app => {
+    const page = await app.newPage()
+    await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
+    await page.waitForTimeout(1500)
+    await makeDeterministic(page)
+    if (grid.some(row => row.some(v => v > 9))) await openWidePad(page)
 
-  for (let i = 0; i < kept.length;) {
-    const [row, col] = kept[i]
-    const digit = grid[row][col]
+    for (let i = 0; i < kept.length;) {
+      const [row, col] = kept[i]
+      const digit = grid[row][col]
 
-    let readout = await trySolveWithout(page, row, col)
-    let verdict = readout.verdict
-    if (verdict === '?') {
-      await settleAfterSolve(page)
-      readout = await trySolveWithout(page, row, col)
-      // the retry's verdict is final, whatever it is: never a second retry
-      verdict = readout.verdict
-    }
-
-    if (verdict === 'unique') {
-      kept.splice(i, 1)
-      console.log(`${kept.length} givens  ${verdict}  ${readout.sum} ms`)
-      fs.writeFileSync(outPath, outputJson(grid, kept))
-    } else {
-      await settleAfterSolve(page)
-      await restoreGiven(page, row, col, digit)
-      console.log(`keep (${row},${col})  (${verdict})`)
-      if (verdict === 'timeout') {
-        const timeoutPath = outPath.replace(/\.json$/, `.timeout-${kept.length}.json`)
-        fs.writeFileSync(timeoutPath, outputJson(grid, kept))
+      let readout = await trySolveWithout(page, row, col)
+      let verdict = readout.verdict
+      if (verdict === '?') {
+        await settleAfterSolve(page)
+        readout = await trySolveWithout(page, row, col)
+        // the retry's verdict is final, whatever it is: never a second retry
+        verdict = readout.verdict
       }
-      i++
-      continue
+
+      if (verdict === 'unique') {
+        kept.splice(i, 1)
+        console.log(`${kept.length} givens  ${verdict}  ${readout.sum} ms`)
+        fs.writeFileSync(outPath, outputJson(grid, kept))
+      } else {
+        await settleAfterSolve(page)
+        await restoreGiven(page, row, col, digit)
+        console.log(`keep (${row},${col})  (${verdict})`)
+        if (verdict === 'timeout') {
+          const timeoutPath = outPath.replace(/\.json$/, `.timeout-${kept.length}.json`)
+          fs.writeFileSync(timeoutPath, outputJson(grid, kept))
+        }
+        i++
+        continue
+      }
+
+      await settleAfterSolve(page)
     }
 
-    await settleAfterSolve(page)
-  }
+    console.log(`minimum ${kept.length} givens`)
+  })
+}
 
-  console.log(`minimum ${kept.length} givens`)
-})
+if (fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) await main()

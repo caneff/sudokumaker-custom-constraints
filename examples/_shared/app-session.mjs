@@ -100,19 +100,19 @@ export async function solveInApp (page, link, { iconName = 'ShowCandidates', aft
   // Wait for the VERDICT, not the first "took": the solve phase prints its
   // "took" before the uniqueness search finishes, and reading then times only
   // the first phase.
-  const { text, ...readout } = await readVerdict(page, { marksExpected: ringClues || afterLogical, alsoWaitFor, timeout: timeoutMs, settleMs: 300, name })
+  const refusal = `${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it is no timing; strip the link first`
+  const { text, ...readout } = await readVerdict(page, { marksExpected: ringClues || afterLogical, alsoWaitFor, timeout: timeoutMs, refusal })
   return { ...readout, version: parseVersion(text), text }
 }
 
 // Wait for the app's VERDICT on `page`, then read the readout. The wait ends
 // on the verdict pattern, or on `alsoWaitFor` (a RegExp) for a link the app
 // rejects outright; a wait that times out falls through, and the readout then
-// reports verdict '?' with null times. Throws when the app judged the verdict
-// "based on already entered values" and `marksExpected` is false: that verifies
-// a part-filled board instead of searching, so it proves nothing. `name` is
-// what the error calls the board. Returns parseReadout's record plus the page
-// `text` it came from.
-export async function readVerdict (page, { marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300, name = 'board' } = {}) {
+// reports verdict '?' with null times. Throws `refusal`, the caller's own
+// message, when the app judged the verdict "based on already entered values"
+// and `marksExpected` is false: that verifies a part-filled board instead of
+// searching. Returns parseReadout's record plus the page `text` it came from.
+export async function readVerdict (page, { refusal, marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300 }) {
   try {
     await page.waitForFunction(
       ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
@@ -122,7 +122,7 @@ export async function readVerdict (page, { marksExpected = false, alsoWaitFor = 
   await page.waitForTimeout(settleMs)
   const text = await page.evaluate(() => document.body.innerText)
   if (marksRejected(text, marksExpected)) {
-    throw new Error(`${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it proves nothing; strip the board first`)
+    throw new Error(refusal)
   }
   return { ...parseReadout(text), text }
 }
