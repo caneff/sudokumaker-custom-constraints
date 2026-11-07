@@ -1368,6 +1368,37 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 1 and "rules prefix" in violations[0], violations
 
+    # a document whose cells do not fill width x height has no ring to judge:
+    # ten given cells on a 3x3 would read as a full ring if the size guard
+    # were gone, and the share check says nothing about it
+    misfit = {
+        "width": 3,
+        "height": 3,
+        "comment": RULES_PREFIX,
+        "cells": [{"value": 1, "given": True} for _ in range(10)],
+        "constraints": [],
+    }
+    widget = pathlib.Path("widget")
+    assert (
+        check_layout.check_share_ready(
+            widget,
+            widget / "PUZZLE_LINK.txt",
+            misfit,
+            Manifest(timed_component="WidgetComponent"),
+            LinkFacts.of(misfit),
+        )
+        == []
+    )
+    fits = dict(misfit, cells=misfit["cells"][:9])
+    found = check_layout.check_share_ready(
+        widget,
+        widget / "PUZZLE_LINK.txt",
+        fits,
+        Manifest(timed_component="WidgetComponent"),
+        LinkFacts.of(fits),
+    )
+    assert len(found) == 1 and "fills all 8 ring cells" in found[0], found
+
     # LinkFacts classifies a decoded link once, from the raw document alone
     def doc(*constraints, **top):
         return {
