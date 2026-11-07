@@ -215,13 +215,47 @@ export function marksRejected (text, marksExpected) {
 // A cell's own digit -- given or entered -- renders as an <svg text> whose
 // closest ancestor <g> carrying a `transform` sits at that cell's center:
 // `translate(<25+50*col> <25+50*row>) scale(25)`, col and row non-negative
-// integers (see app-strip.mjs's cellFill; some boards wrap the text in an
-// untransformed styling <g> first, so this must walk up to the nearest
-// transformed one, not just the direct parent). A constraint's own
-// decoration -- e.g. Hit Counts' white ring total -- can also draw a
-// non-black <svg text>, but never at this exact transform.
-const CELL_TRANSFORM = /^translate\(\d+ \d+\) scale\(25\)$/
-const isBlack = fill => /^(#000|black|rgb\(0, 0, 0\))$/i.test(fill)
+// integers (some boards wrap the text in an untransformed styling <g> first,
+// so a reader must walk up to the nearest transformed one, not just the direct
+// parent). A constraint's own decoration -- e.g. Hit Counts' white ring total
+// -- can also draw a non-black <svg text>, but never at this exact transform.
+// This is the one definition of that layout: the cell reader (parseCells), the
+// click point (cellCenter) and the entered-value count all build on it.
+export const CELL_TRANSFORM = /^translate\((\d+) (\d+)\) scale\(25\)$/
+export const isBlack = fill => /^(#000|black|rgb\(0, 0, 0\))$/i.test(fill)
+
+// Where the app draws cell (row, col): its center in the grid <g>'s local
+// coordinates, and the transform of the group that holds its digit.
+export const cellCenter = (row, col) => ({ x: 25 + 50 * col, y: 25 + 50 * row })
+export function cellTransform (row, col) {
+  const { x, y } = cellCenter(row, col)
+  return `translate(${x} ${y}) scale(25)`
+}
+
+// The cell list: `raw` is one { content, fill, transform } per <svg text> on
+// the page (`transform` is its closest transformed ancestor <g>'s, or null).
+// Keeps the ones at a cell transform, each with its { row, col } parsed out.
+export function parseCells (raw) {
+  const cells = []
+  for (const r of raw) {
+    const m = CELL_TRANSFORM.exec(r.transform || '')
+    if (m) cells.push({ ...r, col: Math.round((+m[1] - 25) / 50), row: Math.round((+m[2] - 25) / 50) })
+  }
+  return cells
+}
+
+// A board's digits as strings of single digits ('.' for a cell with none).
+// `size` is the board's side; left out, it is the farthest cell found + 1, so
+// a board of any size reads whole, but one whose last row or column holds no
+// digit reads smaller: a caller that knows the size passes it.
+export function gridRows (cells, size = 1 + Math.max(-1, ...cells.map(c => Math.max(c.row, c.col)))) {
+  const rows = Array.from({ length: size }, () => Array(size).fill('.'))
+  for (const c of cells) {
+    const v = c.content.trim()
+    if (/^[1-9]$/.test(v) && c.row < size && c.col < size) rows[c.row][c.col] = v
+  }
+  return rows.map(r => r.join(''))
+}
 
 // Count entered (non-given) cell values. `cells` is [{ fill, transform }],
 // one per <svg text> found on the page: `fill` is that text's own fill, and

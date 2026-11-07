@@ -1,8 +1,10 @@
 // Open a puzzle in the real SudokuMaker app and read its verdict -- written
-// once, for the timing driver (app-solve.mjs) and the probes that open a
-// fresh page per solve. app-strip.mjs keeps its own loop: it solves many times
-// on one page, which solveInApp, reloading the link each call, cannot do. What counts as a verdict is app-solve-lib.mjs's
-// (ADR-0001: the app's readout is the only verdict).
+// once, for the timing driver (app-solve.mjs), the probes that open a fresh
+// page per solve, and app-strip.mjs. app-strip.mjs solves many times on one
+// page, which solveInApp, reloading the link each call, cannot do: it runs
+// inside withApp and reads each verdict with readVerdict, the read solveInApp
+// makes too. What counts as a verdict is app-solve-lib.mjs's (ADR-0001: the
+// app's readout is the only verdict).
 //
 //   await withApp({ live: false }, async app => {
 //     const page = await app.newPage()
@@ -16,7 +18,7 @@
 
 import { chromium } from 'playwright'
 import { ALREADY_ENTERED, VERDICT_PATTERN, countEnteredValues, marksRejected, parseReadout, parseVersion } from './app-solve-lib.mjs'
-import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
+import { clickIcon, makeDeterministic, readCells, solveLogically, useRecordedApp } from './app-dom.mjs'
 
 const VIEWPORT = { width: 1400, height: 900 }
 
@@ -59,13 +61,7 @@ export async function withApp ({ live = false } = {}, fn) {
 // for how a real cell digit is told apart from a constraint's own decoration
 // text.
 async function checkSearchable (page, name) {
-  const cells = await page.evaluate(() =>
-    [...document.querySelectorAll('svg text')].map(t => {
-      const fill = t.getAttribute('fill') || window.getComputedStyle(t).fill
-      const cellGroup = t.closest('g[transform]')
-      const transform = cellGroup ? cellGroup.getAttribute('transform') : null
-      return { fill, transform }
-    }))
+  const cells = await readCells(page)
   const entered = countEnteredValues(cells)
   if (entered > 0) {
     throw new Error(`${name}: ${entered} entered values on the board; strip it first ` +
@@ -104,16 +100,29 @@ export async function solveInApp (page, link, { iconName = 'ShowCandidates', aft
   // Wait for the VERDICT, not the first "took": the solve phase prints its
   // "took" before the uniqueness search finishes, and reading then times only
   // the first phase.
+  const { text, ...readout } = await readVerdict(page, { marksExpected: ringClues || afterLogical, alsoWaitFor, timeout: timeoutMs, settleMs: 300, name })
+  return { ...readout, version: parseVersion(text), text }
+}
+
+// Wait for the app's VERDICT on `page`, then read the readout. The wait ends
+// on the verdict pattern, or on `alsoWaitFor` (a RegExp) for a link the app
+// rejects outright; a wait that times out falls through, and the readout then
+// reports verdict '?' with null times. Throws when the app judged the verdict
+// "based on already entered values" and `marksExpected` is false: that verifies
+// a part-filled board instead of searching, so it proves nothing. `name` is
+// what the error calls the board. Returns parseReadout's record plus the page
+// `text` it came from.
+export async function readVerdict (page, { marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300, name = 'board' } = {}) {
   try {
     await page.waitForFunction(
       ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
       [alsoWaitFor ? `${VERDICT_PATTERN.source}|${alsoWaitFor.source}` : VERDICT_PATTERN.source, VERDICT_PATTERN.flags],
-      { timeout: timeoutMs })
+      { timeout })
   } catch { /* fall through; a missing verdict shows as a null time */ }
-  await page.waitForTimeout(300)
+  await page.waitForTimeout(settleMs)
   const text = await page.evaluate(() => document.body.innerText)
-  if (marksRejected(text, ringClues || afterLogical)) {
-    throw new Error(`${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it is no timing; strip the link first`)
+  if (marksRejected(text, marksExpected)) {
+    throw new Error(`${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it proves nothing; strip the board first`)
   }
-  return { ...parseReadout(text), version: parseVersion(text), text }
+  return { ...parseReadout(text), text }
 }
