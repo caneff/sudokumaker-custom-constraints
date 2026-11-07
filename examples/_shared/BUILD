@@ -54,6 +54,7 @@ for file in [
     "harness-parity.test.mjs",
     "lanes.test.py",
     "manifest.test.py",
+    "manifest_spec.test.py",
     "minify.test.py",
     "recovery-lib.test.mjs",
     "sm_document.test.py",
