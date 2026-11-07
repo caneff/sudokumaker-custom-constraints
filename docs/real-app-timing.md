@@ -82,6 +82,14 @@ paste-ready row per mode (date, app version, board, both medians, ratio, and
 that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
 `two-row rule:` line. Byte-equal candidate code prints baseline-only rows.
 
+Two modules own that loop. `examples/_shared/app_timing.py` is the driver:
+`app_solve` runs `app-solve.mjs`, `run_app_solve` and `combine_reps` interleave
+and aggregate the reps, and `build_row`, `build_link_row` and `ship_verdict`
+pin the row format and the two-row rule; `just time-link` and `count_calls.py`
+import it directly. `examples/_shared/time_example.py` resolves the candidate
+(component file, backend file, the swapped link) and calls the driver. Their
+offline tests are `app_timing.test.py` and `time_example.test.py`.
+
 The baseline is the link file on disk, and the paste target that built it is
 identified at git HEAD. So **time before you regenerate**: a `PUZZLE_LINK*.txt`
 rebuilt against edited code is not a baseline — the link the candidate would be

@@ -160,6 +160,9 @@ suite(
 # its own in a temporary directory.
 suite("time_example.test.py", needs=["//:tree"], tools=["git"])
 
+# Row building, verdicts and rep aggregation, with the browser call faked.
+suite("app_timing.test.py")
+
 # Row building and argument handling for `just time-link`; the browser call is
 # faked.
 suite("time_link.test.py")
