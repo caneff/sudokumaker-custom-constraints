@@ -30,6 +30,7 @@ from framebuild import (
     RULES_PREFIX,
     SOLVE_LIMIT,
     Board,
+    Geometry,
     RingGlobal,
     RingLocal,
     Spec,
@@ -289,7 +290,7 @@ def test_run_and_rebuild_check_the_link_before_writing_it():
     fields = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
     with _spec(["FooComponent.js"], **fields) as spec:
         try:
-            Unruled(spec).run(n, bh, bw, range(101, 103))
+            Unruled(spec).run(Geometry.square(n, bh, bw), range(101, 103))
         except AssertionError as e:
             assert "Normal sudoku rules apply" in str(e), e
         else:
@@ -812,12 +813,32 @@ def test_unique_is_the_cp_sat_double_solve():
     ) != unique(_post_first_digit, clued), "the active clue set must change the answer"
 
 
+def test_geometry_is_one_value_for_a_square_or_a_rectangle():
+    sq = Geometry.square(4, 2, 2)
+    assert (sq.n, sq.height, sq.digits, sq.box) == (4, 4, 4, (2, 2))
+    assert sq.shape == {}
+    rect = Geometry.rect(5, 3, 4)
+    assert (rect.n, rect.height, rect.digits, rect.box) == (5, 3, 4, None)
+    assert rect.shape == {"height": 3, "digits": 4}
+    try:
+        sq.n = 5
+    except dataclasses.FrozenInstanceError:
+        pass
+    else:
+        raise AssertionError("a Geometry was mutated")
+    # a Board derives its geometry from its flat fields, so gen JSON is unchanged
+    flat = {"grid": [], "clue": {}, "givens": {}, "active": set(), "lines": {}}
+    assert Board(n=4, bh=2, bw=2, height=4, digits=4, **flat).geo == sq
+    # a rectangle's recorded box is a stand-in nothing reads: geo drops it
+    assert Board(n=5, bh=1, bw=5, height=3, digits=4, **flat).geo == rect
+
+
 def test_generate_carves_a_unique_and_minimal_board():
     n, bh, bw = 4, 2, 2
     with _spec(
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
-        board = generate(spec, n, bh, bw, range(101, 104))
+        board = generate(spec, Geometry.square(n, bh, bw), range(101, 104))
         assert board.seed in range(101, 104)
         assert (board.n, board.bh, board.bw) == (n, bh, bw)
         assert _valid_sudoku(board.grid, n, bh, bw)
@@ -846,7 +867,7 @@ def test_generate_carves_a_unique_and_minimal_board():
         # paths=True draws bent paths instead of frame lines, and keeps only a
         # seed whose lines repeat a digit -- the property that makes the board
         # a bare-line fixture rather than a frame board in disguise
-        bent = generate(spec, n, bh, bw, range(101, 106), paths=True)
+        bent = generate(spec, Geometry.square(n, bh, bw), range(101, 106), paths=True)
         assert repeating_lines(bent.grid, bent.lines), (
             "a paths board must repeat a digit"
         )
@@ -855,7 +876,7 @@ def test_generate_carves_a_unique_and_minimal_board():
     # a rule whose clues constrain nothing forces the other half of generate:
     # the interior-given carve, which the clue-only board above never reaches
     with _spec(["FooComponent.js"]) as spec:  # clue_fn 0, cp_sat posts nothing
-        board = generate(spec, n, bh, bw, range(101, 103))
+        board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
         assert board.givens, "a board its clues cannot pin needs interior givens"
         assert unique(spec.cp_sat_clue_fn, board)
         for cell in sorted(board.givens):
@@ -1166,7 +1187,7 @@ def test_run_takes_its_arguments_and_never_reads_sys_argv():
         ) as spec,
         mock.patch.object(sys, "argv", ["build_size.py", "not-a-size", "--bogus"]),
     ):
-        RingGlobal(spec).run(n, bh, bw, range(107, 109))
+        RingGlobal(spec).run(Geometry.square(n, bh, bw), range(107, 109))
         link_path, gen_path = RingGlobal(spec).files(n)
         assert link_path.exists()
         # the seeds it searched are the ones it was handed, not a default range
@@ -1220,7 +1241,7 @@ _TOY = {
 def test_generate_and_unique_use_the_spec_s_own_grid_and_model():
     n, bh, bw = 4, 2, 2
     with _spec(["FooComponent.js"], **_TOY) as spec:
-        board = generate(spec, n, bh, bw, range(101, 103))
+        board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
         assert board.grid == _striped_grid(None, n, bh, bw)
         # the model pins every cell, so no interior given is needed
         assert not board.givens
@@ -1268,13 +1289,13 @@ def test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit():
     # and the board it returns still proves unique under the full limit.
     n, bh, bw = 4, 2, 2
     with _spec(["FooComponent.js"], carve_limit=1e-9, **_TOY) as spec:
-        board = generate(spec, n, bh, bw, range(101, 102))
+        board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
         assert len(board.givens) == n * n
         assert board.active == set(make_lines(n))
         assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
     with _spec(["FooComponent.js"], **_TOY) as spec:
         assert spec.carve_limit is None
-        board = generate(spec, n, bh, bw, range(101, 102))
+        board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
         assert not board.givens
 
 
@@ -1287,11 +1308,11 @@ def test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues():
     rule = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
     with _spec(["FooComponent.js"], **rule) as spec:
         assert spec.ring_only is False
-        assert generate(spec, n, bh, bw, range(101, 103)).seed == 101
+        assert generate(spec, Geometry.square(n, bh, bw), range(101, 103)).seed == 101
     with _spec(["FooComponent.js"], ring_only=True, **rule) as spec:
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            board = generate(spec, n, bh, bw, range(101, 103))
+            board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
         assert (board.seed, board.givens, len(board.active)) == (102, {}, 4)
         assert unique(_post_first_digit, board) is True
         assert "2 layouts tried, 2 unique on the ring alone" in out.getvalue()
@@ -1304,7 +1325,7 @@ def test_a_ring_only_search_skips_a_layout_it_has_already_tried():
     with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            board = generate(spec, n, bh, bw, range(101, 104))
+            board = generate(spec, Geometry.square(n, bh, bw), range(101, 104))
         assert board.seed == 101 and not board.givens
         assert "1 layouts tried, 1 unique on the ring alone" in out.getvalue()
 
@@ -1316,7 +1337,7 @@ def test_a_ring_only_search_falls_back_to_interior_givens():
     with _spec(["FooComponent.js"], ring_only=True) as spec:
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            board = generate(spec, n, bh, bw, range(101, 103))
+            board = generate(spec, Geometry.square(n, bh, bw), range(101, 103))
         assert board.givens
         assert unique(spec.cp_sat_clue_fn, board) is True
         assert "2 layouts tried, none proved unique on the ring alone" in out.getvalue()
@@ -1344,7 +1365,7 @@ def test_a_ring_only_search_proves_a_no_verdict_layout_again_at_the_full_limit()
             _no_verdict_unless(lambda b, limit: limit == SOLVE_LIMIT),
             contextlib.redirect_stdout(out),
         ):
-            board = generate(spec, n, bh, bw, range(101, 102))
+            board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
         assert not board.givens and board.active == set(make_lines(n))
         log = out.getvalue()
         assert "seed 101: no verdict on the ring alone inside the carve limit" in log
@@ -1361,7 +1382,7 @@ def test_a_ring_only_fallback_reports_the_layouts_that_never_reached_a_verdict()
             _no_verdict_unless(lambda b, limit: bool(b.givens)),
             contextlib.redirect_stdout(out),
         ):
-            board = generate(spec, n, bh, bw, range(101, 102))
+            board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
         assert board.givens
         log = out.getvalue()
         assert "seed 101: still no verdict on the ring alone" in log
@@ -1386,7 +1407,7 @@ def test_a_ring_only_fallback_carves_the_layouts_the_search_drew():
 
     with _spec(["FooComponent.js"], ring_only=True, grid_fn=drifting_grid) as spec:
         with contextlib.redirect_stdout(io.StringIO()):
-            board = generate(spec, n, bh, bw, range(101, 102))
+            board = generate(spec, Geometry.square(n, bh, bw), range(101, 102))
         assert board.grid == make_grid(random.Random(101), n, bh, bw)
         assert next(draws) == 1, "the fallback drew the layout again"
 
@@ -1401,7 +1422,7 @@ def test_generate_refuses_a_board_its_final_proof_does_not_confirm():
         contextlib.redirect_stdout(io.StringIO()),
     ):
         try:
-            generate(spec, n, bh, bw, range(101, 102))
+            generate(spec, Geometry.square(n, bh, bw), range(101, 102))
         except AssertionError as e:
             assert "not proved unique" in str(e)
         else:
@@ -1411,7 +1432,7 @@ def test_generate_refuses_a_board_its_final_proof_does_not_confirm():
 def test_a_ring_only_search_refuses_bent_paths():
     with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
         try:
-            generate(spec, 4, 2, 2, range(101, 102), paths=True)
+            generate(spec, Geometry.square(4, 2, 2), range(101, 102), paths=True)
         except ValueError as e:
             assert "straight frame lines" in str(e)
         else:
@@ -1457,6 +1478,7 @@ if __name__ == "__main__":
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()
+    test_geometry_is_one_value_for_a_square_or_a_rectangle()
     test_generate_carves_a_unique_and_minimal_board()
     test_lane_files_plain_names_the_9x9_and_tags_every_other_size()
     test_save_board_and_load_board_round_trip_a_frame_board()

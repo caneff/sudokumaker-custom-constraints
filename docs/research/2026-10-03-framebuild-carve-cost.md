@@ -125,7 +125,7 @@ def unique(post_clue, board):
 framebuild.unique = unique
 n, bh, bw, k = map(int, sys.argv[1:5])
 t = time.perf_counter()
-framebuild.generate(mod.SPEC, n, bh, bw, range(101, 101 + k))
+framebuild.generate(mod.SPEC, framebuild.Geometry.square(n, bh, bw), range(101, 101 + k))
 wall = time.perf_counter() - t
 tot = sum(T.values())
 print(f"\nn={n} seeds={k} wall={wall:.1f}s unique() calls={calls['n']} (no first solution: {calls['none']}, reached 2nd solve: {calls['second']})")
