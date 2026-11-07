@@ -65,9 +65,7 @@ HEAVY = {
 }
 
 # Research tests run by hand, after touching what they cover.
-BY_HAND = {
-    "docs/research/required-digits-gac/required-digits-wrapper.test.mjs",
-}
+BY_HAND = set()
 
 LINT = {
     "npx standard",

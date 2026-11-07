@@ -12,15 +12,15 @@
 // that the GAC variant spells its sibling custom class as
 // `customComponents.Name`, never a bare name.
 //
-// Not part of `just test` (docs/research is not gated, #413) -- run by hand:
+// Part of `just test`; run alone with:
 //
-//   node docs/research/required-digits-gac/required-digits-wrapper.test.mjs
+//   node examples/count-digits-gac/required-digits-wrapper.test.mjs
 
 import assert from 'assert'
-import { makeIo } from '../../../examples/_shared/harness-lib.mjs'
-import { gridGeometry } from '../../../examples/outside-sudoku/grid-geometry.mjs'
+import { makeIo } from '../_shared/harness-lib.mjs'
+import { gridGeometry } from '../outside-sudoku/grid-geometry.mjs'
 
-const { load } = makeIo(new URL('../../../examples/count-digits-gac/required-digits', import.meta.url).pathname)
+const { load } = makeIo(new URL('./required-digits', import.meta.url).pathname)
 
 // The two swap targets the wrapper's `update` can reach: a bare built-in
 // global, and a custom sibling reached only through `customComponents`

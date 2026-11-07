@@ -6,7 +6,9 @@
 > backend and links in `examples/count-digits-gac/required-digits/sparse/`.
 > Each directory's links are renamed `PUZZLE_LINK.txt` (ours) and
 > `PUZZLE_LINK_original.txt` (the built-in). Paths below name where they
-> were when written.
+> were when written. The wrapper test moved with them, to
+> `examples/count-digits-gac/required-digits-wrapper.test.mjs`, and runs in
+> the gate.
 
 A full-strength, drop-in replacement for the app's built-in RequiredDigits
 rule (`RequiredDigitsComponent(name, values, cells)`): Hall's condition on
