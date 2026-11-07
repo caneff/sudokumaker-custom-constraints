@@ -15,7 +15,7 @@ const { truth, width: n, cap } = pinned
 const CELLS = Array.from({ length: n * n }, (_, i) => i)
 installGlobals(1, cap)
 
-// `stamp` is where the search number starts. A wrapped run's marks are
+// `visit` is where the search number starts. A wrapped run's marks are
 // pre-filled with small numbers, the values the restarted count walks through:
 // a guard that restarts the count without clearing the marks reads them as
 // visited. The constructor allocates the marks through newVisitMarks (#736):
@@ -27,15 +27,15 @@ installGlobals(1, cap)
   assert.strictEqual(inst.seen.visitLimit, 0x7FFFFFFF, 'the marks were not allocated through newVisitMarks')
 }
 
-const run = (stamp, reps) => {
+const run = (visit, reps) => {
   const out = []
   for (let rep = 0; rep < reps; rep++) {
     const r = makeRng(2000 + rep).rnd
     const p = makePuzzle(truth, (c, v) => randomCandidates(r, 1, cap, v))
     const inst = {}
     mod.setParams(inst, CELLS, n, n)
-    if (stamp) {
-      inst.visit = stamp
+    if (visit) {
+      inst.visit = visit
       for (let i = 0; i < inst.seen.length; i++) inst.seen[i] = 1 + (i * 7 + rep) % 60
     }
     const log = console.log
@@ -45,12 +45,12 @@ const run = (stamp, reps) => {
   }
   return out
 }
-// Every distance below the cap: each of the stamp's call sites is, for some
+// Every distance below the cap: each of the visit counter's call sites is, for some
 // distance, the one that wraps.
 const fresh = run(0, 4)
 for (let below = 0; below < 600; below++) {
-  const stamp = 0x7FFFFFFF - below
-  assert.deepStrictEqual(run(stamp, 4), fresh, `stamp ${stamp.toString(16)} changed what update deduces`)
+  const visit = 0x7FFFFFFF - below
+  assert.deepStrictEqual(run(visit, 4), fresh, `visit ${visit.toString(16)} changed what update deduces`)
 }
-assert.deepStrictEqual(run(0xFFFFFFF0, 4), fresh, 'a stamp past the Int32 range changed what update deduces')
+assert.deepStrictEqual(run(0xFFFFFFF0, 4), fresh, 'a visit number past the Int32 range changed what update deduces')
 console.log('PASS')
