@@ -46,7 +46,7 @@ function candidatesAfter (component, masks) {
   const instance = { name: 'house', cells } // as the app's constructor builds it
   component.setParams(instance, cells)
   Array.from(component.update(instance, puzzle))
-  if (puzzle._stopped !== null) return 'stop'
+  if (puzzle.stopMessage() !== null) return 'stop'
   return JSON.stringify(cells.map(c => [...puzzle._cand.get(c)].sort((a, b) => a - b)))
 }
 
