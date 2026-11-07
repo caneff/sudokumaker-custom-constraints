@@ -2,7 +2,6 @@
 # loop: lint and every test except the heavy ones, about 1¾ min.
 # `check-full` is everything, and CI runs it nightly (a push or pull request runs the narrowed seam).
 
-# Fast gate, for the build loop: lint and the unit tests.
 [doc("Fast gate for the build loop: lint plus every test except the heavy ones, about 1¾ min.")]
 check: lint test
 
@@ -16,14 +15,10 @@ check-full: check test-heavy soundness
 # run (`bash tests/all.sh --changed <base>`) read the same listing. The heavy
 # list is there too.
 
-# Lint the Node code (StandardJS) and the Python generators (ruff check +
-# format check), and fail when uv.lock no longer matches pyproject.toml. The
-# verbatim original/ snippets are excluded.
-[doc("Lint the Node and Python code and check uv.lock matches pyproject.toml.")]
+[doc("Lint the Node and Python code (the verbatim original/ snippets excluded) and check uv.lock matches pyproject.toml.")]
 lint:
     bash tests/all.sh --group lint
 
-# Auto-fix + format in place.
 [doc("Auto-fix and format the Node and Python code in place.")]
 fmt:
     npx standard --fix
@@ -61,7 +56,6 @@ test-heavy-fillomino:
 test-heavy-recovery:
     bash tests/all.sh --group heavy-recovery
 
-# Both heavy groups, in order -- what `check-full` runs locally.
 [doc("Both heavy groups in order, what check-full runs locally.")]
 test-heavy: test-heavy-fillomino test-heavy-recovery
 

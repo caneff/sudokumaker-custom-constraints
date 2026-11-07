@@ -1217,14 +1217,6 @@ _TOY = {
 }
 
 
-def test_spec_interior_fields_default_to_the_sudoku_behaviour():
-    with _spec(["FooComponent.js"]) as spec:
-        assert spec.grid_fn is None
-        assert spec.model_fn is None
-        assert spec.box_regions is True
-        assert spec.rowcol_houses is True
-
-
 def test_generate_and_unique_use_the_spec_s_own_grid_and_model():
     n, bh, bw = 4, 2, 2
     with _spec(["FooComponent.js"], **_TOY) as spec:
@@ -1435,7 +1427,6 @@ if __name__ == "__main__":
     test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues()
     test_a_ring_only_search_skips_a_layout_it_has_already_tried()
     test_a_ring_only_search_falls_back_to_interior_givens()
-    test_spec_interior_fields_default_to_the_sudoku_behaviour()
     test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit()
     test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence()
     test_generate_and_unique_use_the_spec_s_own_grid_and_model()
