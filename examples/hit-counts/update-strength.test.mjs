@@ -339,13 +339,13 @@ function stateOf (start, houses) {
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
   Array.from(cur.update(inst, p))
-  assert.ok(p._stopped !== null, 'the case sweep must stop on a line no arrangement satisfies')
+  assert.ok(p.stopMessage() !== null, 'the case sweep must stop on a line no arrangement satisfies')
   // The search backtracks past the stop and lands on the same state again: the
   // sweep must stop again, not skip it as already swept.
-  p._stopped = null
+  p.reset()
   Array.from(cur.update(inst, p))
   console.log('hit-counts stopped sweep: stops again on the same state')
-  assert.ok(p._stopped !== null, 'a stopped sweep must not leave the state it stopped on looking swept')
+  assert.ok(p.stopMessage() !== null, 'a stopped sweep must not leave the state it stopped on looking swept')
 }
 
 // The same, for the permutation sweep: a full house holding 1..n once each
@@ -362,11 +362,11 @@ function stateOf (start, houses) {
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
   Array.from(cur.update(inst, p))
-  assert.ok(p._stopped !== null, 'the permutation sweep must stop on a line no ordering satisfies')
-  p._stopped = null
+  assert.ok(p.stopMessage() !== null, 'the permutation sweep must stop on a line no ordering satisfies')
+  p.reset()
   Array.from(cur.update(inst, p))
   console.log('hit-counts stopped permutation sweep: stops again on the same state')
-  assert.ok(p._stopped !== null, 'a stopped permutation sweep must not leave the state it stopped on looking swept')
+  assert.ok(p.stopMessage() !== null, 'a stopped permutation sweep must not leave the state it stopped on looking swept')
 }
 
 console.log('PASS')

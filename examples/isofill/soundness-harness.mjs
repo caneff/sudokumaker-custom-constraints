@@ -324,7 +324,7 @@ const uneven = makePuzzle(Object.fromEntries(sevenCells.map(c => [c, 0])), () =>
 const unevenInst = {}
 mod.setParams(unevenInst, sevenCells, 7, 1)
 Array.from(mod.update(unevenInst, uneven))
-const unevenOk = uneven._stopped !== null && uneven._stopped.includes('do not split evenly')
+const unevenOk = uneven.stopMessage() !== null && uneven.stopMessage().includes('do not split evenly')
 const CHECKS = {
   'cap fired': capOk,
   'force fired': forceOk,

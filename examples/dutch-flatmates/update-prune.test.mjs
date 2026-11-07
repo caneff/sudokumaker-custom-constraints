@@ -78,17 +78,17 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   const b = board()
   run(b)
   assert.ok(CELLS.every(c => b.p._cand.get(c).size === N), 'an open board lost a candidate')
-  assert.strictEqual(b.p._stopped, null)
+  assert.strictEqual(b.p.stopMessage(), null)
   console.log('open board: nothing removed')
 }
 
 {
   const b = board(cand => { for (let r = 0; r < N; r++) cand.get(at(r, 7)).delete(5) })
   run(b)
-  assert.notStrictEqual(b.p._stopped, null, 'a column with no possible 5 did not stop')
-  b.p._stopped = null
+  assert.notStrictEqual(b.p.stopMessage(), null, 'a column with no possible 5 did not stop')
+  b.p.reset()
   run(b)
-  assert.notStrictEqual(b.p._stopped, null, 'a repeat call on a dead column did not stop again')
+  assert.notStrictEqual(b.p.stopMessage(), null, 'a repeat call on a dead column did not stop again')
   console.log('column with no 5 anywhere: stopped')
 }
 
@@ -116,7 +116,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   assert.ok(has(lone.p, 3, 0, 1) && has(lone.p, 3, 0, 9), 'repeat column: the per-cell rule touched a 1 or 9')
   const noFive = board(cand => { for (let r = 0; r < N; r++) cand.get(at(r, 7)).delete(5) }, none)
   run(noFive)
-  assert.strictEqual(noFive.p._stopped, null, 'a column that can repeat was stopped for holding no 5')
+  assert.strictEqual(noFive.p.stopMessage(), null, 'a column that can repeat was stopped for holding no 5')
   console.log('repeat column: not pruned by the house rule, still loses an unflatmated 5, never stopped for lacking a 5')
 }
 
@@ -142,11 +142,11 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
       else cand.get(at(4, 6)).delete(9)
     })
     run(e)
-    assert.strictEqual(e.p._stopped, null, `the ${label} case was dead before the change`)
+    assert.strictEqual(e.p.stopMessage(), null, `the ${label} case was dead before the change`)
     assert.ok(has(e.p, row, 6, flatmate), `the ${label} flatmate was pruned though it is the only one`)
     e.p._cand.get(at(row, 6)).delete(flatmate)
     run(e)
-    assert.notStrictEqual(e.p._stopped, null, `a column whose only change was losing a ${label} was not re-read`)
+    assert.notStrictEqual(e.p.stopMessage(), null, `a column whose only change was losing a ${label} was not re-read`)
   }
   console.log('repeat calls: idempotent, re-prunes after a restore, sees a column whose only change is a 1 or a 9')
 }
@@ -183,7 +183,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
       cand.get(at6(2, 1)).delete(1)
       cand.get(at6(4, 1)).delete(9)
     })
-    assert.strictEqual(p._stopped, null, 'a 6x6 board with digits 1-9 got the column reasoning and was stopped')
+    assert.strictEqual(p.stopMessage(), null, 'a 6x6 board with digits 1-9 got the column reasoning and was stopped')
     assert.ok(p._cand.get(3 * 6 + 0).has(5), 'the 5 with a possible 1 above it was removed on a 6x6 board')
     assert.ok(!p._cand.get(3 * 6 + 1).has(5), 'the per-cell rule did not remove an unflatmated 5 on a 6x6 board')
     console.log('6x6 board, digits 1-9: per-cell rule only, no column reasoning')
@@ -194,7 +194,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
       for (let r = 0; r < 8; r++) if (r !== 3) cand.get(at8(r, 0)).delete(5)
       cand.get(at8(2, 0)).delete(1)
     })
-    assert.strictEqual(p._stopped, null, 'a board without a 9 got the column reasoning and was stopped')
+    assert.strictEqual(p.stopMessage(), null, 'a board without a 9 got the column reasoning and was stopped')
     assert.ok(!p._cand.get(3 * 8 + 0).has(5), 'the per-cell rule did not remove an unflatmated 5 on a board without a 9')
     console.log('8x8 board, digits 1-8: no 9, per-cell rule only')
   }
@@ -204,7 +204,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
       for (let r = 0; r < 9; r++) if (r !== 3 && r !== 6) cand.get(at9(r, 0)).delete(5)
       cand.get(at9(4, 0)).delete(9)
     })
-    assert.strictEqual(p._stopped, null, 'a board without a 1 got the column reasoning and was stopped')
+    assert.strictEqual(p.stopMessage(), null, 'a board without a 1 got the column reasoning and was stopped')
     assert.ok(!p._cand.get(3 * 9 + 0).has(5), 'the 5 with no 9 below and no 1 anywhere was kept')
     assert.ok(p._cand.get(6 * 9 + 0).has(5), 'the 5 with a 9 below it was removed')
     console.log('9x9 board, digits 2-10: no 1, per-cell rule only')

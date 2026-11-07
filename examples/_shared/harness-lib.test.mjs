@@ -220,7 +220,29 @@ const { rnd } = makeRng()
   // stop says the branch has no solution; the mock records it where
   // fixpoint and the strength compare look for it.
   p.stop('no room')
-  assert.strictEqual(p._stopped, 'no room')
+  assert.strictEqual(p.stopMessage(), 'no room')
+}
+
+// The mock's outcome: isDead, stopMessage, reset, total
+{
+  const p = makePuzzle({ 0: 1, 1: 2 }, () => [1, 2, 3])
+  assert.strictEqual(p.isDead(), false, 'an open state is alive')
+  assert.strictEqual(p.stopMessage(), null, 'nothing stopped yet')
+  assert.strictEqual(p.total(), 6)
+  // A stop with no message still reads as stopped.
+  p.stop()
+  assert.strictEqual(p.isDead(), true, 'a stop kills the branch')
+  assert.strictEqual(p.stopMessage(), 'stopped')
+  p.reset()
+  assert.strictEqual(p.isDead(), false, 'reset clears the stop')
+  assert.strictEqual(p.stopMessage(), null)
+  // An emptied cell is the other dead state; reset does not refill it.
+  p.removeCandidatesFromCell(DigitSet.from([1, 2, 3]), 1)
+  assert.strictEqual(p.isDead(), true, 'an emptied cell kills the branch')
+  assert.strictEqual(p.stopMessage(), null, 'an emptied cell is not a stop')
+  assert.strictEqual(p.total(), 3)
+  p.reset()
+  assert.strictEqual(p.isDead(), true, 'reset clears only the stop')
 }
 
 // installGlobals: the naming helper a component calls for a message
@@ -422,7 +444,7 @@ console.log('harness-lib.test.mjs: all seams pass')
   const stops = { * update (inst, p) { yield p.stop('dead') } }
   const later = { * update () { laterRan = true } }
   fixpointAll([{ mod: stops, inst: {} }, { mod: later, inst: {} }], q)
-  assert.strictEqual(q._stopped, 'dead')
+  assert.strictEqual(q.stopMessage(), 'dead')
   assert.strictEqual(laterRan, false, 'a stopped branch propagates no further, mid-pass included')
 }
 

@@ -22,8 +22,8 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   const inst = {}
   mod.setParams(inst, cells, N, N)
   Array.from(mod.update(inst, p))
-  assert.notStrictEqual(p._stopped, null, 'an uneven board must yield puzzle.stop')
-  assert.match(p._stopped, /evenly/)
+  assert.notStrictEqual(p.stopMessage(), null, 'an uneven board must yield puzzle.stop')
+  assert.match(p.stopMessage(), /evenly/)
 }
 
 // The constructor allocates both stamped arrays through newVisitMarks (#736):

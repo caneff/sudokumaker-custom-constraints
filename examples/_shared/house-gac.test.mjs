@@ -54,7 +54,7 @@ function runOnce (mod, cands, kind = 'fullHouse') {
   const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { houses: housesOf(kind, cells) })
   const inst = appInstance(mod, 'row 1', cells)
   Array.from(mod.update(inst, p))
-  if (p._stopped !== null) return 'stop'
+  if (p.stopMessage() !== null) return 'stop'
   return cells.map(c => [...p._cand.get(c)].sort((a, b) => a - b))
 }
 

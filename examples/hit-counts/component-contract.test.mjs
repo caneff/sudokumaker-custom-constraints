@@ -85,7 +85,7 @@ const { load } = makeIo(HERE)
         const inst = { cells: [A, B, ...cells] }
         pairComp.setParams(inst, A, B, cells)
         Array.from(pairComp.update(inst, p))
-        if (p._stopped !== null) continue
+        if (p.stopMessage() !== null) continue
         removed.A += before.A - size(A)
         removed.B += before.B - size(B)
         removed.line += before.line - cells.reduce((s, c) => s + size(c), 0)
