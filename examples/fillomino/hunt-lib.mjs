@@ -3,12 +3,12 @@
 // search. Offline scores only RANK candidate boards; the live app has the last
 // word on any board that ships (docs/real-app-timing.md).
 
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 import { seededShuffle } from '../_shared/app-strip-lib.mjs'
 
 export function loadComponent (here) {
   const { load } = makeIo(here)
-  return load('FillominoComponent.js', ['setParams', 'update', 'validate'])
+  return load('FillominoComponent.js')
 }
 
 const dead = p => { for (const s of p._cand.values()) if (s.size === 0) return true; return false }
@@ -25,7 +25,7 @@ const MAX_PASSES = 200
 function propagate (mod, inst, p) {
   for (let passes = 1; passes <= MAX_PASSES; passes++) {
     const before = p.total()
-    Array.from(mod.update(inst, p))
+    runUpdate(mod, inst, p)
     if (dead(p)) return { passes, dead: true }
     if (p.total() === before) return { passes, dead: false }
   }
@@ -40,8 +40,7 @@ const rowsOf = (p, width, height) =>
 // verdict on the board.
 export function score (mod, { width, height, cap, givens }, { nodeCap = 200000 } = {}) {
   installGlobals(1, cap)
-  const inst = {}
-  mod.setParams(inst, Array.from({ length: width * height }, (_, i) => i), width, height)
+  const inst = construct(mod, 'fillomino', Array.from({ length: width * height }, (_, i) => i), width, height)
   const counts = { nodes: 0, passes: 0 }
   const found = []
   const p = newPuzzle(width, height, cap, givens)

@@ -13,7 +13,7 @@
 // the case sweep keeps.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, drainChanges, fixpoint, fixpointAll, installGlobals, makeIo, makeLine, makePuzzle, makeRng, randomCandidates, runUpdate, strengthSweep } from '../_shared/harness-lib.mjs'
 import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -44,9 +44,9 @@ function stateOf (start, houses) {
 }
 
 {
-  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
-  const lineRef = load(`.golden/HitCountsComponent.${REPLACED_COMMIT}.js`, ['setParams', 'update', 'initialize'])
-  const pairRef = load(`.golden/HitCountsPairComponent.${REPLACED_COMMIT}.js`, ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js')
+  const lineRef = load(`.golden/HitCountsComponent.${REPLACED_COMMIT}.js`)
+  const pairRef = load(`.golden/HitCountsPairComponent.${REPLACED_COMMIT}.js`)
   const PA = 300
   const PB = 301
 
@@ -54,21 +54,17 @@ function stateOf (start, houses) {
   // the far end, so its own line is the reverse.
   const candidate = LINE => ({
     run: p => {
-      const inst = {}
-      cur.setParams(inst, PA, PB, LINE)
+      const inst = construct(cur, 'hit-counts', PA, PB, LINE)
       fixpoint(cur, inst, p)
     }
   })
   const floor = LINE => ({
     run: p => {
-      const a = {}
-      const b = {}
-      const pr = {}
-      lineRef.setParams(a, PA, LINE)
-      lineRef.setParams(b, PB, LINE.slice().reverse())
-      pairRef.setParams(pr, PA, PB, LINE)
-      Array.from(lineRef.initialize(a, p))
-      Array.from(lineRef.initialize(b, p))
+      const a = construct(lineRef, 'hit-counts', PA, LINE)
+      const b = construct(lineRef, 'hit-counts', PB, LINE.slice().reverse())
+      const pr = construct(pairRef, 'hit-counts', PA, PB, LINE)
+      drainChanges(lineRef.initialize(a, p), p)
+      drainChanges(lineRef.initialize(b, p), p)
       fixpointAll([{ mod: lineRef, inst: a }, { mod: lineRef, inst: b }, { mod: pairRef, inst: pr }], p)
     }
   })
@@ -104,15 +100,14 @@ function stateOf (start, houses) {
 {
   // The floor still has its `initialize`; the current file leaves the load
   // pass to the base, which runs `update` once -- the fixpoint's first pass.
-  const cur = load('HitCountsComponent.js', ['setParams', 'update'])
-  const ref = load(`.golden/HitCountsComponent.${REF_COMMIT}.js`, ['setParams', 'update', 'initialize'])
+  const cur = load('HitCountsComponent.js')
+  const ref = load(`.golden/HitCountsComponent.${REF_COMMIT}.js`)
   const CLUE = 100
   const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
   installGlobals(0, 9)
   const apply = (mod, p) => {
-    const inst = {}
-    mod.setParams(inst, CLUE, LINE)
-    if (mod.initialize) Array.from(mod.initialize(inst, p))
+    const inst = construct(mod, 'hit-counts', CLUE, LINE)
+    if (mod.initialize) drainChanges(mod.initialize(inst, p), p)
     fixpoint(mod, inst, p)
   }
   // The no-n-1 rule is behind a gate: it fires only on a line the component can
@@ -166,8 +161,8 @@ function stateOf (start, houses) {
 // The 0 is one more digit that hits neither way, so it leaves the cases alone.
 {
   installGlobals(0, 4)
-  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
-  const pairRef = load(`.golden/HitCountsPairComponent.${REPLACED_COMMIT}.js`, ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js')
+  const pairRef = load(`.golden/HitCountsPairComponent.${REPLACED_COMMIT}.js`)
   const CA = 400
   const CB = 401
   const LINE = [20, 21, 22, 23]
@@ -178,13 +173,11 @@ function stateOf (start, houses) {
   const state = () => stateOf(start, [LINE])
 
   const pj = state()
-  const ij = {}
-  cur.setParams(ij, CA, CB, LINE)
+  const ij = construct(cur, 'hit-counts', CA, CB, LINE)
   fixpoint(cur, ij, pj)
 
   const pp = state()
-  const ip = {}
-  pairRef.setParams(ip, CA, CB, LINE)
+  const ip = construct(pairRef, 'hit-counts', CA, CB, LINE)
   fixpoint(pairRef, ip, pp)
 
   const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
@@ -207,8 +200,8 @@ function stateOf (start, houses) {
 // side does choose.
 {
   installGlobals(0, 4)
-  const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
-  const line = load('HitCountsComponent.js', ['setParams', 'update'])
+  const side = load('SideHitMatchingComponent.js')
+  const line = load('HitCountsComponent.js')
   const start = new Map()
   for (const c of CLUES) start.set(c, [1])
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) start.set(cell(r, c), CANDS[r][c])
@@ -216,14 +209,12 @@ function stateOf (start, houses) {
   const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
 
   const ps = state()
-  const is = {}
-  side.setParams(is, CLUES, LINES)
+  const is = construct(side, 'hit-counts', CLUES, LINES)
   fixpoint(side, is, ps)
 
   const pl = state()
   for (let r = 0; r < 4; r++) {
-    const inst = {}
-    line.setParams(inst, CLUES[r], LINES[r])
+    const inst = construct(line, 'hit-counts', CLUES[r], LINES[r])
     fixpoint(line, inst, pl)
   }
 
@@ -261,9 +252,8 @@ function stateOf (start, houses) {
 // which digits those misses would need.
 {
   installGlobals(0, 4)
-  const NAMES = ['setParams', 'update']
-  const cur = load('HitCountsPairComponent.js', NAMES)
-  const ref = load(CASE_SWEEP_REF, NAMES)
+  const cur = load('HitCountsPairComponent.js')
+  const ref = load(CASE_SWEEP_REF)
   const CA = 400
   const CB = 401
   const LINE = [30, 31, 32, 33]
@@ -273,8 +263,7 @@ function stateOf (start, houses) {
   ])
   const run = mod => {
     const p = stateOf(start, [LINE])
-    const inst = {}
-    mod.setParams(inst, CA, CB, LINE)
+    const inst = construct(mod, 'hit-counts', CA, CB, LINE)
     fixpoint(mod, inst, p)
     return c => [...p._cand.get(c)].sort((x, y) => x - y)
   }
@@ -291,9 +280,8 @@ function stateOf (start, houses) {
 }
 
 {
-  const NAMES = ['setParams', 'update']
-  const cur = load('SideSumComponent.js', NAMES)
-  const ref = load(`.golden/SideSumComponent.${REF_COMMIT}.js`, NAMES)
+  const cur = load('SideSumComponent.js')
+  const ref = load(`.golden/SideSumComponent.${REF_COMMIT}.js`)
   const N = 9
   const SIDE = [200, 201, 202, 203, 204, 205, 206, 207, 208]
   // The side sum fires only while all N perpendicular lines are full houses of
@@ -302,8 +290,7 @@ function stateOf (start, houses) {
   const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
   installGlobals(0, 9)
   const apply = (mod, p) => {
-    const inst = {}
-    mod.setParams(inst, SIDE, N, PERP)
+    const inst = construct(mod, 'hit-counts', SIDE, N, PERP)
     fixpoint(mod, inst, p)
   }
   strengthSweep('hit-counts side-sum', {
@@ -330,20 +317,19 @@ function stateOf (start, houses) {
 // non-exact signature reads only three case bits per cell, so a later live
 // state can hash the same and skip the sweep that would declare it dead.
 {
-  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js')
   installGlobals(0, 9)
   // A bare line of two cells, both {1,2}, with both clues pinned to 2. Two hits
   // at each end at once is impossible, so the case sweep stops.
   const cand = { 0: [2], 1: [2], 2: [1, 2], 3: [1, 2] }
   const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c])
-  const inst = {}
-  cur.setParams(inst, 0, 1, [2, 3])
-  Array.from(cur.update(inst, p))
+  const inst = construct(cur, 'hit-counts', 0, 1, [2, 3])
+  runUpdate(cur, inst, p)
   assert.ok(p.stopMessage() !== null, 'the case sweep must stop on a line no arrangement satisfies')
   // The search backtracks past the stop and lands on the same state again: the
   // sweep must stop again, not skip it as already swept.
   p.reset()
-  Array.from(cur.update(inst, p))
+  runUpdate(cur, inst, p)
   console.log('hit-counts stopped sweep: stops again on the same state')
   assert.ok(p.stopMessage() !== null, 'a stopped sweep must not leave the state it stopped on looking swept')
 }
@@ -352,19 +338,18 @@ function stateOf (start, houses) {
 // takes that sweep instead of the case sweep, and its stop must leave no memo
 // either.
 {
-  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js')
   installGlobals(0, 9)
   // Two house cells, both {1,2}: the line is 1,2 or 2,1, so the hit counts are
   // (2,0) or (0,2). Both clues pinned to 2 asks for (2,2), which no ordering
   // reaches.
   const cand = { 0: [2], 1: [2], 2: [1, 2], 3: [1, 2] }
   const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { houses: [[2, 3]] })
-  const inst = {}
-  cur.setParams(inst, 0, 1, [2, 3])
-  Array.from(cur.update(inst, p))
+  const inst = construct(cur, 'hit-counts', 0, 1, [2, 3])
+  runUpdate(cur, inst, p)
   assert.ok(p.stopMessage() !== null, 'the permutation sweep must stop on a line no ordering satisfies')
   p.reset()
-  Array.from(cur.update(inst, p))
+  runUpdate(cur, inst, p)
   console.log('hit-counts stopped permutation sweep: stops again on the same state')
   assert.ok(p.stopMessage() !== null, 'a stopped permutation sweep must not leave the state it stopped on looking swept')
 }

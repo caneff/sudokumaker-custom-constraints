@@ -2,12 +2,11 @@
 // of every rewrite: the k=1 ordering trap is invisible to the soundness harness.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
-const NAMES = ['setParams', 'update']
-const cur = load('NumberedRoomsComponent.js', NAMES)
+const cur = load('NumberedRoomsComponent.js')
 
 // One floor per kind, each the component that owned that kind before the
 // merge. The bare floor's file no longer exists in the tree, so both are frozen
@@ -17,7 +16,7 @@ const FLOORS = {
   house: '.golden/NumberedRoomsComponent.143b34d.js',
   bare: '.golden/NumberedRoomsLinesComponent.56e707a.js'
 }
-const floor = kind => load(FLOORS[kind], NAMES)
+const floor = kind => load(FLOORS[kind])
 
 // The pre-merge drawn-line floor reads a `distinct` flag as its fourth
 // setParams argument; the current component reads the kind off the puzzle and
@@ -25,16 +24,14 @@ const floor = kind => load(FLOORS[kind], NAMES)
 const CLUE = 0
 const lineCells = m => Array.from({ length: m }, (_, i) => i + 1)
 const applyOn = (kind, line) => (mod, p) => {
-  const inst = {}
-  mod.setParams(inst, CLUE, line, kind === 'house')
+  const inst = construct(mod, 'numbered-rooms', CLUE, line, kind === 'house')
   fixpoint(mod, inst, p)
 }
 
 for (const [kind, wantClue] of [['house', [1, 3, 4]], ['bare', [1, 2, 3, 4]]]) {
   installGlobals(1, 4)
   const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [2] : [1, 2, 3, 4]), { houses: housesOf(kind, lineCells(4)) })
-  const inst = {}
-  cur.setParams(inst, CLUE, lineCells(4))
+  const inst = construct(cur, 'numbered-rooms', CLUE, lineCells(4))
   fixpoint(cur, inst, p)
   assert.deepStrictEqual([...p._cand.get(CLUE)].sort(), wantClue,
     `${kind}: the clue≠index rule must be ${kind === 'house' ? 'on' : 'off'}`)
@@ -43,8 +40,7 @@ for (const [kind, wantClue] of [['house', [1, 3, 4]], ['bare', [1, 2, 3, 4]]]) {
 for (const kind of ['house', 'bare']) {
   installGlobals(1, 4)
   const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [1] : [1, 2, 3, 4]), { houses: housesOf(kind, lineCells(4)) })
-  const inst = {}
-  cur.setParams(inst, CLUE, lineCells(4))
+  const inst = construct(cur, 'numbered-rooms', CLUE, lineCells(4))
   fixpoint(cur, inst, p)
   assert.deepStrictEqual([...p._cand.get(CLUE)], [1], `${kind}: k=1 forces the clue to 1`)
 }
@@ -52,8 +48,7 @@ for (const kind of ['house', 'bare']) {
 for (const kind of ['house', 'bare']) {
   installGlobals(0, 5)
   const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0 }, () => [0, 1, 2, 3, 4, 5], { houses: housesOf(kind, lineCells(3)) })
-  const inst = {}
-  cur.setParams(inst, CLUE, lineCells(3))
+  const inst = construct(cur, 'numbered-rooms', CLUE, lineCells(3))
   fixpoint(cur, inst, p)
   assert.deepStrictEqual([...p._cand.get(1)].sort(), [1, 2, 3], `${kind}: only 1..3 index a three-cell line`)
 }

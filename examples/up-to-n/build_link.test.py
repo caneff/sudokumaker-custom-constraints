@@ -64,14 +64,13 @@ def model_accepts(digits, target, clue):
 
 def validate_accepts(cases):
     script = f"""
-import {{ makeIo, makePuzzle, installGlobals }} from './examples/_shared/harness-lib.mjs'
+import {{ construct, makeIo, makePuzzle, installGlobals }} from './examples/_shared/harness-lib.mjs'
 const {{ load }} = makeIo({json.dumps(str(HERE))})
-const mod = load('UpToNComponent.js', ['setParams', 'validate'])
+const mod = load('UpToNComponent.js')
 installGlobals(1, 9)
 const out = {json.dumps(cases)}.map(([digits, target, clue]) => {{
   const truth = Object.fromEntries(digits.map((d, i) => [i, d]))
-  const inst = {{}}
-  mod.setParams(inst, digits.map((_, i) => i), target, clue)
+  const inst = construct(mod, 'up-to-n', digits.map((_, i) => i), target, clue)
   return mod.validate(inst, makePuzzle(truth, (c, v) => [v], {{ kind: 'bare' }}))
 }})
 console.log(JSON.stringify(out))

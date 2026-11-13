@@ -12,7 +12,7 @@
 // rounds, 20000 states each, so machine drift hits all of them alike.
 // Run: node docs/research/408-house-gac/bench-count-tables.mjs (#408)
 import { execFileSync } from 'child_process'
-import { installGlobals, makeIo, makePuzzle, makeRng } from '../../../examples/_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, makeRng, runUpdate } from '../../../examples/_shared/harness-lib.mjs'
 
 installGlobals(1, 9)
 const FUNCTIONS = ['getAffectedCells', 'setParams', 'update']
@@ -61,7 +61,7 @@ function candidatesAfter (component, masks) {
   const puzzle = makePuzzle(truth, c => digits(masks[c]), { houses: [cells] })
   const instance = { name: 'house' }
   component.setParams(instance, cells)
-  Array.from(component.update(instance, puzzle))
+  runUpdate(component, instance, puzzle)
   if (puzzle.stopMessage() !== null) return 'stop'
   return JSON.stringify(cells.map(c => [...puzzle._cand.get(c)].sort((a, b) => a - b)))
 }

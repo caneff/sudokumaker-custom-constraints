@@ -7,6 +7,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
+import { construct } from '../_shared/harness-lib.mjs'
 
 // `read` is makeIo's: main-global.js with its #include spliced in.
 export function combinedBoard (here, read, gen = JSON.parse(readFileSync(join(here, 'gen.json'), 'utf8'))) {
@@ -34,9 +35,7 @@ export function combinedBoard (here, read, gen = JSON.parse(readFileSync(join(he
   const parts = mods => registered.map(c => {
     const mod = mods[c.ctor]
     if (!mod) throw new Error(`no module for registered ${c.ctor}`)
-    const inst = {}
-    mod.setParams(inst, ...c.args.slice(1))
-    return { mod, inst }
+    return { mod, inst: construct(mod, ...c.args) }
   })
   return { n, W, H, truth, registered, parts }
 }

@@ -1,4 +1,4 @@
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -16,16 +16,15 @@ const { load } = makeIo(HERE)
 // less hard on a bare line. Soundness on the other kinds is the soundness
 // harness's job.
 const REF_COMMIT = 'db93523'
-const NAMES = ['setParams', 'update']
-const curLine = load('RunningStartComponent.js', NAMES)
-const refLine = load(`.golden/RunningStartComponent.${REF_COMMIT}.js`, NAMES)
-const curPair = load('RunningStartPairComponent.js', NAMES)
-const refPair = load(`.golden/RunningStartPairComponent.${REF_COMMIT}.js`, NAMES)
+const curLine = load('RunningStartComponent.js')
+const refLine = load(`.golden/RunningStartComponent.${REF_COMMIT}.js`)
+const curPair = load('RunningStartPairComponent.js')
+const refPair = load(`.golden/RunningStartPairComponent.${REF_COMMIT}.js`)
 
 const { rnd } = makeRng(4104)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
 
-function fuzzLine (cur, ref, clues, setUp, label) {
+function fuzzLine (cur, ref, clues, label) {
   for (const m of [4, 6, 9]) {
     installGlobals(1, m)
     const LINE = Array.from({ length: m }, (_, i) => i)
@@ -33,9 +32,7 @@ function fuzzLine (cur, ref, clues, setUp, label) {
       cur,
       ref,
       apply: (mod, p) => {
-        const inst = {}
-        setUp(mod, inst, clues, LINE)
-        fixpoint(mod, inst, p)
+        fixpoint(mod, construct(mod, label, ...clues, LINE), p)
       },
       opts: { houses: [LINE] },
       * states () {
@@ -50,7 +47,7 @@ function fuzzLine (cur, ref, clues, setUp, label) {
   }
 }
 
-fuzzLine(curLine, refLine, [100], (mod, inst, [ca], line) => mod.setParams(inst, ca, line), 'line')
-fuzzLine(curPair, refPair, [100, 101], (mod, inst, [ca, cb], line) => mod.setParams(inst, ca, cb, line), 'pair')
+fuzzLine(curLine, refLine, [100], 'line')
+fuzzLine(curPair, refPair, [100, 101], 'pair')
 
 console.log('PASS')

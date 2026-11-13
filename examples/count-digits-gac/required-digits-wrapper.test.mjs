@@ -17,7 +17,7 @@
 //   node examples/count-digits-gac/required-digits-wrapper.test.mjs
 
 import assert from 'assert'
-import { makeIo } from '../_shared/harness-lib.mjs'
+import { construct, makeIo } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from '../outside-sudoku/grid-geometry.mjs'
 
 const { load } = makeIo(new URL('./required-digits', import.meta.url).pathname)
@@ -49,8 +49,7 @@ function run (mod, line, clueValue) {
     getValue: () => clueValue,
     replaceComponent: (instance, next) => { replaced.push(next); return { type: 'ReplaceComponent', next } }
   }
-  const inst = {}
-  mod.setParams(inst, g.clue, line)
+  const inst = construct(mod, 'count-digits-gac', g.clue, line)
   const changes = [...mod.update(inst, p)]
   return { changes, replaced }
 }
@@ -59,7 +58,7 @@ for (const [label, file, TargetClass] of [
   ['ours (RequiredDigitsWrapperComponent.js -> customComponents.RequiredDigitsGacComponent)', 'RequiredDigitsWrapperComponent.js', GacRecorder],
   ['original (RequiredDigitsWrapperComponentBuiltin.js -> RequiredDigitsComponent)', 'RequiredDigitsWrapperComponentBuiltin.js', BuiltinRecorder]
 ]) {
-  const mod = load(file, ['setParams', 'update'])
+  const mod = load(file)
   const line = g.rowLine(0, 0, 9)
 
   // ---- idle while the clue is blank: no replaceComponent, no change at all

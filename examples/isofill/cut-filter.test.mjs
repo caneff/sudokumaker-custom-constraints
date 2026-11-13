@@ -7,7 +7,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeRng, makePuzzle, fixpoint, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeRng, makePuzzle, fixpoint, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
 import { loadComponent } from './cut-profile.mjs'
 import { N, CELLS, rows, bent } from './fixture.mjs'
 
@@ -41,11 +41,10 @@ function removals (mod, start) {
   const log = []
   const rec = {
     ...p,
-    removeCandidateFromCell: (d, c) => { log.push(`${d}@${c}`); p.removeCandidateFromCell(d, c) },
-    removeCandidatesFromCell: (s, c) => { log.push(`[${[...s].sort((a, b) => a - b).join('')}]@${c}`); p.removeCandidatesFromCell(s, c) }
+    removeCandidateFromCell: (d, c) => { log.push(`${d}@${c}`); return p.removeCandidateFromCell(d, c) },
+    removeCandidatesFromCell: (s, c) => { log.push(`[${[...s].sort((a, b) => a - b).join('')}]@${c}`); return p.removeCandidatesFromCell(s, c) }
   }
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   fixpoint(mod, inst, rec)
   return log.join('|')
 }
