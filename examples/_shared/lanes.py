@@ -167,7 +167,7 @@ class Lane:
             "box_height * box_width must equal n"
         )
         board = generate(self.spec, geo, seeds, paths=self.paths)
-        link, doc = self.encode(board)
+        link, _ = self.encode(board)
         link_path, gen_path = self.files(
             geo.n, height=geo.height if geo.is_rect else None
         )

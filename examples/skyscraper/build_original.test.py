@@ -24,6 +24,7 @@ SIZES = {
     10: ("PUZZLE_LINK_10x10.txt", "PUZZLE_LINK_10x10_original.txt"),
 }
 
+
 def refuses_planted_board():
     """A copy of the example whose 9x9 gen JSON has a given's digit moved
     must not rebuild: `Lane.rebuild`'s guard holds the grid to the committed
