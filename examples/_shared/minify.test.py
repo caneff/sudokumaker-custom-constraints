@@ -177,9 +177,10 @@ def test_refuses_an_unpaired_block_marker_rather_than_guessing():
     for src in unpaired:
         try:
             minify_js(src)
-        except AssertionError:
-            continue
-        raise AssertionError(f"expected a refusal for {src!r}")
+        except AssertionError as e:
+            assert "unpaired block-comment marker" in str(e), (src, str(e))
+        else:
+            raise AssertionError(f"expected a refusal for {src!r}")
 
 
 def test_a_line_comment_may_contain_block_markers_and_urls():

@@ -40,7 +40,9 @@ rebuild (size_builders.test.py), and the ISOFILL example's own proofs
 """
 
 import importlib.util
+import json
 import pathlib
+import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -97,10 +99,31 @@ def the_manifest_and_the_layout_gate_accept_it():
 
 
 def the_backend_registers_both_components_with_ties_hidden():
-    main = (EXAMPLE / "main-global.js").read_text()
-    assert "new IsofillComponent('ISOFILL', interior, nw, nh)" in main
-    assert "for (const { clue, line } of lines)" in main
-    assert "new SkyscraperOneSidedComponent(name, clue, line)" in main
+    # Run the assembled backend on an 11x11 board, the way the app does: one
+    # IsofillComponent over the 9x9 interior, one one-sided skyscraper per
+    # ring clue (4 sides x 9 lines).
+    probe = f"""
+    import {{ assembleSource }} from {(HERE / "include.mjs").as_uri()!r}
+    import {{ mockBoard, runBackend }} from {(HERE / "backend-runner.mjs").as_uri()!r}
+    const src = assembleSource({str(EXAMPLE / "main-global.js")!r})
+    const puzzle = mockBoard({{ width: 11, height: 11 }})
+    const helpers = {{ naming: {{ getCellName: c => `c${{c}}` }} }}
+    runBackend(src, {{ puzzle, helpers }})
+    const by = ctor => puzzle.registered.filter(c => c.ctor === ctor)
+    console.log(JSON.stringify({{
+      isofill: by('IsofillComponent').map(c => [c.args[2], c.args[3], c.args[1].length]),
+      sky: by('SkyscraperOneSidedComponent').length,
+      other: puzzle.registered.length - by('IsofillComponent').length - by('SkyscraperOneSidedComponent').length
+    }}))
+    """
+    out = subprocess.run(
+        ["node", "--input-type=module", "-e", probe],
+        capture_output=True,
+        text=True,
+    )
+    assert out.returncode == 0, out.stderr
+    got = json.loads(out.stdout)
+    assert got == {"isofill": [[9, 9, 81]], "sky": 36, "other": 0}, got
     sky = (EXAMPLE / "SkyscraperOneSidedComponent.js").read_text()
     assert "const ALLOW_TIES = false" in sky
     # That each shipped copy is the current file is check_layout's stale-code

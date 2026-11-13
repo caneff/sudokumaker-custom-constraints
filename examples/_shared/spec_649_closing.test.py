@@ -306,6 +306,7 @@ def step_app_session(tmp, ex):
 
 
 def sweep_timed_components(tree):
+    checked = 0
     for manifest in sorted((tree / "examples").glob("*/example.toml")):
         ex = manifest.parent
         traits = load_manifest(ex)
@@ -314,6 +315,8 @@ def sweep_timed_components(tree):
             continue
         doc = decode_puzzle((ex / "PUZZLE_LINK.txt").read_text().strip())
         assert find_component_file(ex, doc).is_file(), ex.name
+        checked += 1
+    assert checked, "no timed example was checked: the sweep matched nothing"
 
 
 # makeIo's `load(file, names, ...)`, with `names` an array literal or the name
