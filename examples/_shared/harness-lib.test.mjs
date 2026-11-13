@@ -7,7 +7,7 @@ import { mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import {
-  DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
+  DigitSet, TIES_FLAG, construct, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
   columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, runUpdate, shuffle, strengthSweep
 } from './harness-lib.mjs'
 
@@ -170,6 +170,56 @@ assert.strictEqual(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1])).total(
   const patched = load('comp.js', ['reading', 'where'], s => s.replace('= false', '= true'))
   assert.strictEqual(patched.reading(), true)
   assert.match(patched.where(), /comp\.js/)
+}
+
+// makeIo().load returns every lifecycle function the file defines
+// A caller names only its extra helpers: a lifecycle function it forgot to
+// name is still loaded, so a harness never runs a component without the
+// `validate` its file defines. A file that defines none (a shared helper)
+// loads with only the names asked for.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'load-'))
+  writeFileSync(join(dir, 'comp.js'), [
+    'function getAffectedCells (cells) { return cells }',
+    'function setParams (inst, cells) { inst.n = cells.length }',
+    'function * initialize () {}',
+    'function * update () {}',
+    'function validate () { return true }',
+    'function helper () { return 7 }'
+  ].join('\n'))
+  writeFileSync(join(dir, 'partial.js'), 'function setParams () {}\nfunction * update () {}\n')
+  writeFileSync(join(dir, 'plain.js'), 'function helper () { return 7 }\n')
+  const { load, loadSource } = makeIo(dir)
+  const LIFECYCLE = ['getAffectedCells', 'setParams', 'initialize', 'update', 'validate']
+  const full = load('comp.js')
+  for (const n of LIFECYCLE) assert.strictEqual(typeof full[n], 'function', `load returns ${n} unasked`)
+  assert.strictEqual(full.helper, undefined, 'an extra helper comes only when named')
+  assert.strictEqual(load('comp.js', ['helper']).helper(), 7)
+  assert.deepStrictEqual(Object.keys(load('partial.js')).sort(), ['setParams', 'update'],
+    'a lifecycle function the file does not define is left out, not undefined')
+  assert.deepStrictEqual(Object.keys(load('plain.js', ['helper'])), ['helper'])
+  assert.deepStrictEqual(Object.keys(loadSource('function validate () { return 1 }', [])), ['validate'],
+    'loadSource reads the lifecycle functions the same way')
+}
+
+// construct builds an instance as the app's constructor does
+// docs/research/bundle-api-reference.md, compileCustomComponentClass:
+// `instance.cells` is getAffectedCells's result, set before setParams runs;
+// a file with no getAffectedCells takes the first argument as its cells.
+{
+  const seen = []
+  const mod = {
+    getAffectedCells: (a, b) => [...a, ...b],
+    setParams (inst, a, b) { seen.push(inst.cells); inst.args = [a, b] }
+  }
+  const inst = construct(mod, 'clue', [1, 2], [3])
+  assert.strictEqual(inst.name, 'clue')
+  assert.deepStrictEqual(inst.cells, [1, 2, 3])
+  assert.strictEqual(seen[0], inst.cells, 'setParams already sees instance.cells')
+  assert.deepStrictEqual(inst.args, [[1, 2], [3]])
+  const bare = construct({ setParams () {} }, 'bare', [4, 5], 'x')
+  assert.deepStrictEqual(bare.cells, [4, 5], 'no getAffectedCells: the first argument is the cells')
+  assert.deepStrictEqual(construct({}, 'empty', [6]).cells, [6], 'no setParams: a no-op, as the app defaults it')
 }
 
 // makeIo().loadSource: eval source a caller already holds and edited
@@ -363,6 +413,15 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   assert.strictEqual(rej.violations, 0, 'update is sound here')
   assert.strictEqual(rej.validateRejects, 50)
   assert.strictEqual(rej.ok, false, 'a validate that rejects the truth fails the run')
+
+  // A part whose component file defines validate but whose module lacks it
+  // is refused: a missed load would otherwise read as a validate that passed.
+  const dir = mkdtempSync(join(tmpdir(), 'fuzz-'))
+  writeFileSync(join(dir, 'comp.js'), 'function * update () {}\nfunction validate () { return true }\n')
+  const loaded = makeIo(dir).load('comp.js')
+  assert.strictEqual(run(loaded).ok, true, 'the loaded module, validate included, runs')
+  const { validate: _dropped, ...missed } = loaded
+  assert.throws(() => run(missed), /comp\.js defines validate/, 'a module missing its file\'s validate is refused')
 
   // inspect sees each seeded puzzle BEFORE the components run: this update
   // prunes every cell to its truth, so a state seen after it totals exactly 3.

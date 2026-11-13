@@ -11,7 +11,7 @@
 // differ in who owns the map; the puzzle API and its outcome (isDead,
 // stopMessage, reset, total) are harness-lib's makeMockCore either way.
 
-import { drainChanges, makeIo, makeMockCore, runUpdate } from './harness-lib.mjs'
+import { construct, drainChanges, makeIo, makeMockCore, runUpdate } from './harness-lib.mjs'
 import { mockBoard, runBackend } from './backend-runner.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
@@ -85,10 +85,11 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 
 // Load a list of component files plus main.js and run them exactly as
 // SudokuMaker does, returning the built instances.
-//   files: [{ file, names, ctorName }, ...] — `names` are the exports read
-//     off the component file (setParams/update/initialize/...), `ctorName`
-//     is the constructor name main.js expects in scope (e.g.
-//     'HitCountsComponent').
+//   files: [{ file, names?, ctorName }, ...] — `names` are extra exports to
+//     read off the component file beyond its lifecycle functions, which
+//     makeIo's load always returns; `ctorName` is the constructor name main.js
+//     expects in scope (e.g. 'HitCountsComponent'). Each instance is built by
+//     harness-lib's construct, as the app's constructor builds it.
 //   mainSrc: the text of main.js.
 //   input: the object main.js reads as `input` (its groups/geometry). Empty
 //     for main-global.js, which builds its own frame instead of reading it.
@@ -101,8 +102,7 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 export function loadComponents ({ here, files, mainSrc, input, frame }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
-    const inst = { name }
-    mod.setParams(inst, ...args)
+    const inst = construct(mod, name, ...args)
     inst.__mod = mod
     return inst
   }

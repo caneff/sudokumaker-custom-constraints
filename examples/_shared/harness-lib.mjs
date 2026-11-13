@@ -68,10 +68,21 @@ export function installGlobals (minDigit, maxDigit) {
   }
 }
 
+// The five functions the app's component wrapper copies off a component file
+// (docs/research/bundle-api-reference.md, compileCustomComponentClass).
+export const LIFECYCLE = ['getAffectedCells', 'setParams', 'initialize', 'update', 'validate']
+
+// Which lifecycle functions a loaded module's source defined, keyed on a
+// symbol so Object.keys still lists only the functions, while a spread or a
+// rest copy of the module keeps it: fuzzSoundness reads it to refuse a module
+// that lost the `validate` its file defines.
+const DEFINES = Symbol('defines')
+
 // Bind file reads to the example's own directory. `read` returns a file's text
 // with its `// #include` directives spliced in (include.mjs), so a probe runs
 // the same assembled paste target the link ships;
-// `load` evals a component file and returns the named functions from it,
+// `load` evals a component file and returns every lifecycle function it
+// defines plus the extra names a caller asks for,
 // after `patch(source)` when one is given -- the file keeps its own name
 // either way, so V8 coverage (c8) still attributes the run to it;
 // `loadSource` does the same for source a caller already holds, which is how a
@@ -81,11 +92,28 @@ export function installGlobals (minDigit, maxDigit) {
 export function makeIo (here) {
   const read = f => assembleSource(join(here, f))
   // vm.Script instead of eval so V8 coverage (c8) attributes the component's
-  // execution to its own file, not to this harness.
-  const evalNamed = (src, names, filename = 'loadSource.js') =>
-    new Script('(function(){' + src + '\n return {' + names.join(',') + '};})()', { filename }).runInThisContext()
+  // execution to its own file, not to this harness. A lifecycle name the
+  // source does not declare is read through `typeof`, so it is left out
+  // rather than thrown on.
+  const evalNamed = (src, names = [], filename = 'loadSource.js') => {
+    const extra = names.filter(n => !LIFECYCLE.includes(n))
+    const lifecycle = LIFECYCLE.map(n => `${n}: typeof ${n} === 'function' ? ${n} : undefined`)
+    const out = new Script('(function(){' + src + '\n return {' + [...lifecycle, ...extra].join(',') + '};})()', { filename }).runInThisContext()
+    for (const n of LIFECYCLE) if (out[n] === undefined) delete out[n]
+    out[DEFINES] = { file: filename, names: LIFECYCLE.filter(n => n in out) }
+    return out
+  }
   const load = (file, names, patch = src => src) => evalNamed(patch(read(file)), names, join(here, file))
   return { read, load, loadSource: evalNamed }
+}
+
+// Build an instance as the app's component constructor does: `cells` is
+// getAffectedCells's result (the first argument when the file defines none),
+// set before setParams runs with the same arguments.
+export function construct (mod, name, ...args) {
+  const inst = { name, cells: mod.getAffectedCells ? mod.getAffectedCells(...args) : args[0] }
+  if (mod.setParams) mod.setParams(inst, ...args)
+  return inst
 }
 
 // Edit component source at an anchor that has to be there exactly once: a
@@ -483,13 +511,24 @@ function lostTruth (p, truth) {
 // Returns `{ tests, violations, validateRejects, failures, fired, ok }`;
 // `failures` is the two counts summed and `ok` is true when it is zero.
 // Whether `fired` is enough coverage is the harness's call, so it can differ
-// per pool. A part with no `validate` is not asked one.
+// per pool. A part with no `validate` is not asked one; a part whose file
+// defines one its module lacks is refused.
+// A module whose file defines `validate` but which lacks it -- named out of a
+// load, or dropped from a copy -- would skip the check below and read as a pass.
+function refuseLostValidate (mod) {
+  const defines = mod[DEFINES]
+  if (defines && defines.names.includes('validate') && typeof mod.validate !== 'function') {
+    throw new Error(`${defines.file} defines validate, but the module fuzzSoundness was handed lacks it`)
+  }
+}
+
 export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let violations = 0
   let validateRejects = 0
   let fired = 0
   for (let iter = 0; iter < iters; iter++) {
     const { truth, seed, parts, houses = [], note = '', inspect } = draw(iter)
+    for (const { mod } of parts) refuseLostValidate(mod)
     const p = makePuzzle(truth, seed, { houses })
     if (inspect) inspect(p)
     const before = p.total()
