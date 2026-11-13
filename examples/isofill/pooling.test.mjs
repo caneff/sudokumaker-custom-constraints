@@ -1,5 +1,5 @@
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, fixpoint, makeRng, randomCandidates } from '../_shared/harness-lib.mjs'
+import { fixpoint, installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -21,7 +21,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   const p = makePuzzle(short, (c, v) => [v])
   const inst = {}
   mod.setParams(inst, cells, N, N)
-  Array.from(mod.update(inst, p))
+  runUpdate(mod, inst, p)
   assert.notStrictEqual(p.stopMessage(), null, 'an uneven board must yield puzzle.stop')
   assert.match(p.stopMessage(), /evenly/)
 }
@@ -41,7 +41,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   p.getCandidates = () => { throw new Error('scan called getCandidates; read getCandidatesBitMask') }
   const inst = {}
   mod.setParams(inst, CELLS, N, N)
-  Array.from(mod.update(inst, p))
+  runUpdate(mod, inst, p)
 }
 
 // Visit numbers sitting at the top of their range: the same deductions as fresh.
@@ -71,7 +71,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
       mod.setParams(inst, CELLS, N, N)
       assert.ok('targetVisit' in inst, 'setParams must create instance.targetVisit')
       if (visit) inst.targetVisit = visit
-      Array.from(mod.update(inst, p))
+      runUpdate(mod, inst, p)
       out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
     }
     return out
@@ -88,11 +88,11 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
       const r = makeRng(3000 + rep).rnd
       const inst = {}
       mod.setParams(inst, CELLS, N, N)
-      Array.from(mod.update(inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))))
+      runUpdate(mod, inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v)))
       assert.ok('seenVisit' in inst.budget, 'the budget matcher must keep seenVisit')
       if (below !== null) inst.budget.seenVisit = 0xFFFFFFFF - below
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
-      Array.from(mod.update(inst, p))
+      runUpdate(mod, inst, p)
       out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
     }
     return out

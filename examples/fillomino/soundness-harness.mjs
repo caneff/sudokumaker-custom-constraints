@@ -8,7 +8,7 @@
 // checks must fail, so a rule that quietly stops deducing, or starts reaching
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { finishHarness, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate } from '../_shared/harness-lib.mjs'
 import { gridOf, shipped, FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -141,7 +141,7 @@ function directedFailures (m) {
     const p = makePuzzle(directed, seed)
     const inst = {}
     m.setParams(inst, CELLS, N, N)
-    Array.from(m.update(inst, p))
+    runUpdate(m, inst, p)
     return !shows(p)
   }).map(([name]) => name)
 }

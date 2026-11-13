@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { finishHarness, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, runUpdate, violates } from '../_shared/harness-lib.mjs'
 import { N, CELLS, rows, bent, shapeOf, tall, wide, rowsTall, colsWide, bentWide } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -47,7 +47,7 @@ function once (truth, seed) {
   const p = makePuzzle(truth, seed)
   const inst = {}
   mod.setParams(inst, CELLS, N, N)
-  Array.from(mod.update(inst, p))
+  runUpdate(mod, inst, p)
   return p
 }
 
@@ -217,7 +217,7 @@ const getMask = onePass.getCandidatesBitMask.bind(onePass)
 onePass.getCandidatesBitMask = c => { readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
 const onePassInst = {}
 mod.setParams(onePassInst, CELLS, N, N)
-Array.from(mod.update(onePassInst, onePass))
+runUpdate(mod, onePassInst, onePass)
 const reads = [...readsPerCell.values()].reduce((a, b) => a + b, 0)
 const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
 // Validate: full valid grid passes; swap two cells across regions (still ten each) fails
@@ -246,7 +246,7 @@ const bad9 = fuzzSoundness('isofill 9x9 fixture', {
 const cap9 = makePuzzle(rows9, (c, v) => (v === 1 ? [v] : ALL9))
 const cap9Inst = {}
 mod.setParams(cap9Inst, CELLS9, N9, N9)
-Array.from(mod.update(cap9Inst, cap9))
+runUpdate(mod, cap9Inst, cap9)
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
 
 // Rectangles. The same ten digits on boards that are not square, so the
@@ -271,7 +271,7 @@ const rectOnce = (shape, truth, seed) => {
   const p = makePuzzle(truth, seed)
   const inst = {}
   mod.setParams(inst, shape.cells, shape.w, shape.h)
-  Array.from(mod.update(inst, p))
+  runUpdate(mod, inst, p)
   return p
 }
 // Cap: column 0 holds six 0s, so no other cell of the 10x6 may be 0.
@@ -296,7 +296,7 @@ const sevenCells = shapeOf(7, 1).cells
 const uneven = makePuzzle(Object.fromEntries(sevenCells.map(c => [c, 0])), () => ALL10)
 const unevenInst = {}
 mod.setParams(unevenInst, sevenCells, 7, 1)
-Array.from(mod.update(unevenInst, uneven))
+runUpdate(mod, unevenInst, uneven)
 const unevenOk = uneven.stopMessage() !== null && uneven.stopMessage().includes('do not split evenly')
 const CHECKS = {
   'cap fired': capOk,

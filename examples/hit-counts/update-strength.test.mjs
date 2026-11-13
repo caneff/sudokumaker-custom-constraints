@@ -13,7 +13,7 @@
 // the case sweep keeps.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { drainChanges, fixpoint, fixpointAll, installGlobals, makeIo, makeLine, makePuzzle, makeRng, randomCandidates, runUpdate, strengthSweep } from '../_shared/harness-lib.mjs'
 import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -67,8 +67,8 @@ function stateOf (start, houses) {
       lineRef.setParams(a, PA, LINE)
       lineRef.setParams(b, PB, LINE.slice().reverse())
       pairRef.setParams(pr, PA, PB, LINE)
-      Array.from(lineRef.initialize(a, p))
-      Array.from(lineRef.initialize(b, p))
+      drainChanges(lineRef.initialize(a, p), p)
+      drainChanges(lineRef.initialize(b, p), p)
       fixpointAll([{ mod: lineRef, inst: a }, { mod: lineRef, inst: b }, { mod: pairRef, inst: pr }], p)
     }
   })
@@ -112,7 +112,7 @@ function stateOf (start, houses) {
   const apply = (mod, p) => {
     const inst = {}
     mod.setParams(inst, CLUE, LINE)
-    if (mod.initialize) Array.from(mod.initialize(inst, p))
+    if (mod.initialize) drainChanges(mod.initialize(inst, p), p)
     fixpoint(mod, inst, p)
   }
   // The no-n-1 rule is behind a gate: it fires only on a line the component can
@@ -338,12 +338,12 @@ function stateOf (start, houses) {
   const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c])
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
-  Array.from(cur.update(inst, p))
+  runUpdate(cur, inst, p)
   assert.ok(p.stopMessage() !== null, 'the case sweep must stop on a line no arrangement satisfies')
   // The search backtracks past the stop and lands on the same state again: the
   // sweep must stop again, not skip it as already swept.
   p.reset()
-  Array.from(cur.update(inst, p))
+  runUpdate(cur, inst, p)
   console.log('hit-counts stopped sweep: stops again on the same state')
   assert.ok(p.stopMessage() !== null, 'a stopped sweep must not leave the state it stopped on looking swept')
 }
@@ -361,10 +361,10 @@ function stateOf (start, houses) {
   const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { houses: [[2, 3]] })
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
-  Array.from(cur.update(inst, p))
+  runUpdate(cur, inst, p)
   assert.ok(p.stopMessage() !== null, 'the permutation sweep must stop on a line no ordering satisfies')
   p.reset()
-  Array.from(cur.update(inst, p))
+  runUpdate(cur, inst, p)
   console.log('hit-counts stopped permutation sweep: stops again on the same state')
   assert.ok(p.stopMessage() !== null, 'a stopped permutation sweep must not leave the state it stopped on looking swept')
 }

@@ -19,7 +19,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, housesOf, shuffle } from './harness-lib.mjs'
+import { drainChanges, housesOf, installGlobals, makeIo, makePuzzle, makeRng, runUpdate, shuffle } from './harness-lib.mjs'
 import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const here = import.meta.dirname
@@ -53,7 +53,7 @@ function runOnce (mod, cands, kind = 'fullHouse') {
   const truth = Object.fromEntries(cells.map(c => [c, 0]))
   const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { houses: housesOf(kind, cells) })
   const inst = appInstance(mod, 'row 1', cells)
-  Array.from(mod.update(inst, p))
+  runUpdate(mod, inst, p)
   if (p.stopMessage() !== null) return 'stop'
   return cells.map(c => [...p._cand.get(c)].sort((a, b) => a - b))
 }
@@ -250,9 +250,11 @@ board(1, 9)
   const a = appInstance(gac, 'A', CELLS)
   const b = appInstance(gac, 'B', CELLS)
   const genA = gac.update(a, pa)
-  assert.strictEqual(genA.next().done, false, 'house A yields no removal to suspend at')
-  Array.from(gac.update(b, pb))
-  Array.from(genA)
+  const firstA = genA.next()
+  assert.strictEqual(firstA.done, false, 'house A yields no removal to suspend at')
+  pa.applyChange(firstA.value) // the app applies a change before it resumes the generator
+  runUpdate(gac, b, pb)
+  drainChanges(genA, pa)
   const got = CELLS.map(c => [...pa._cand.get(c)].sort((x, y) => x - y))
   assert.deepStrictEqual(got, runOnce(gac, aCands), 'house A changed because house B ran at its yield')
 }
@@ -326,8 +328,8 @@ for (const kind of ['bare', 'fullHouse']) {
   let asked = 0
   p.getCellsCanHaveRepeats = cs => { asked++; return real(cs) }
   const inst = appInstance(gac, 'row 1', cells)
-  Array.from(gac.update(inst, p))
-  Array.from(gac.update(inst, p))
+  runUpdate(gac, inst, p)
+  runUpdate(gac, inst, p)
   assert.strictEqual(asked, 1, `${kind}: asked once, not per update`)
 }
 

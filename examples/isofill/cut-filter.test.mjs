@@ -41,8 +41,8 @@ function removals (mod, start) {
   const log = []
   const rec = {
     ...p,
-    removeCandidateFromCell: (d, c) => { log.push(`${d}@${c}`); p.removeCandidateFromCell(d, c) },
-    removeCandidatesFromCell: (s, c) => { log.push(`[${[...s].sort((a, b) => a - b).join('')}]@${c}`); p.removeCandidatesFromCell(s, c) }
+    removeCandidateFromCell: (d, c) => { log.push(`${d}@${c}`); return p.removeCandidateFromCell(d, c) },
+    removeCandidatesFromCell: (s, c) => { log.push(`[${[...s].sort((a, b) => a - b).join('')}]@${c}`); return p.removeCandidatesFromCell(s, c) }
   }
   const inst = {}
   mod.setParams(inst, CELLS, N, N)

@@ -22,7 +22,7 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
+import { drainChanges, finishHarness, fixpoint, fixpointAll, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, makeWaker, patchSource, runUpdate, shuffle, violates } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
@@ -126,7 +126,7 @@ function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
         // plenty of states, which says nothing about the gate.
         inspect: p => {
           const had = p.getCandidates(CLUE).has(nMinus1)
-          Array.from(mod.noNMinusOne(inst, p))
+          drainChanges(mod.noNMinusOne(inst, p), p)
           if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
         }
       }
@@ -310,14 +310,14 @@ function gateProbe (seed) {
   const p = makePuzzle(rTruth, () => seed.slice(), { houses: [R] })
   const inst = {}
   pairComp.setParams(inst, A, B, R)
-  Array.from(pairComp.update(inst, p)) // the load pass: the base initialize runs update once
+  runUpdate(pairComp, inst, p) // the load pass: the base initialize runs update once
   return { p, inst }
 }
 // Five digits over four cells: not a full house at all, so the gate is shut.
 const cage = gateProbe([0, 1, 2, 3, 4])
 const heldWhileZeroLive = cage.p.getCandidates(A).has(3)
 for (const c of R) cage.p._cand.get(c).delete(0) // the cage bites
-Array.from(pairComp.update(cage.inst, cage.p))
+runUpdate(pairComp, cage.inst, cage.p)
 const retestOk = heldWhileZeroLive && !cage.p.getCandidates(A).has(3)
 console.log('minDigit 0 re-test:', retestOk ? 'OK' : `FAIL (held ${heldWhileZeroLive})`)
 
@@ -328,7 +328,7 @@ console.log('minDigit 0 re-test:', retestOk ? 'OK' : `FAIL (held ${heldWhileZero
 const wrong = gateProbe([0, 1, 2, 3])
 const heldOnWrongSet = wrong.p.getCandidates(A).has(3)
 for (const c of R) { wrong.p._cand.get(c).delete(0); wrong.p._cand.get(c).add(4) }
-Array.from(pairComp.update(wrong.inst, wrong.p))
+runUpdate(pairComp, wrong.inst, wrong.p)
 const wrongSetOk = heldOnWrongSet && !wrong.p.getCandidates(A).has(3)
 console.log('{0..n-1} full house re-test:', wrongSetOk ? 'OK' : `FAIL (held ${heldOnWrongSet})`)
 
@@ -344,7 +344,7 @@ const latchState = fill => makePuzzle(lTruth, c => (c === A || c === B ? [0, 1, 
 function latchProbe (component, params) {
   const inst = {}
   component.setParams(inst, ...params)
-  Array.from(component.update(inst, latchState([1, 2, 3, 4]))) // deep node: the union is exactly {1..4}
+  runUpdate(component, inst, latchState([1, 2, 3, 4])) // deep node: the union is exactly {1..4}
   return violates(component, inst, latchState([1, 2, 3, 4, 5, 6, 7, 8, 9]), lTruth) // the parent it backtracks to
 }
 const latchPair = latchProbe(pairComp, [A, B, LATCH])
@@ -403,11 +403,11 @@ const gateOpened = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(cell(i, i)).
 // A backtrack: the state goes back to where it was and the 0 comes back with
 // it. The same instance must forget it ever opened.
 const undone = sideGateProbe(true)
-Array.from(matchMod.update(undone.inst, undone.p))
+runUpdate(matchMod, undone.inst, undone.p)
 for (const c of LINES.flat()) undone.p._cand.get(c).delete(0)
 fixpoint(matchMod, undone.inst, undone.p)
 for (const c of LINES.flat()) undone.p._cand.set(c, new Set(CANDS[(c / 4) | 0][c % 4].concat([0])))
-Array.from(matchMod.update(undone.inst, undone.p))
+runUpdate(matchMod, undone.inst, undone.p)
 const gateReshut = LINES.flat().every(c => undone.p._cand.get(c).has(0))
 const sideGateOk = gateShut && gateOpened && gateReshut && !zeroLive.v && !sideGateProbe(false).v
 console.log('side hit matching, minDigit 0 gate:', sideGateOk ? 'OK' : `FAIL (shut ${gateShut}, reopened ${gateOpened}, re-shut ${gateReshut})`)
@@ -490,7 +490,7 @@ function sideSumState (vals, fill, clueSeed) {
   return { truth, p: makePuzzle(truth, (c, v) => (c >= 1000 ? fill(v) : clueSeed(c, v)), { houses: PERP }) }
 }
 const deepSide = sideSumState(composition(), v => [v], (c, v) => [v]) // perpendiculars pinned to 1..9: the gate opens
-Array.from(sideMod.update(sideLatchInst, deepSide.p))
+runUpdate(sideMod, sideLatchInst, deepSide.p)
 // The parent: a 0 live on every perpendicular, so the side need not sum to N --
 // and it does not, summing to 11. Eight clues are pinned to 1, so a gate still
 // open forces the ninth to 1 and takes its true 3 away.

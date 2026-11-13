@@ -1,5 +1,5 @@
 import assert from 'assert'
-import { columnsOf, installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { columnsOf, installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -20,7 +20,7 @@ function board (edit = () => {}, houses = COLUMNS) {
   mod.setParams(inst, CELLS)
   return { p, inst }
 }
-const run = ({ p, inst }) => { Array.from(mod.update(inst, p)); return p }
+const run = ({ p, inst }) => { runUpdate(mod, inst, p); return p }
 const has = (p, row, col, d) => p._cand.get(at(row, col)).has(d)
 const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d => ![1, 5, 9].includes(d))))
 
@@ -163,7 +163,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
     const p = makePuzzle(Object.fromEntries(cells.map(c => [c, 0])), c => [...cand.get(c)], { houses: columnsOf(width) })
     const inst = { cells }
     mod.setParams(inst, cells)
-    Array.from(mod.update(inst, p))
+    runUpdate(mod, inst, p)
     installGlobals(1, N)
     return p
   }

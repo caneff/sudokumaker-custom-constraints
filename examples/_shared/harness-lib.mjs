@@ -246,6 +246,12 @@ function maskOf (s, caller) {
 // `getSet`, so it serves a fixed map (makePuzzle) and a map a search reassigns
 // wholesale (recovery-lib's makeCandidateState) alike.
 //
+// The change builders edit nothing: as in the app, each returns a Change for
+// the component to yield (docs/research/bundle-api-reference.md, the six
+// change builders), and `applyChange` is what the solver does with one it was
+// handed. The singular forms build the plural Change over one cell; the type
+// names are the app's ChangeType members.
+//
 // `houses` are the cell groups the board declares all-different. They answer
 // `getCellsCanHaveRepeats` for a query of distinct cells, the only kind a line
 // component makes: false exactly when one house holds every one of them. The
@@ -258,11 +264,8 @@ function maskOf (s, caller) {
 // line is bare.
 export function makePuzzleApi (getSet, { houses = [] } = {}) {
   const houseSets = houses.map(h => new Set(h))
-  // The mask arithmetic every change builder below shares: drop the masked
-  // digits from a cell, or keep only them. Iterating a copy leaves the live
-  // set free to shrink underneath.
-  const dropMask = (m, c) => { const set = getSet(c); for (const d of [...set]) if (m & (1 << d)) set.delete(d) }
-  const keepMask = (m, c) => { const set = getSet(c); for (const d of [...set]) if (!(m & (1 << d))) set.delete(d) }
+  const remove = (value, cells) => ({ type: 'RemoveCandidatesFromCells', value, cells })
+  const filter = (value, cells) => ({ type: 'FilterCandidatesAtCells', value, cells })
   return {
     hasValue: c => getSet(c).size === 1,
     // The solved digit, undefined while the cell is open (docs/puzzle-api.md).
@@ -272,22 +275,44 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
     getCandidatesBitMask: c => { let m = 0; for (const d of getSet(c)) m |= 1 << d; return m },
     getCellsAreFilled: cs => cs.every(c => getSet(c).size === 1),
     getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
-    removeCandidateFromCell: (d, c) => { getSet(c).delete(d) },
-    removeCandidatesFromCell: (s, c) => dropMask(maskOf(s, 'removeCandidatesFromCell'), c),
-    removeCandidatesFromCells: (s, cs) => { const m = maskOf(s, 'removeCandidatesFromCells'); for (const c of cs) dropMask(m, c) },
-    removeCandidateFromCells: (d, cs) => { for (const c of cs) getSet(c).delete(d) },
-    filterCandidatesInCell: (s, c) => keepMask(maskOf(s, 'filterCandidatesInCell'), c),
-    filterCandidatesInCells: (s, cs) => { const m = maskOf(s, 'filterCandidatesInCells'); for (const c of cs) keepMask(m, c) }
+    removeCandidateFromCell: (d, c) => remove(1 << d, [c]),
+    removeCandidatesFromCell: (s, c) => remove(maskOf(s, 'removeCandidatesFromCell'), [c]),
+    removeCandidatesFromCells: (s, cs) => remove(maskOf(s, 'removeCandidatesFromCells'), cs),
+    removeCandidateFromCells: (d, cs) => remove(1 << d, cs),
+    filterCandidatesInCell: (s, c) => filter(maskOf(s, 'filterCandidatesInCell'), [c]),
+    filterCandidatesInCells: (s, cs) => filter(maskOf(s, 'filterCandidatesInCells'), cs),
+    // Apply one removal or filter Change; false when it emptied a cell, the
+    // app's `failed` result. Any other type is skipped, as the app skips a
+    // type outside its enum. Iterating a copy leaves the live set free to
+    // shrink underneath.
+    applyChange (change) {
+      const keep = change.type === 'FilterCandidatesAtCells'
+      if (!keep && change.type !== 'RemoveCandidatesFromCells') return true
+      let ok = true
+      for (const c of change.cells) {
+        const set = getSet(c)
+        for (const d of [...set]) if (((change.value & (1 << d)) !== 0) !== keep) set.delete(d)
+        if (set.size === 0) ok = false
+      }
+      return ok
+    }
   }
 }
+
+// The change builders makePuzzleApi exports, which makeMockCore watches.
+const BUILDERS = ['removeCandidateFromCell', 'removeCandidatesFromCell', 'removeCandidatesFromCells',
+  'removeCandidateFromCells', 'filterCandidatesInCell', 'filterCandidatesInCells']
 
 // The mock puzzle a harness runs components on: makePuzzleApi over the map
 // `getMap()` returns, read live so a search may reassign it wholesale, plus
 // the stop a component calls and the outcome a harness asks about. makePuzzle
 // and recovery-lib's makeCandidateState are both built on it.
-//   stop(message, cells)  the app's stop(): aborts the branch as a
-//                         contradiction. Recording at call time is enough
-//                         here: every component yields the stop it just built.
+//   stop(message, cells)  the app's stop(): builds an AbortSolver Change, which
+//                         stops the branch when it is yielded, like any other
+//   applyChange(change)   applies a yielded Change (drainChanges calls it);
+//                         false when it failed: a stop, or a cell emptied
+//   takeUnyielded()       the Changes built since the last call and never
+//                         applied, and forgets them; drainChanges asserts none
 //   stopMessage()         the stop's message ('stopped' when it gave none),
 //                         or null while nothing has stopped
 //   isDead()              stopped, or some cell emptied: no solution here
@@ -295,10 +320,23 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
 //                         cell stays empty
 //   total()               the candidates left, summed over every cell
 export function makeMockCore (getMap, { houses = [] } = {}) {
+  const api = makePuzzleApi(c => getMap().get(c), { houses })
   let stopped = null
-  return {
-    ...makePuzzleApi(c => getMap().get(c), { houses }),
-    stop: (message = '', cells = []) => { stopped = message || 'stopped'; return { message, cells } },
+  const unyielded = new Set()
+  const built = change => { unyielded.add(change); return change }
+  const core = {
+    ...api,
+    stop: (message = '', cells = []) => built({ type: 'AbortSolver', message, cells }),
+    applyChange (change) {
+      if (change === null || typeof change !== 'object') {
+        throw new TypeError(`update yielded ${change === null ? 'null' : typeof change}, not a Change: the app reads .type off it`)
+      }
+      unyielded.delete(change)
+      if (change.type !== 'AbortSolver') return api.applyChange(change)
+      stopped = change.message || 'stopped'
+      return false
+    },
+    takeUnyielded: () => { const out = [...unyielded]; unyielded.clear(); return out },
     stopMessage: () => stopped,
     isDead: () => {
       if (stopped !== null) return true
@@ -308,6 +346,8 @@ export function makeMockCore (getMap, { houses = [] } = {}) {
     reset: () => { stopped = null },
     total: () => { let n = 0; for (const s of getMap().values()) n += s.size; return n }
   }
+  for (const name of BUILDERS) core[name] = (...args) => built(api[name](...args))
+  return core
 }
 
 // A mock puzzle over a truth map (cell -> true value). Each cell starts with a
@@ -350,17 +390,40 @@ export const housesOf = (kind, cells) => (kind === 'bare' ? [] : [cells])
 // top to bottom: the houses a column-rule example declares.
 export const columnsOf = width => Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
 
+// Drain a generator of Changes the way the app's runPass does
+// (bundle.claude.js:9006-9030): apply each yielded Change before resuming the
+// generator, and end the drain on the first one that fails -- a stop, or a
+// cell emptied. Returns the Changes applied, or null when one failed. A drain
+// that ran to its end
+// asserts the generator built no Change it never yielded: the app ignores
+// one, so a component that forgets to yield a removal prunes nothing there.
+export function drainChanges (changes, p) {
+  p.takeUnyielded() // a Change built before this drain is not this drain's
+  const applied = []
+  for (const change of changes) {
+    applied.push(change)
+    if (!p.applyChange(change)) { p.takeUnyielded(); return null }
+  }
+  const lost = p.takeUnyielded()
+  assert.strictEqual(lost.length, 0,
+    `a component built ${lost.length} change${lost.length === 1 ? '' : 's'} it never yielded: ${JSON.stringify(lost[0])}`)
+  return applied
+}
+
+// One call of a component's `update` on the mock, drained as the app drains it.
+export const runUpdate = (mod, inst, p) => drainChanges(mod.update(inst, p), p)
+
 // Run components' updates until a pass removes nothing, at most MAX_PASSES
 // times. `parts` is a list of `{ mod, inst }`, run in order each pass. A
-// stop() on the puzzle means the branch is dead, and that ends propagation for
-// every part at once, mid-pass included.
+// failed change -- a stop() or an emptied cell -- means the branch is dead,
+// and that ends propagation for every part at once, mid-pass included, as a
+// failed result ends the app's whole fixpoint.
 const MAX_PASSES = 20
 export function fixpointAll (parts, p) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = p.total()
     for (const { mod, inst } of parts) {
-      Array.from(mod.update(inst, p)) // drain
-      if (p.stopMessage() !== null) return
+      if (!runUpdate(mod, inst, p)) return
     }
     if (p.total() === before) return
   }
@@ -376,7 +439,7 @@ export function makeWaker (mod, inst, p, cells) {
   return {
     wake () {
       if (snapshot() === seen) return
-      Array.from(mod.update(inst, p))
+      runUpdate(mod, inst, p)
       seen = snapshot()
     },
     settle () { seen = snapshot() }
