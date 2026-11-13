@@ -23,9 +23,10 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 
 ## Include closure
 
-`~/.agents/skills/implement-spec/closure.py` reads this section for the hold
-`loop.py dispatch` puts on files in flight, to find which files a change really regenerates; `docs/example-layout.md` § The shared
-frame reader explains the directive itself.
+`docs/example-layout.md` § The shared frame reader explains the directive.
+`~/.agents/skills/implement-spec/closure.py` reads the lines below to find
+which files a change regenerates; `loop.py dispatch` uses that to hold the
+files a worker has in flight.
 
 - **Directive**: `// #include <path>`
 - **Paths**: relative to the including file
@@ -58,11 +59,22 @@ others. If no step is forced from that state, say so.
   every constraint change and expect zero violations. Full standards in
   `CODING_STANDARDS.md`.
 
+## Solve-time invariant (always on)
+
+- **A deduction must pay for itself in solve time.** On a deduction added or
+  removed, run `just time <example>` (add `--ring-clues` for numbered-rooms
+  and skyscraper); it prints a cold row and an after-logical row, and passes
+  at ≤ 0.9× on either row and ≤ 1.1× on the other, 3 reps, non-deterministic
+  solve off. See `docs/real-app-timing.md`.
+
 ## Puzzle links (always on)
 
+- **Load the global `sm-link` skill before you generate, edit or share a
+  SudokuMaker link.** It holds the givens/ring/pencilmark rules, the
+  pre-share decode check and the wire-format pointers.
 - **A link is only ever a short link** (`https://sudokumaker.app/p/<id>`),
-  printed bare, in chat, a PR, a ticket or a README; the `sm-link` skill
-  mints one (sudoku-kit#53). No full link is kept: an example's builder is
+  printed bare, in chat, a PR, a ticket or a README; `sm-link` mints one
+  (sudoku-kit#53). No full link is kept: an example's builder is
   its source of truth and rebuilds the full link when needed (Chris,
   2026-10-23).
   Until the builders mint, `PUZZLE_LINK*.txt` files still hold full links; a
@@ -178,7 +190,3 @@ Default six canonical triage roles, each label string equal to its name. See `do
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
-
-## SudokuMaker links (always on)
-
-Load the global `sm-link` skill before generating, editing, or sharing a SudokuMaker link. It holds the givens/ring/pencilmark rules, the pre-share decode check, and the sudokumaker.app wire-format pointers (single home, moved from vault memory in second-brain-v2 #140).
