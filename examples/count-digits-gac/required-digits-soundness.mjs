@@ -17,7 +17,7 @@
 //      digit with that candidate in place. The GAC component must remove no
 //      more than the oracle (sound); we report how much less it removes.
 
-import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
+import { construct, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -25,7 +25,7 @@ const { load } = makeIo(HERE)
 const N = 9
 installGlobals(1, N)
 
-const mod = load('RequiredDigitsGacComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('RequiredDigitsGacComponent.js')
 const seeder = makeSeeder(rndSeeder(), [...Array(N).keys()].map(i => i + 1))
 const { rnd } = makeRng()
 function rndSeeder () { return makeRng(777).rnd }
@@ -122,8 +122,7 @@ function run (label, { cellCount, valueCount, iters, houses = [], forceRepeat = 
     iters,
     draw: () => {
       const { cells, values, truth, houses: declared } = makeState(cellCount, valueCount, { houses, forceRepeat })
-      const inst = { name: 'required digits' }
-      mod.setParams(inst, values, cells)
+      const inst = construct(mod, 'required digits', values, cells)
       return {
         truth,
         seed: seeder,

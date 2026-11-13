@@ -4,7 +4,7 @@
 //   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
-import { finishHarness, fixpoint, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate, drainChanges, shuffle, TIES_FLAG, violates } from '../_shared/harness-lib.mjs'
+import { construct, finishHarness, fixpoint, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate, drainChanges, shuffle, TIES_FLAG, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -16,7 +16,7 @@ installGlobals(1, N)
 const DIGITS = [...Array(N).keys()].map(i => i + 1)
 const seeder = makeSeeder(rnd, DIGITS)
 
-const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('SkyscraperPairComponent.js')
 
 // The one-sided DP: the LOCAL line component, one clue at one end of a drawn
 // line. It claims soundness on every line kind (docs/line-contract.md), so it
@@ -25,7 +25,7 @@ const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate
 // (false) or counted (true), and both readings must be sound.
 
 function loadOneSided (allowTies) {
-  return load('SkyscraperOneSidedComponent.js', ['setParams', 'update', 'validate'],
+  return load('SkyscraperOneSidedComponent.js', [],
     src => patchSource(src, TIES_FLAG, `const ALLOW_TIES = ${allowTies}`))
 }
 
@@ -62,8 +62,7 @@ function fuzzOneSided (label, { allowTies, kind, n, iters }) {
       const digits = makeLine(rnd, kind, n, N)
       const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
       for (let i = 0; i < n; i++) truth[i] = digits[i]
-      const inst = {}
-      oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
+      const inst = construct(oneSidedMod, 'skyscraper', ONE_SIDED_CLUE, cells)
       return { truth, seed: seeder, houses: housesOf(kind, cells), parts: [{ mod: oneSidedMod, inst }], note: `line ${digits.join('')}` }
     }
   })
@@ -76,8 +75,7 @@ for (const allowTies of [false, true]) {
     const digits = makeLine(rnd, kind, n, N)
     const cells = digits.map((_, i) => i)
     const clue = visibleWith(allowTies, digits)
-    const inst = {}
-    oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
+    const inst = construct(oneSidedMod, 'skyscraper', ONE_SIDED_CLUE, cells)
     const filledWith = k => {
       const truth = { [ONE_SIDED_CLUE]: k }
       for (let i = 0; i < n; i++) truth[i] = digits[i]
@@ -115,8 +113,7 @@ for (const allowTies of [false, true]) {
   const oneSidedMod = loadOneSided(allowTies)
   installGlobals(1, EXACT_N)
   const cells = [...Array(EXACT_N).keys()]
-  const inst = {}
-  oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
+  const inst = construct(oneSidedMod, 'skyscraper', ONE_SIDED_CLUE, cells)
   for (let iter = 0; iter < 1000; iter++) {
     const digits = makeLine(rnd, 'bare', EXACT_N, EXACT_N)
     const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
@@ -168,8 +165,7 @@ const lineRun = fuzzSoundness('pair component', {
     const perm = shuffled()
     const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
     for (const i of LINE) truth[i] = perm[i]
-    const inst = {}
-    mod.setParams(inst, CA, CB, LINE)
+    const inst = construct(mod, 'skyscraper', CA, CB, LINE)
     return { truth, seed: seeder, houses: FULL.houses, parts: [{ mod, inst }], note: `perm ${perm.join('')}` }
   }
 })
@@ -183,10 +179,8 @@ const fired = lineRun.fired
 const CA2 = 102
 const CB2 = 103
 const LINE2 = LINE.map(i => i + 10)
-const instA = {}
-mod.setParams(instA, CA, CB, LINE)
-const instB = {}
-mod.setParams(instB, CA2, CB2, LINE2)
+const instA = construct(mod, 'skyscraper', CA, CB, LINE)
+const instB = construct(mod, 'skyscraper', CA2, CB2, LINE2)
 const state = q => [...q._cand].map(([c, s]) => c + ':' + [...s].sort().join('')).sort().join('|')
 const BOTH = { houses: [LINE, LINE2] }
 const copyOf = q => { const r = makePuzzle({}, () => [], BOTH); for (const [c, s] of q._cand) r._cand.set(c, new Set(s)); return r }
@@ -242,8 +236,7 @@ const permute = (a, rest) => {
 }
 permute([], [1, 2, 3, 4, 5])
 const smallLine = [...Array(M).keys()]
-const smallInst = {}
-mod.setParams(smallInst, CA, CB, smallLine)
+const smallInst = construct(mod, 'skyscraper', CA, CB, smallLine)
 let exactBad = 0
 let exactRuns = 0
 const EXACT = 2000
@@ -279,8 +272,7 @@ for (let iter = 0; iter < EXACT; iter++) {
 installGlobals(1, N)
 console.log('exactness vs brute force (n=5):', exactRuns, 'states,', exactBad, 'disagreements')
 
-const bareInst = {}
-mod.setParams(bareInst, CA, CB, LINE)
+const bareInst = construct(mod, 'skyscraper', CA, CB, LINE)
 let bareRemovals = 0
 let bareRepeats = 0
 for (let iter = 0; iter < 2000; iter++) {
@@ -302,8 +294,7 @@ console.log('bare line:', bareRemovals, 'candidates removed,', bareRepeats, 'of 
 // Both readings are checked, with the clue cells unclued and with them pinned.
 installGlobals(0, 9)
 const zeroLine = [...Array(9).keys()]
-const zeroInst = {}
-mod.setParams(zeroInst, CA, CB, zeroLine)
+const zeroInst = construct(mod, 'skyscraper', CA, CB, zeroLine)
 const unclued = [...Array(10).keys()]
 const zeroOpts = { houses: [zeroLine] }
 let zeroRemovals = 0
@@ -328,9 +319,8 @@ console.log('validate on a zero-based board:', zeroValidates ? 'stands down' : '
 // with the 0 still live on every cell: the gate is shut on the first update
 // because the digit set is {0..9}, and must open once the 0 goes. An instance
 // that cached the first answer would stay silent for good.
-const liveZeroInst = {}
+const liveZeroInst = construct(mod, 'skyscraper', CA, CB, zeroLine)
 const permOf19 = [4, 1, 7, 2, 9, 3, 8, 5, 6]
-mod.setParams(liveZeroInst, CA, CB, zeroLine)
 const liveTruth = { [CA]: visible(permOf19), [CB]: visible([...permOf19].reverse()) }
 for (const i of zeroLine) liveTruth[i] = permOf19[i]
 const openLine = [...Array(10).keys()]
@@ -350,8 +340,7 @@ console.log('0 live on the first update:', shutWhileZeroLive ? 'gate shut' : 'GA
 // open after the search returns to a parent state where the line has regained
 // its 0. Same zero-based board as above, judged by an instance that saw a
 // {1..9} line first.
-const latchInst = {}
-mod.setParams(latchInst, CA, CB, zeroLine)
+const latchInst = construct(mod, 'skyscraper', CA, CB, zeroLine)
 const deepOpen = makePuzzle(liveTruth, (c, v) => (c === CA || c === CB ? [v] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), zeroOpts)
 fixpoint(mod, latchInst, deepOpen)
 const backTruth = { [CA]: 9, [CB]: 1 }
@@ -366,7 +355,7 @@ console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shu
 // house as "may repeat" and never fires: the fuzz above would report zero
 // prune firings and fail. This runs that mistake and holds the harness to
 // seeing it.
-const clueInQuery = load('SkyscraperPairComponent.js', ['setParams', 'update'], src => patchSource(src,
+const clueInQuery = load('SkyscraperPairComponent.js', [], src => patchSource(src,
   'lineKind(instance, puzzle, line).oneToN) return\n', 'lineKind(instance, puzzle, [clueA, ...line]).oneToN) return\n'))
 installGlobals(1, N)
 let clueQueryFired = 0
@@ -378,8 +367,7 @@ for (let iter = 0; iter < 300; iter++) {
   const start = makePuzzle(truth, seeder, FULL)
   for (const [version, count] of [[clueInQuery, 'clue'], [mod, 'line']]) {
     const p = copyOf(start)
-    const inst = {}
-    version.setParams(inst, CA, CB, LINE)
+    const inst = construct(version, 'skyscraper', CA, CB, LINE)
     const before = p.total()
     fixpoint(version, inst, p)
     if (p.total() < before) { if (count === 'clue') clueQueryFired++; else lineQueryFired++ }

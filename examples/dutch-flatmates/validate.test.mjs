@@ -1,12 +1,12 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 installGlobals(1, 9)
-const mod = load('DutchFlatmatesComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])
+const mod = load('DutchFlatmatesComponent.js')
 
 const N = 9
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -19,8 +19,7 @@ function verdict (placed, { open = [] } = {}) {
   for (const c of CELLS) truth[c] = 2
   for (const [rc, d] of Object.entries(placed)) { const [r, c] = rc.split(',').map(Number); truth[id(r, c)] = d }
   const p = makePuzzle(truth, (c, v) => (open.includes(c) ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : [v]))
-  const inst = { cells: CELLS }
-  mod.setParams(inst, CELLS)
+  const inst = construct(mod, 'dutch-flatmates', CELLS)
   return mod.validate(inst, p)
 }
 

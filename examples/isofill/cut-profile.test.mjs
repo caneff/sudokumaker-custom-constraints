@@ -2,7 +2,7 @@
 // so the way it breaks is silent: an edit to `IsofillComponent.js` moves an
 // anchor and the share it reports is wrong rather than absent.
 
-import { installGlobals, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 import { instrument, snapshots, loadComponent, timeUpdate, GRIDS } from './cut-profile.mjs'
 
 const HERE = import.meta.dirname
@@ -23,8 +23,7 @@ const removalsOf = (mod, snap) => {
   const truth = {}
   for (const c of snap.keys()) truth[c] = snap.get(c)[0]
   const p = makePuzzle(truth, c => snap.get(c))
-  const inst = {}
-  mod.setParams(inst, [...snap.keys()], 10, 10)
+  const inst = construct(mod, 'isofill', [...snap.keys()], 10, 10)
   runUpdate(mod, inst, p)
   return [...snap.keys()].map(c => [...p._cand.get(c)].sort((a, b) => a - b).join('')).join('|')
 }

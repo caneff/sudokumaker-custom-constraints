@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { finishHarness, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, runUpdate, violates } from '../_shared/harness-lib.mjs'
+import { construct, finishHarness, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, runUpdate, violates } from '../_shared/harness-lib.mjs'
 import { N, CELLS, rows, bent, shapeOf, tall, wide, rowsTall, colsWide, bentWide } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -9,7 +9,7 @@ const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
-const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('IsofillComponent.js')
 
 const ALL = Array.from({ length: N }, (_, d) => d)
 
@@ -27,8 +27,7 @@ const seeder = makeSeeder(rnd, ALL)
 
 function run (truth, seed) {
   const p = makePuzzle(truth, seed)
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   return { p, v: violates(mod, inst, p, truth) }
 }
 
@@ -45,8 +44,7 @@ grid('gen_35g_silent.json').forEach((row, r) => [...row].forEach((ch, x) => { si
 
 function once (truth, seed) {
   const p = makePuzzle(truth, seed)
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   runUpdate(mod, inst, p)
   return p
 }
@@ -59,8 +57,7 @@ for (const [name, truth, seed] of [['rows', rows, seeder], ['bent', bent, seeder
   bad += fuzzSoundness(`isofill ${name} fixture`, {
     iters: FUZZ,
     draw: () => {
-      const inst = {}
-      mod.setParams(inst, CELLS, N, N)
+      const inst = construct(mod, 'isofill', CELLS, N, N)
       return { truth, seed, parts: [{ mod, inst }] }
     }
   }).failures
@@ -215,15 +212,13 @@ const onePass = makePuzzle(rows, () => ALL)
 const readsPerCell = new Map()
 const getMask = onePass.getCandidatesBitMask.bind(onePass)
 onePass.getCandidatesBitMask = c => { readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
-const onePassInst = {}
-mod.setParams(onePassInst, CELLS, N, N)
+const onePassInst = construct(mod, 'isofill', CELLS, N, N)
 runUpdate(mod, onePassInst, onePass)
 const reads = [...readsPerCell.values()].reduce((a, b) => a + b, 0)
 const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
 // Validate: full valid grid passes; swap two cells across regions (still ten each) fails
 const full = makePuzzle(bent, (c, v) => [v])
-const inst = {}
-mod.setParams(inst, CELLS, N, N)
+const inst = construct(mod, 'isofill', CELLS, N, N)
 const swapped = { ...bent, 0: bent[99], 99: bent[0] }
 const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
@@ -238,14 +233,12 @@ const seeder9 = makeSeeder(rnd, ALL9)
 const bad9 = fuzzSoundness('isofill 9x9 fixture', {
   iters: FUZZ,
   draw: () => {
-    const inst = {}
-    mod.setParams(inst, CELLS9, N9, N9)
+    const inst = construct(mod, 'isofill', CELLS9, N9, N9)
     return { truth: rows9, seed: seeder9, parts: [{ mod, inst }] }
   }
 }).failures
 const cap9 = makePuzzle(rows9, (c, v) => (v === 1 ? [v] : ALL9))
-const cap9Inst = {}
-mod.setParams(cap9Inst, CELLS9, N9, N9)
+const cap9Inst = construct(mod, 'isofill', CELLS9, N9, N9)
 runUpdate(mod, cap9Inst, cap9)
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
 
@@ -261,16 +254,14 @@ for (const [name, shape, truth] of [['rows 6x10', tall, rowsTall], ['cols 10x6',
   badRect += fuzzSoundness(`isofill ${name} fixture`, {
     iters: FUZZ,
     draw: () => {
-      const inst = {}
-      mod.setParams(inst, shape.cells, shape.w, shape.h)
+      const inst = construct(mod, 'isofill', shape.cells, shape.w, shape.h)
       return { truth, seed: seeder10, parts: [{ mod, inst }] }
     }
   }).failures
 }
 const rectOnce = (shape, truth, seed) => {
   const p = makePuzzle(truth, seed)
-  const inst = {}
-  mod.setParams(inst, shape.cells, shape.w, shape.h)
+  const inst = construct(mod, 'isofill', shape.cells, shape.w, shape.h)
   runUpdate(mod, inst, p)
   return p
 }
@@ -294,8 +285,7 @@ const rectArcLeftOk = tall2.cells.some(c => rectArcLeft.getCandidates(c).size ==
 // An uneven split stops the branch: seven cells do not divide among ten digits.
 const sevenCells = shapeOf(7, 1).cells
 const uneven = makePuzzle(Object.fromEntries(sevenCells.map(c => [c, 0])), () => ALL10)
-const unevenInst = {}
-mod.setParams(unevenInst, sevenCells, 7, 1)
+const unevenInst = construct(mod, 'isofill', sevenCells, 7, 1)
 runUpdate(mod, unevenInst, uneven)
 const unevenOk = uneven.stopMessage() !== null && uneven.stopMessage().includes('do not split evenly')
 const CHECKS = {

@@ -8,7 +8,7 @@
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { columnsOf, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, columnsOf, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -16,9 +16,8 @@ const { load } = makeIo(HERE)
 const N = 9
 installGlobals(1, N)
 
-const NAMES = ['setParams', 'update']
-const cur = load('DutchFlatmatesComponent.js', NAMES)
-const ref = load('.golden/DutchFlatmatesComponent.floor.js', NAMES)
+const cur = load('DutchFlatmatesComponent.js')
+const ref = load('.golden/DutchFlatmatesComponent.floor.js')
 
 const { rnd } = makeRng(676)
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -30,8 +29,7 @@ const truth = gen.grid.flatMap(row => [...row].map(Number))
 const COLUMNS = columnsOf(N)
 
 const apply = (mod, p) => {
-  const inst = { cells: CELLS }
-  mod.setParams(inst, CELLS)
+  const inst = construct(mod, 'dutch-flatmates', CELLS)
   fixpoint(mod, inst, p)
 }
 

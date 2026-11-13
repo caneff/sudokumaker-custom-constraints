@@ -12,12 +12,11 @@
 import assert from 'assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { installGlobals, makeIo, makePuzzle, patchSource } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, patchSource } from '../_shared/harness-lib.mjs'
 import { fixtureBoard } from './bound-screen-lib.mjs'
 import { givensOf } from './hunt-lib.mjs'
 
 const HERE = import.meta.dirname
-const NAMES = ['setParams', 'initialize']
 const UPDATE = 'function * update (instance, puzzle) {'
 const CALL_LIMIT = 'const SETUP_CALL_LIMIT = 40000'
 const DRY_LIMIT = 'const SETUP_DRY_LIMIT = 100'
@@ -30,7 +29,7 @@ const countCalls = src => patchSource(src, UPDATE, `${UPDATE}
   globalThis.setupPassCalls.n++
   globalThis.setupPassCalls.cell0.push(puzzle.getValue(0))`)
 const { load } = makeIo(HERE)
-const loadWith = patch => load('FillominoComponent.js', NAMES, src => patch(countCalls(src)))
+const loadWith = patch => load('FillominoComponent.js', [], src => patch(countCalls(src)))
 const shipped = loadWith(src => src)
 
 // The shared mock over the board, but placed only where a given is: the app
@@ -53,8 +52,7 @@ const masks = p => Array.from({ length: p._cand.size }, (_, c) => p.getCandidate
 function runPass (mod, board) {
   installGlobals(1, board.cap)
   const { width, height } = board
-  const inst = {}
-  mod.setParams(inst, Array.from({ length: width * height }, (_, i) => i), width, height)
+  const inst = construct(mod, 'fillomino', Array.from({ length: width * height }, (_, i) => i), width, height)
   const p = appPuzzle(board)
   calls.n = 0
   calls.cell0 = []

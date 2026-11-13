@@ -1,11 +1,11 @@
 import assert from 'assert'
-import { columnsOf, installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, columnsOf, installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const N = 9
 installGlobals(1, N)
-const mod = load('DutchFlatmatesComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('DutchFlatmatesComponent.js')
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 const at = (row, col) => row * N + col
@@ -16,8 +16,7 @@ function board (edit = () => {}, houses = COLUMNS) {
   const cand = new Map(CELLS.map(c => [c, new Set(ALL)]))
   edit(cand)
   const p = makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => [...cand.get(c)], { houses })
-  const inst = { cells: CELLS }
-  mod.setParams(inst, CELLS)
+  const inst = construct(mod, 'dutch-flatmates', CELLS)
   return { p, inst }
 }
 const run = ({ p, inst }) => { runUpdate(mod, inst, p); return p }
@@ -161,8 +160,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
     const cand = new Map(cells.map(c => [c, new Set(digits)]))
     edit(cand, (row, col) => row * width + col)
     const p = makePuzzle(Object.fromEntries(cells.map(c => [c, 0])), c => [...cand.get(c)], { houses: columnsOf(width) })
-    const inst = { cells }
-    mod.setParams(inst, cells)
+    const inst = construct(mod, 'dutch-flatmates', cells)
     runUpdate(mod, inst, p)
     installGlobals(1, N)
     return p

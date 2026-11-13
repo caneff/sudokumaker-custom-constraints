@@ -6,10 +6,10 @@
 
 import assert from 'assert'
 import { pinned } from './fixture.mjs'
-import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
-const mod = makeIo(HERE).load('FillominoComponent.js', ['setParams', 'update'])
+const mod = makeIo(HERE).load('FillominoComponent.js')
 
 const { truth, width: n, cap } = pinned
 const CELLS = Array.from({ length: n * n }, (_, i) => i)
@@ -22,8 +22,7 @@ installGlobals(1, cap)
 // the limit it records is what nextVisit wraps at, and a bare Int32Array would
 // never wrap.
 {
-  const inst = {}
-  mod.setParams(inst, CELLS, n, n)
+  const inst = construct(mod, 'fillomino', CELLS, n, n)
   assert.strictEqual(inst.seen.visitLimit, 0x7FFFFFFF, 'the marks were not allocated through newVisitMarks')
 }
 
@@ -32,8 +31,7 @@ const run = (visit, reps) => {
   for (let rep = 0; rep < reps; rep++) {
     const r = makeRng(2000 + rep).rnd
     const p = makePuzzle(truth, (c, v) => randomCandidates(r, 1, cap, v))
-    const inst = {}
-    mod.setParams(inst, CELLS, n, n)
+    const inst = construct(mod, 'fillomino', CELLS, n, n)
     if (visit) {
       inst.visit = visit
       for (let i = 0; i < inst.seen.length; i++) inst.seen[i] = 1 + (i * 7 + rep) % 60

@@ -4,7 +4,7 @@
 // back. The seams are each component's `getAffectedCells`, `update` and
 // `validate` on the harness mock.
 import assert from 'node:assert/strict'
-import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -15,7 +15,7 @@ const { load } = makeIo(HERE)
 // is a line cell's change, not a clue's: a component listing the clues alone
 // sleeps through it and the side's bound waits for some later clue change.
 {
-  const sideSum = load('SideSumComponent.js', ['getAffectedCells', 'setParams', 'update'])
+  const sideSum = load('SideSumComponent.js')
   const N = 9
   const SIDE = Array.from({ length: N }, (_, i) => 200 + i)
   const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
@@ -27,10 +27,8 @@ const { load } = makeIo(HERE)
   // first to 1 too -- once the gate opens. One line still holds a 0.
   const start = c => (c === SIDE[0] ? [1, 5] : c === PERP[0][0] ? [0, truth[c]] : [truth[c]])
   const p = makePuzzle(truth, start, { houses: PERP })
-  const affected = sideSum.getAffectedCells(SIDE, N, PERP)
-  const inst = { cells: affected }
-  sideSum.setParams(inst, SIDE, N, PERP)
-  const { wake } = makeWaker(sideSum, inst, p, affected)
+  const inst = construct(sideSum, 'hit-counts', SIDE, N, PERP)
+  const { wake } = makeWaker(sideSum, inst, p, inst.cells)
   wake()
   assert.deepEqual([...p._cand.get(SIDE[0])], [1, 5], 'the gate is shut while line 0 holds a 0')
   p._cand.get(PERP[0][0]).delete(0)
@@ -57,7 +55,7 @@ const { load } = makeIo(HERE)
 // a SudokuDigitSet that throws, both sweeps must still remove from clue A,
 // clue B and the line cells.
 {
-  const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const pairComp = load('HitCountsPairComponent.js')
   const { rnd } = makeRng(452)
   installGlobals(0, 9)
   const real = globalThis.SudokuDigitSet
@@ -82,8 +80,7 @@ const { load } = makeIo(HERE)
         const p = makePuzzle(truth, seed, { houses: kind === 'bare' ? [] : [cells] })
         const size = c => p._cand.get(c).size
         const before = { A: size(A), B: size(B), line: cells.reduce((s, c) => s + size(c), 0) }
-        const inst = { cells: [A, B, ...cells] }
-        pairComp.setParams(inst, A, B, cells)
+        const inst = construct(pairComp, 'hit-counts', A, B, cells)
         runUpdate(pairComp, inst, p)
         if (p.stopMessage() !== null) continue
         removed.A += before.A - size(A)
@@ -102,8 +99,8 @@ const { load } = makeIo(HERE)
 // that throws, the per-line clue's [forced, possible] bound and side sum's
 // bounds propagation must still make their removals.
 {
-  const perLine = load('HitCountsComponent.js', ['setParams', 'update'])
-  const sideSum = load('SideSumComponent.js', ['getAffectedCells', 'setParams', 'update'])
+  const perLine = load('HitCountsComponent.js')
+  const sideSum = load('SideSumComponent.js')
   installGlobals(0, 9)
   const real = globalThis.SudokuDigitSet
   globalThis.SudokuDigitSet = { from () { throw new Error('SudokuDigitSet built') } }
@@ -112,8 +109,7 @@ const { load } = makeIo(HERE)
     const line = [0, 1, 2, 3]
     const truth = { [C]: 0, 0: 2, 1: 1, 2: 4, 3: 3 }
     const p = makePuzzle(truth, c => (c === C ? [0, 1, 2, 4] : [truth[c]]), { houses: [] })
-    const inst = { cells: [C, ...line] }
-    perLine.setParams(inst, C, line)
+    const inst = construct(perLine, 'hit-counts', C, line)
     runUpdate(perLine, inst, p)
     assert.deepEqual([...p._cand.get(C)], [0], 'the reverse bound leaves the clue at 0')
 
@@ -124,8 +120,7 @@ const { load } = makeIo(HERE)
     for (const c of SIDE) t2[c] = 1
     for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) t2[PERP[i][j]] = ((i + j) % N) + 1
     const q = makePuzzle(t2, c => (c === SIDE[0] ? [1, 5] : [t2[c]]), { houses: PERP })
-    const side = { cells: sideSum.getAffectedCells(SIDE, N, PERP) }
-    sideSum.setParams(side, SIDE, N, PERP)
+    const side = construct(sideSum, 'hit-counts', SIDE, N, PERP)
     runUpdate(sideSum, side, q)
     assert.deepEqual([...q._cand.get(SIDE[0])], [1], 'side sum propagates with no SudokuDigitSet built')
   } finally {
@@ -141,8 +136,8 @@ const { load } = makeIo(HERE)
 // forces its first cell.
 {
   installGlobals(0, 4)
-  const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
-  const line = load('HitCountsComponent.js', ['setParams', 'update'])
+  const side = load('SideHitMatchingComponent.js')
+  const line = load('HitCountsComponent.js')
   const truth = {}
   for (const c of CLUES) truth[c] = 1
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
@@ -160,8 +155,7 @@ const { load } = makeIo(HERE)
   const onDiagonal = (calls, i) => calls.filter(([, , c]) => c === cell(i, i))
 
   const s = spied()
-  const is = { cells: [...CLUES, ...LINES.flat()] }
-  side.setParams(is, CLUES, LINES)
+  const is = construct(side, 'hit-counts', CLUES, LINES)
   runUpdate(side, is, s.p)
   for (let i = 0; i < 4; i++) {
     assert.deepEqual(onDiagonal(s.calls, i), [['filterCandidatesInCell', 1 << (i + 1), cell(i, i)]],
@@ -170,8 +164,7 @@ const { load } = makeIo(HERE)
   assert.equal(pins(s.calls).length, 4, 'the side yields exactly the four pins as keep-only changes')
 
   const l = spied()
-  const il = { cells: [CLUES[0], ...LINES[0]] }
-  line.setParams(il, CLUES[0], LINES[0])
+  const il = construct(line, 'hit-counts', CLUES[0], LINES[0])
   runUpdate(line, il, l.p)
   assert.deepEqual(onDiagonal(l.calls, 0), [['filterCandidatesInCell', 1 << 1, cell(0, 0)]],
     'the per-line rule pins its one possible hit with one keep-only change')
@@ -182,8 +175,7 @@ const { load } = makeIo(HERE)
   // to the state before the first sweep: the side must make the same four
   // pins again, not treat that state as swept.
   const m = spied()
-  const im = { cells: [...CLUES, ...LINES.flat()] }
-  side.setParams(im, CLUES, LINES)
+  const im = construct(side, 'hit-counts', CLUES, LINES)
   runUpdate(side, im, m.p)
   assert.equal(pins(m.calls).length, 4, 'the first sweep pins the diagonal')
   for (const l of LINES) m.p._cand.get(l[3]).delete(4)
@@ -204,8 +196,7 @@ const { load } = makeIo(HERE)
   // pinned, so the side must pin it again. A memo the missing-digit exit left
   // standing would match and skip that sweep.
   const f = spied()
-  const ifr = { cells: [...CLUES, ...LINES.flat()] }
-  side.setParams(ifr, CLUES, LINES)
+  const ifr = construct(side, 'hit-counts', CLUES, LINES)
   runUpdate(side, ifr, f.p)
   const swept = new Map(LINES.flat().map(c => [c, new Set(f.p._cand.get(c))]))
   for (const l of LINES) f.p._cand.get(l[3]).delete(4)
@@ -221,8 +212,7 @@ const { load } = makeIo(HERE)
   // forces that edge, and a pin there would be a change that changes nothing.
   const q = spied()
   q.p._cand.set(cell(0, 0), new Set([1]))
-  const iq = { cells: [...CLUES, ...LINES.flat()] }
-  side.setParams(iq, CLUES, LINES)
+  const iq = construct(side, 'hit-counts', CLUES, LINES)
   runUpdate(side, iq, q.p)
   assert.deepEqual(onDiagonal(q.calls, 0), [], 'no pin on a cell already pinned to its target')
   assert.equal(pins(q.calls).length, 3, 'the other three diagonal cells are still pinned')
@@ -235,15 +225,14 @@ const { load } = makeIo(HERE)
 // itself), so two reads per line cell is the whole cost.
 {
   installGlobals(0, 9)
-  const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const pairComp = load('HitCountsPairComponent.js')
   for (const kind of ['fullHouse', 'bare']) {
     const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     const truth = { 100: 0, 101: 0 }
     const perm = [2, 1, 4, 3, 6, 5, 8, 9, 7] // no digit at home either way
     LINE.forEach((c, j) => { truth[c] = perm[j] })
     const p = makePuzzle(truth, c => (c >= 100 ? [0, 1, 2] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), { houses: kind === 'bare' ? [] : [LINE] })
-    const inst = { cells: [100, 101, ...LINE] }
-    pairComp.setParams(inst, 100, 101, LINE)
+    const inst = construct(pairComp, 'hit-counts', 100, 101, LINE)
     runUpdate(pairComp, inst, p)
     runUpdate(pairComp, inst, p)
     const reads = new Map()
@@ -271,13 +260,12 @@ const { load } = makeIo(HERE)
     ['SideHitMatchingComponent.js', [CLUES, LINES]]
   ]
   for (const [file, args] of cases) {
-    const mod = load(file, ['getAffectedCells', 'setParams', 'validate'])
+    const mod = load(file)
     const p = makePuzzle(truth, (c, v) => [v])
     const asked = []
     const real = p.getCellsAreFilled
     p.getCellsAreFilled = cs => { asked.push(cs); return real(cs) }
-    const inst = { cells: mod.getAffectedCells(...args) }
-    mod.setParams(inst, ...args)
+    const inst = construct(mod, 'hit-counts', ...args)
     mod.validate(inst, p)
     assert.ok(asked.length > 0 && asked.every(cs => cs === inst.cells), `${file}: validate passes instance.cells itself`)
   }
