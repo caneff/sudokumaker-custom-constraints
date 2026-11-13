@@ -33,7 +33,7 @@
 # "House GAC" the frame boards carry: "House GAC" is a
 # reserved title meaning ONE thing repo-wide -- the shared
 # `examples/_shared/house-gac.js` backend on a frame board, checked by
-# `check_layout.py`'s `check_stale_backend_code` and `check_digit_range`. This
+# `link_checks.py`'s `check_stale_backend_code` and `check_digit_range`. This
 # board's backend is a different file (`main.js`, no ring to slice).
 
 import argparse

@@ -83,7 +83,7 @@ def test_check_catches_a_shipped_component_the_backend_never_registers():
 def test_check_accepts_a_backend_that_reaches_for_a_built_in_component():
     # SudokuMaker provides the built-ins, so a backend that constructs one
     # ships no component file for it and the link is not missing anything.
-    # `check_layout.check_components` says the same at the sweep seam; both
+    # `link_checks.check_components` says the same at the sweep seam; both
     # callers share `component_scan.mismatch`.
     with temp_spec(
         ["FooComponent.js"],

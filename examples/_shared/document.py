@@ -106,7 +106,7 @@ def refresh_frame_backends(doc):
     A board `carve.generate` carved is rebuilt whole, so it picks the current code
     up for free. A hand-built frame board is not: its own script injects only
     that example's constraint, and the shared backends would keep whatever
-    copy the board was first encoded with -- which `check_layout.check_houses`
+    copy the board was first encoded with -- which `link_checks.check_houses`
     then reads as a link that declares no interior lines at all. Raises when a
     backend is missing, so a board that should carry them cannot quietly skip
     the refresh.

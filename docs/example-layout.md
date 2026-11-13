@@ -207,7 +207,7 @@ Two things a plain 9x9 pays for choosing `"custom"` anyway:
 A **no-ring** board (`no_ring.NoRing`, up-to-n's) is a bare n x n
 `"custom"` document with no clue ring, and its shared backend is
 `_shared/grid-rowcol.js`, which declares every whole row and column. A link
-carrying it is what `check_layout.py` treats as no-ring: `check_stale_backend_code`
+carrying it is what `link_checks.py` treats as no-ring: `check_stale_backend_code`
 checks its copy for staleness and `check_digit_range` its digit range the same way, `check_houses`
 steps aside for it, the filled-ring check does not apply (its edge cells are
 the puzzle), and its comment opens with the no-ring sentence above. The live

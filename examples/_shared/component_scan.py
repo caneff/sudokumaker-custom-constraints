@@ -1,7 +1,7 @@
 # Lexical scan for `new <Name>Component` registrations in a link's code: its
 # backend's, and for `check_layout` its shipped components' too. Shared by
 # `lanes.Lane.check` (checked at build time, before a link is committed)
-# and `check_layout.check_components` (checked at sweep time, over
+# and `link_checks.check_components` (checked at sweep time, over
 # already-committed links) so the two do not carry their own copies of the
 # same regex.
 
@@ -29,7 +29,7 @@ def builtin_components():
 
     A backend that constructs one of these ships no component file for it --
     the class lives in the app -- so the shipped-vs-registered checks in
-    `lanes.Lane.check` and `check_layout.check_components` subtract this set
+    `lanes.Lane.check` and `link_checks.check_components` subtract this set
     before they compare. Read from the doc rather than copied into code, so
     the two cannot drift.
     """
@@ -67,7 +67,7 @@ def mismatch(shipped, backend_code):
     subtracted first: the app provides those classes, so a backend that
     constructs one ships no file for it. The one comparison
     `lanes.Lane.check` asserts at build time and
-    `check_layout.check_components` sweeps over committed links.
+    `link_checks.check_components` sweeps over committed links.
     """
     registered = registered_components(backend_code) - builtin_components()
     return sorted(registered - set(shipped)), sorted(set(shipped) - registered)

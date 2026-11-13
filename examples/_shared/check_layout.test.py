@@ -18,20 +18,21 @@ import tomllib
 
 import check_layout
 import document
+import link_checks
 from check_layout import (
-    NO_RING_RULES_PREFIX,
-    RULES_PREFIX,
+    check_gen_frame_backends,
+    check_gen_json_parses,
+    check_tree,
+)
+from document import GRID_ROWCOL, NO_RING_RULES_PREFIX, RULES_PREFIX, SHARED_BACKENDS
+from link_checks import (
     CommittedLink,
     HouseSource,
     LinkFacts,
     LinkKind,
     check_digit_range,
-    check_gen_frame_backends,
-    check_gen_json_parses,
     check_stale_backend_code,
-    check_tree,
 )
-from document import GRID_ROWCOL, SHARED_BACKENDS
 from manifest import Manifest, load_manifest
 from minify import minify_file
 from sm_document import code_constraint
@@ -810,7 +811,7 @@ if __name__ == "__main__":
         assert check_tree(root) == [], check_tree(root)
 
     # The manifest traits check_layout reads each need a witness here: strip
-    # the branch in check_layout.py and the case below goes red (#712).
+    # the branch in check_layout.py or link_checks.py and the case below goes red (#712).
     # rowcol_backend: a borrowed rows-and-columns backend, named in the
     # manifest, stands in for the interior houses the document omits. Without
     # the key the same link is a missing-house violation, and a constraint of
@@ -1067,7 +1068,7 @@ if __name__ == "__main__":
             path = d / "PUZZLE_LINK.txt"
             puzzle = decode_puzzle(path.read_text().strip())["puzzle"]
             manifest = load_manifest(d)
-            link = CommittedLink.of(d, path, puzzle)
+            link = CommittedLink.of(d, path, puzzle, frozenset())
             return (
                 check_stale_backend_code(link, manifest),
                 check_digit_range(link, manifest),
@@ -1093,13 +1094,15 @@ if __name__ == "__main__":
     }
     widget = pathlib.Path("widget")
     found = check_digit_range(
-        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", ring_no_boxes),
+        CommittedLink.of(
+            widget, widget / "PUZZLE_LINK.txt", ring_no_boxes, frozenset()
+        ),
         Manifest(timed_component="WidgetComponent"),
     )
     assert found == [], found
     wide = dict(ring_no_boxes, maxDigit=5)
     found = check_digit_range(
-        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", wide),
+        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", wide, frozenset()),
         Manifest(timed_component="WidgetComponent"),
     )
     assert len(found) == 1 and "3 cell interior lines" in found[0], found
@@ -1372,15 +1375,15 @@ if __name__ == "__main__":
     }
     widget = pathlib.Path("widget")
     assert (
-        check_layout.check_share_ready(
-            CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", misfit),
+        link_checks.check_share_ready(
+            CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", misfit, frozenset()),
             Manifest(timed_component="WidgetComponent"),
         )
         == []
     )
     fits = dict(misfit, cells=misfit["cells"][:9])
-    found = check_layout.check_share_ready(
-        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", fits),
+    found = link_checks.check_share_ready(
+        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", fits, frozenset()),
         Manifest(timed_component="WidgetComponent"),
     )
     assert len(found) == 1 and "fills all 8 ring cells" in found[0], found
@@ -1411,15 +1414,15 @@ if __name__ == "__main__":
     plain_frame = LinkFacts.of(doc())
     assert plain_frame.kind is LinkKind.FRAME and not plain_frame.ringless, plain_frame
     assert plain_frame.house_source is HouseSource.DOCUMENT, plain_frame
-    rowcol = LinkFacts.of(doc(named(check_layout.FRAME_ROWCOL_CONSTRAINT)))
+    rowcol = LinkFacts.of(doc(named(link_checks.FRAME_ROWCOL_CONSTRAINT)))
     assert rowcol.house_source is HouseSource.FRAME_BACKEND, rowcol
-    assert rowcol.backend_titles == (check_layout.FRAME_ROWCOL_CONSTRAINT,), rowcol
+    assert rowcol.backend_titles == (link_checks.FRAME_ROWCOL_CONSTRAINT,), rowcol
     assert LinkFacts.of(doc({"type": 2003})).house_source is HouseSource.SUDOKU_RULES
     # backend titles keep constraint order and skip unrelated names
     ordered = LinkFacts.of(
-        doc(named(check_layout.CORNERS_TITLE), named("Mine"), named(GRID_ROWCOL.title))
+        doc(named(link_checks.CORNERS_TITLE), named("Mine"), named(GRID_ROWCOL.title))
     )
-    assert ordered.backend_titles == (check_layout.CORNERS_TITLE, GRID_ROWCOL.title)
+    assert ordered.backend_titles == (link_checks.CORNERS_TITLE, GRID_ROWCOL.title)
     assert "Mine" in ordered.constraint_names, ordered
     # interior: the region cells, or None when the size is not declared
     regions = LinkFacts.of(
@@ -1436,8 +1439,8 @@ if __name__ == "__main__":
 
     every_title = [named(b.title) for b in SHARED_BACKENDS]
     stubs = [
-        (check_layout, "backend_code"),
-        (check_layout, "component_code"),
+        (link_checks, "backend_code"),
+        (link_checks, "component_code"),
         (check_layout, "minify_file"),
         (document, "backend_code"),
         (document, "component_code"),
@@ -1453,21 +1456,32 @@ if __name__ == "__main__":
             setattr(m, n, r)
     assert facts.backend_titles == tuple(b.title for b in SHARED_BACKENDS), facts
 
-    # check_layout names no example: no string in its source equals the name
-    # of a directory under examples/ -- a name-keyed table or an
-    # `if name == "..."` branch would be a trait recorded by name
+    # check_layout.py and link_checks.py name no example: no string in either
+    # source equals the name of a directory under examples/ -- a name-keyed
+    # table or an `if name == "..."` branch would be a trait recorded by name
     example_names = {
         d.name for d in HERE.parent.iterdir() if d.is_dir() and d.name != "_shared"
     }
-    tree = ast.parse((HERE / "check_layout.py").read_text())
-    named = sorted(
-        {
-            node.value
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Constant) and node.value in example_names
-        }
-    )
-    assert named == [], f"check_layout.py names example(s): {named}"
+
+    def example_names_in(source):
+        return sorted(
+            {
+                node.value
+                for node in ast.walk(ast.parse(source))
+                if isinstance(node, ast.Constant) and node.value in example_names
+            }
+        )
+
+    # the guard itself: a planted example name is found, whichever file it is in
+    planted = sorted(example_names)[0]
+    assert example_names_in(f'x = "{planted}"') == [planted]
+    for module in ("check_layout.py", "link_checks.py"):
+        source = (HERE / module).read_text()
+        named = example_names_in(source)
+        assert named == [], f"{module} names example(s): {named}"
+        assert example_names_in(source + f'\n_PLANTED = "{planted}"\n') == [planted], (
+            f"{module}: the guard missed a planted example name"
+        )
     # ...and every real example has a manifest the loader accepts
     for name in sorted(example_names):
         load_manifest(HERE.parent / name)

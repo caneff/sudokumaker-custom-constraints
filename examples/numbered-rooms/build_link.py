@@ -60,7 +60,7 @@ def refresh(root=HERE):
     `main-global.js`, `frame-rowcol.js` or `frame-corners.js` when they change,
     pins the range both frame backends read off `helpers.digits`, or corrects
     the comment. Without this the link keeps a stale copy and
-    `check_layout.check_houses` reads it as a board that declares no interior
+    `link_checks.check_houses` reads it as a board that declares no interior
     rows or columns at all.
 
     `main-global.js` is assembled from the tree (its `// #include` resolves at
