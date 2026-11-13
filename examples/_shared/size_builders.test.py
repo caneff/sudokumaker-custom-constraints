@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-import check_layout
+import link_checks
 from lanes import rebuild_all
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
@@ -50,7 +50,7 @@ def test_the_command_the_stale_backend_violation_names_parses_on_every_example()
     """check_layout tells the author to run `build_link.py --refresh`; every
     example with a build_link.py must list that flag. Reading --help is the
     parse check: argparse registers the flag or it does not."""
-    command = check_layout.REFRESH_COMMAND
+    command = link_checks.REFRESH_COMMAND
     assert command == "build_link.py --refresh", command
     flag = command.split()[1]
     builders = sorted(EXAMPLES.glob("*/build_link.py"))

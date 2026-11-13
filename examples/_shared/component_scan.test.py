@@ -1,5 +1,5 @@
 # component_scan.registered_components is a lexical scan over backend
-# source text, shared by lanes.Lane.check and check_layout.check_components.
+# source text, shared by lanes.Lane.check and link_checks.check_components.
 # Tested in isolation here so a change to the scan itself does not
 # need a full link/doc fixture to exercise.
 #
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     assert "FooComponent" not in builtins
 
     # mismatch: the shipped-vs-registered comparison both lanes.Lane.check and
-    # check_layout.check_components run. Unshipped is what the backend
+    # link_checks.check_components run. Unshipped is what the backend
     # registers and the link omits; dead is what the link ships and the
     # backend never registers. Built-ins are neither.
     backend = "new FooComponent()\nnew BarComponent()\nnew HouseComponent()"
