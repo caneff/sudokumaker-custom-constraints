@@ -13,7 +13,6 @@ from document import (
     FRAME_CORNERS,
     FRAME_ROWCOL,
     GRID_ROWCOL,
-    HOUSE_GAC,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
     SHARED_BACKEND_TITLES,
@@ -175,49 +174,35 @@ def declared_houses(puzzle):
     return houses
 
 
-# The constraint name the ring lanes' `build_doc` ships the row/column backend
-# under, read off the one place that pairing lives so a rename reaches this
-# sweep too. It is the handle that says "this board meant to declare its lines
-# in JS" even when the code embedded under it is an old copy.
-FRAME_ROWCOL_CONSTRAINT = FRAME_ROWCOL.title
-# ...and the corner pin's, which only a ring board carries.
-CORNERS_TITLE = FRAME_CORNERS.title
-
-
-def frame_backend_files(keep_comments=False):
+def shared_backend_files(keep_comments=False):
     """`{constraint name: (source file name, its minified code in the tree)}`
-    for the frame's two always-on shared backends, plus the opt-in house-GAC
-    filter and a no-ring board's whole-grid rows and columns when a link
-    carries them -- `check_stale_backend_code` only checks a title it finds in a
-    link's own constraints, so an opt-in backend needs no separate gate here.
-    `keep_comments` is the copy an annotated link embeds."""
+    for every backend in `document.SHARED_BACKENDS` -- `check_stale_backend_code`
+    only checks a title it finds in a link's own constraints, so an opt-in
+    backend needs no separate gate here. `keep_comments` is the copy an
+    annotated link embeds."""
     return {
         b.title: (f"{b.stem}.js", backend_code(b, keep_comments))
         for b in SHARED_BACKENDS
     }
 
 
-def house_gac_component_file(keep_comments=False):
-    """(component name, source file name, its minified code in the tree) for
-    the house-GAC filter's one component -- `check_stale_backend_code` compares
-    it against a link's own copy the same way it compares the backend, since
-    HouseGacComponent.js is not a per-example file `check_components` would
-    ever look for. `keep_comments` is the copy an annotated link embeds."""
-    return (
-        HOUSE_GAC.component,
-        f"{HOUSE_GAC.component}.js",
-        component_code(HOUSE_GAC, keep_comments),
-    )
+def shared_component_files(keep_comments=False):
+    """`{component name: (source file name, its minified code in the tree)}`
+    for the one component each shared backend registers, where it has one --
+    `check_stale_backend_code` compares a link's own copy the same way it
+    compares the backend, since a shared component is not a per-example file
+    `check_components` would ever look for. `keep_comments` is the copy an
+    annotated link embeds."""
+    return {
+        b.component: (f"{b.component}.js", component_code(b, keep_comments))
+        for b in SHARED_BACKENDS
+        if b.component is not None
+    }
 
 
 # The constraint type of `SudokuRules`: the app expands it into a house for
 # every row and column of the grid (a custom document can carry it too).
 SUDOKU_RULES_TYPE = 2003
-
-# Every backend title a link can ship under its own name is
-# `document.SHARED_BACKEND_TITLES`. Titles only -- reading the code behind them
-# means minifying it, which `frame_backend_files` does for the staleness check
-# alone.
 
 
 class LinkKind(enum.Enum):
@@ -268,6 +253,10 @@ class LinkFacts:
     def of(cls, puzzle):
         constraints = puzzle.get("constraints", [])
         names = [(c.get("definition") or {}).get("name") for c in constraints]
+        # Every backend title a link can ship under its own name is
+        # `document.SHARED_BACKEND_TITLES`. Titles only -- reading the code
+        # behind them means minifying it, which `shared_backend_files` does for
+        # the staleness check alone.
         titles = tuple(n for n in names if n in SHARED_BACKEND_TITLES)
         no_ring = is_no_ring(puzzle)
         if no_ring:
@@ -276,7 +265,7 @@ class LinkFacts:
             kind = LinkKind.SUDOKU_DOCUMENT
         else:
             kind = LinkKind.FRAME
-        if FRAME_ROWCOL_CONSTRAINT in names:
+        if FRAME_ROWCOL.title in names:
             house_source = HouseSource.FRAME_BACKEND
         elif no_ring:
             house_source = HouseSource.NO_RING_BACKEND
@@ -359,7 +348,7 @@ def _interior_cells(constraints, backend_titles, width, height):
     ring.
     """
     regions = next((c["regions"] for c in constraints if "regions" in c), None)
-    if regions is None and CORNERS_TITLE in backend_titles:
+    if regions is None and FRAME_CORNERS.title in backend_titles:
         return frozenset(
             i
             for i in range(width * height)
@@ -457,7 +446,8 @@ def check_stale_backend_code(link, manifest):
     otherwise pass every gate in silence -- and the corner pin is the whole
     reason a frame board comes back unique.
 
-    The component staleness check is keyed on the shipped component's own
+    The component staleness check covers every shared backend's component
+    (`shared_component_files`) and is keyed on the shipped component's own
     name, not the constraint's title: house-gac's standalone board splices in
     HouseGacComponent.js under a title of its own ("House GAC (standalone)",
     to avoid the reserved "House GAC" -- see house-gac/build_link.py's
@@ -478,10 +468,8 @@ def check_stale_backend_code(link, manifest):
     # compare it against those copies instead, or every rebuild would read as
     # stale. The manifest says which example builds one.
     annotated = manifest.annotated_keeps_comments and "annotated" in link.tags
-    current = frame_backend_files(keep_comments=annotated)
-    comp_name, comp_source, comp_want = house_gac_component_file(
-        keep_comments=annotated
-    )
+    current = shared_backend_files(keep_comments=annotated)
+    components = shared_component_files(keep_comments=annotated)
 
     def stale(source):
         return link.fail(
@@ -499,12 +487,11 @@ def check_stale_backend_code(link, manifest):
             source, want = current[title]
             if definition.get("backend", {}).get("code") != want:
                 violations.append(stale(source))
-        comp = next(
-            (c for c in definition.get("components", []) if c["name"] == comp_name),
-            None,
-        )
-        if comp is not None and comp.get("code") != comp_want:
-            violations.append(stale(comp_source))
+        for comp in definition.get("components", []):
+            if comp["name"] in components:
+                comp_source, comp_want = components[comp["name"]]
+                if comp.get("code") != comp_want:
+                    violations.append(stale(comp_source))
     return violations
 
 

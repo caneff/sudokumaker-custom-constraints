@@ -24,7 +24,14 @@ from check_layout import (
     check_gen_json_parses,
     check_tree,
 )
-from document import GRID_ROWCOL, NO_RING_RULES_PREFIX, RULES_PREFIX, SHARED_BACKENDS
+from document import (
+    FRAME_CORNERS,
+    FRAME_ROWCOL,
+    GRID_ROWCOL,
+    NO_RING_RULES_PREFIX,
+    RULES_PREFIX,
+    SHARED_BACKENDS,
+)
 from link_checks import (
     CommittedLink,
     HouseSource,
@@ -1622,9 +1629,9 @@ def test_link_facts_classifies_a_decoded_link_once():
     plain_frame = LinkFacts.of(_facts_doc())
     assert plain_frame.kind is LinkKind.FRAME and not plain_frame.ringless, plain_frame
     assert plain_frame.house_source is HouseSource.DOCUMENT, plain_frame
-    rowcol = LinkFacts.of(_facts_doc(_named(link_checks.FRAME_ROWCOL_CONSTRAINT)))
+    rowcol = LinkFacts.of(_facts_doc(_named(FRAME_ROWCOL.title)))
     assert rowcol.house_source is HouseSource.FRAME_BACKEND, rowcol
-    assert rowcol.backend_titles == (link_checks.FRAME_ROWCOL_CONSTRAINT,), rowcol
+    assert rowcol.backend_titles == (FRAME_ROWCOL.title,), rowcol
     assert (
         LinkFacts.of(_facts_doc({"type": 2003})).house_source
         is HouseSource.SUDOKU_RULES
@@ -1632,10 +1639,10 @@ def test_link_facts_classifies_a_decoded_link_once():
     # backend titles keep constraint order and skip unrelated names
     ordered = LinkFacts.of(
         _facts_doc(
-            _named(link_checks.CORNERS_TITLE), _named("Mine"), _named(GRID_ROWCOL.title)
+            _named(FRAME_CORNERS.title), _named("Mine"), _named(GRID_ROWCOL.title)
         )
     )
-    assert ordered.backend_titles == (link_checks.CORNERS_TITLE, GRID_ROWCOL.title)
+    assert ordered.backend_titles == (FRAME_CORNERS.title, GRID_ROWCOL.title)
     assert "Mine" in ordered.constraint_names, ordered
     # interior: the region cells, or None when the size is not declared
     regions = LinkFacts.of(
