@@ -28,7 +28,7 @@ KNOWN_EDGES = [
         "examples/_shared/document.py",
         "house-gac's build_link.py imports it",
         ["uv run examples/house-gac/build_link.test.py"],
-        ["uv run examples/count-digits-gac/build_required_digits.test.py"],
+        ["uv run examples/isofill/verify.test.py"],
     ),
     (
         "examples/up-to-n/PUZZLE_LINK_4x4.txt",
