@@ -31,9 +31,9 @@ from check_layout import (
     check_stale_backend_code,
     check_tree,
 )
+from document import GRID_ROWCOL, SHARED_BACKENDS
 from manifest import Manifest, load_manifest
 from minify import minify_file
-from document import GRID_ROWCOL, SHARED_BACKENDS
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
@@ -1007,9 +1007,7 @@ if __name__ == "__main__":
     with example(
         extra_links=["PUZZLE_LINK_6x6.txt"],
         extra_gens=["gen_6x6.json"],
-        contents={
-            "gen_6x6.json": _gen("// a copy", name="Grid Rows and Columns")
-        },
+        contents={"gen_6x6.json": _gen("// a copy", name="Grid Rows and Columns")},
     ) as (root, d):
         violations = check_gen_frame_backends(d)
         assert len(violations) == 1, violations
@@ -1429,6 +1427,7 @@ if __name__ == "__main__":
     )
     assert regions.interior == frozenset({0, 1, 3, 4}), regions
     assert LinkFacts.of(doc(width=None)).interior is None
+
     # reading the titles never minifies a backend (ARCH-8 a): stub every
     # minify route the backends share -- the registry's reader and the minify
     # entry under it -- so a minify through any of them fails the call
@@ -1450,7 +1449,7 @@ if __name__ == "__main__":
     try:
         facts = LinkFacts.of(doc(*every_title))
     finally:
-        for (m, n), r in zip(stubs, real):
+        for (m, n), r in zip(stubs, real, strict=True):
             setattr(m, n, r)
     assert facts.backend_titles == tuple(b.title for b in SHARED_BACKENDS), facts
 

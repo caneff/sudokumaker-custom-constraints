@@ -13,16 +13,14 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from document import GRID_ROWCOL, NO_RING_RULES_PREFIX, backend_code, board_document
 from lanes import Lane, named_files
-from minify import minify_file
 from sm_document import code_constraint
+
 
 def grid_backend_constraint(keep_comments=False):
     """The whole-grid rows-and-columns constraint a no-ring board ships, its
     code read from the working tree. `keep_comments` is the annotated-link
     build."""
-    return code_constraint(
-        GRID_ROWCOL.title, backend_code(GRID_ROWCOL, keep_comments)
-    )
+    return code_constraint(GRID_ROWCOL.title, backend_code(GRID_ROWCOL, keep_comments))
 
 
 # The editor's text symbol, as the live editor writes one (a type-2002

@@ -18,9 +18,8 @@ from build_link import (
     check,
     read_gen,
 )
-from document import NO_RING_RULES_PREFIX
+from document import GRID_ROWCOL, NO_RING_RULES_PREFIX
 from link_swap import swap_build
-from document import GRID_ROWCOL
 from sudoku_kit.link_codec import decode_puzzle
 from verify import verify
 
