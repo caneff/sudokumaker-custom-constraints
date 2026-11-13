@@ -258,3 +258,41 @@ if __name__ == "__main__":
         else:
             raise AssertionError("a finished rep with no version must raise")
     assert app_timing.combine_reps(B, [ok, ok, ok])["version"] == "v1"
+
+    # build_row takes the busy note as build_link_row does: it follows the
+    # verdict cell on every row shape, the verdict word unchanged.
+    note = " (BUSY load 9.0 > 4)"
+    for args, tail in (
+        ((1000, 800), "| 1000ms | 800ms | 0.80 | PASS" + note + " |"),
+        ((1000,), "| 1000ms | — | — | BASELINE" + note + " |"),
+        ((0, 0), "| 0ms | 0ms | — | NO TIME" + note + " |"),
+        ((0, 5), "| 0ms | 5ms | ∞ | FAIL" + note + " |"),
+    ):
+        row, verdict = build_row("d", "v", "x", *args, note=note)
+        assert row.endswith(tail), row
+        assert verdict == tail.split("|")[-2].strip().split(" (")[0], verdict
+
+    # time_modes: both rows (cold, then after-logical) from one place, the busy
+    # note on both, for a baseline-only run and a candidate run.
+    hot = {"loads": [{"before": 27.7, "after": 3.0}], "busy": True, "loadThreshold": 16}
+    label = lambda after: "x after-logical" if after else "x"
+    with fake_solve({B: [(1000, hot), 1000, 1000] + [(0, hot)] * R}) as calls:
+        rows = app_timing.time_modes(B, None, False, "d", label, build_row)
+    assert calls == [(B, False, False)] * R + [(B, False, True)] * R
+    assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
+    assert [r[2] for r in rows] == [None, None]
+    assert (
+        rows[0][0]
+        == "| d | v2026.08.14-d47fc4b | x | 1000ms | — | — | BASELINE (BUSY load 27.7 > 16) |"
+    )
+    assert rows[1][0].endswith("| BASELINE (BUSY load 27.7 > 16) |"), rows[1][0]
+
+    with fake_solve(
+        {B: [1000] * R + [1000] * R, C: [(800, hot), 800, 800] + [(500, hot)] * R}
+    ):
+        rows = app_timing.time_modes(B, C, True, "d", label, build_row)
+    assert [r[1] for r in rows] == ["PASS", "PASS"]
+    assert [r[2] for r in rows] == [0.8, 0.5]
+    for row, _verdict, _ratio in rows:
+        assert row.endswith("| PASS (BUSY load 27.7 > 16) |"), row
+    assert "| x after-logical |" in rows[1][0]

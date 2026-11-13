@@ -253,11 +253,6 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
     )
 
 
-def _flag_busy(row, verdict, note):
-    """`row` with `note` after its verdict cell; the verdict itself is unchanged."""
-    return row.replace(f"| {verdict} |", f"| {verdict}{note} |") if note else row
-
-
 def check_backend_current(board, base_doc):
     """Raises ValueError unless the board's code backend is the minified
     `main.js` beside it, the file a houses-only example's links are built from:
@@ -343,31 +338,21 @@ def run(example_dir, ring_clues=False, board=None, component=None):
             empty_link_file(candidate_link, candidate_probe, mode)
 
         date = datetime.date.today().isoformat()
-        rows = []
-        ratios = []
         # Every fixture gets both rows (docs/real-app-timing.md): cold, from an
         # empty board, then from the state a player reaches after the app's
         # own logical pass.
-        for after_logical in (False, True):
-            label = board_label + (" after-logical" if after_logical else "")
-            base, cand = app_timing.run_app_solve(
-                baseline_probe,
-                None if baseline_only else candidate_probe,
-                ring_clues,
-                after_logical,
-            )
-            note = app_timing.busy_note(base, cand)
-            if baseline_only:
-                row, verdict = app_timing.build_row(
-                    date, base["version"], label, base["median"]
-                )
-                rows.append((_flag_busy(row, verdict, note), verdict))
-                continue
-            row, verdict = app_timing.build_row(
-                date, base["version"], label, base["median"], cand["median"]
-            )
-            rows.append((_flag_busy(row, verdict, note), verdict))
-            ratios.append(app_timing.row_ratio(base["median"], cand["median"]))
+        timed = app_timing.time_modes(
+            baseline_probe,
+            None if baseline_only else candidate_probe,
+            ring_clues,
+            date,
+            lambda after_logical: (
+                board_label + (" after-logical" if after_logical else "")
+            ),
+            app_timing.build_row,
+        )
+        rows = [(row, verdict) for row, verdict, _ratio in timed]
+        ratios = [ratio for _row, _verdict, ratio in timed if not baseline_only]
 
         return rows, (app_timing.ship_verdict(ratios) if ratios else None)
 
