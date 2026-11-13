@@ -15,6 +15,7 @@
 # Writes PUZZLE_LINK*.txt and gen*.json next to the caller's script.
 
 import argparse
+import json
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -446,6 +447,42 @@ def lane_kinds(spec):
     from no_ring import NoRing
 
     return (NoRing,)
+
+
+def rebuild_all(spec, write=True):
+    """Re-encode every committed carved board of `spec`'s example against the
+    code in the tree right now, with no CP-SAT search. Returns
+    `{link path: link}`; with `write`, each link is also written back.
+
+    A carved board is a `gen*.json` that records a board. The lane that owns
+    it is the one whose default `files(n)` name it; a board of a size that
+    lane does not name by default (a second board of one size) goes through
+    `pair=`, which only a one-lane example can resolve without guessing. A
+    gen JSON that holds a whole `puzzle` document is a hand-built board's
+    (running-start's) and is rebuilt by that example's own build_link.py."""
+    lanes = [kind(spec) for kind in lane_kinds(spec)]
+    rebuilt = {}
+    for gen in sorted(spec.dir.glob("gen*.json")):
+        if "puzzle" in json.loads(gen.read_text()):
+            continue
+        n = load_board(gen).n
+        for lane in lanes:
+            link_path, owned = lane.files(n)
+            if owned == gen:
+                rebuilt[link_path] = lane.rebuild(n)
+                break
+        else:
+            assert len(lanes) == 1, (
+                f"{gen} is no lane's board: name it in its lane's files()"
+            )
+            tag = gen.name[len("gen") : -len(".json")].lstrip("_")
+            pair = named_files(spec, tag)
+            rebuilt[pair[0]] = lanes[0].rebuild(n, pair=pair)
+    if write:
+        for link_path, link in rebuilt.items():
+            link_path.write_text(link + "\n")
+            print(f"wrote {link_path.name} ({len(link)} chars)")
+    return rebuilt
 
 
 def main(spec, argv=None):

@@ -239,13 +239,16 @@ the tree at build time (`document.refresh_frame_backends`), so a copy kept in
 a template is dead data that can only drift. `check_gen_frame_backends` requires
 the field to be empty.
 
-Two frame boards have no `gen_*.json` and so no `--rebuild`:
-`running-start/PUZZLE_LINK.txt`, rebuilt whole by its own `build_link.py` with
-no arguments, and `numbered-rooms/PUZZLE_LINK.txt`, which is hand-built and
-takes `build_link.py --refresh` (that also pins its digit range and rewrites its
-rules text — nothing else writes either; both values belong to that one board,
-so `--refresh` touches this example's own links only and refuses `--board`).
-Both go through `document.refresh_frame_backends`. numbered-rooms has three
+Every example's `build_link.py` takes `--refresh`, the command a stale-backend
+violation names. A laned example runs `lanes.rebuild_all`, which re-encodes
+every carved `gen*.json` board against the tree. Two frame boards have no
+`gen_*.json` and so no `--rebuild`: `running-start/PUZZLE_LINK.txt`, rebuilt
+whole by its own `build_link.py`, and `numbered-rooms/PUZZLE_LINK.txt`, which is
+hand-built. Their `--refresh` runs that hand-built rebuild, then `rebuild_all`
+for their carved boards. numbered-rooms' also pins its digit range and rewrites
+its rules text — nothing else writes either; both values belong to that one
+board, so `--refresh` touches this example's own links only and refuses
+`--board`. Both go through `document.refresh_frame_backends`. numbered-rooms has three
 more hand-built links derived from `PUZZLE_LINK.txt` (`_original`, `_clued`,
 `_clued_original`); `--refresh` drives `build_original` and `build_clued`
 itself after the rewrite, so one refresh leaves all four in step. After such a
