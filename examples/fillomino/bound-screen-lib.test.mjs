@@ -10,7 +10,7 @@ import { execFileSync } from 'child_process'
 import { join } from 'path'
 import { loadVariants, fixtureBoards, runScreen } from './bound-screen-lib.mjs'
 import { score } from './hunt-lib.mjs'
-import { installGlobals, makePuzzle, makeRng, makeSeeder, randomCandidates, fixpoint, compareStrength, fuzzSoundness, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makePuzzle, makeRng, makeSeeder, randomCandidates, fixpoint, compareStrength, fuzzSoundness, runUpdate } from '../_shared/harness-lib.mjs'
 import { pinned, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -42,7 +42,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   const build = row => makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => (row[c] ? [row[c]] : ALL))
   const dead = p => [...p._cand.values()].some(s => s.size === 0)
   const once = (mod, inst, row) => { const p = build(row); runUpdate(mod, inst, p); return p }
-  const fresh = mod => { const inst = {}; mod.setParams(inst, CELLS, 9, 9); return inst }
+  const fresh = mod => construct(mod, 'fillomino', CELLS, 9, 9)
 
   assert.strictEqual(dead(once(baseline, fresh(baseline), SHORT)), false, 'no other rule reaches this state')
   assert.strictEqual(dead(once(incremental, fresh(incremental), SHORT)), true)
@@ -75,7 +75,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
   const { rnd } = makeRng(327)
-  const apply = (mod, p) => { const inst = {}; mod.setParams(inst, CELLS, width, height); fixpoint(mod, inst, p) }
+  const apply = (mod, p) => fixpoint(mod, construct(mod, 'fillomino', CELLS, width, height), p)
   for (let rep = 0; rep < 150; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, cap, truth[c]))
@@ -115,8 +115,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
     const { failures } = fuzzSoundness(`open count incremental, ${name}`, {
       iters: 3000,
       draw: () => {
-        const inst = {}
-        incremental.setParams(inst, CELLS, width, height)
+        const inst = construct(incremental, 'fillomino', CELLS, width, height)
         return { truth, seed, parts: [{ mod: incremental, inst }] }
       }
     })

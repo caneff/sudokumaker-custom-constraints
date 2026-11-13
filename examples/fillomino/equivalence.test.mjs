@@ -20,17 +20,16 @@
 // change.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
 import { fixtureBoards } from './bound-screen-lib.mjs'
 import { FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const FROZEN = '95bf886'
 const io = makeIo(HERE)
-const NAMES = ['setParams', 'update']
-const ref = io.load(`.golden/FillominoComponent.${FROZEN}.js`, NAMES)
+const ref = io.load(`.golden/FillominoComponent.${FROZEN}.js`)
 // The cell count came after the rewrite, so it stays out of the comparison.
-const cur = io.load('FillominoComponent.js', NAMES, src =>
+const cur = io.load('FillominoComponent.js', [], src =>
   patchSource(src, 'function * cellCountRule (', 'function * cellCountRule () { return MORE }\nfunction * cellCountRuleRemoved ('))
 
 const REMOVERS = ['removeCandidateFromCell', 'removeCandidatesFromCell', 'removeCandidateFromCells', 'removeCandidatesFromCells']
@@ -94,10 +93,8 @@ function lockstepSearch (board, deferred, nodeCap) {
   const { width, height, cap, givens, name } = board
   installGlobals(1, cap)
   const cells = Array.from({ length: width * height }, (_, i) => i)
-  const a = {}
-  const b = {}
-  ref.setParams(a, cells, width, height)
-  cur.setParams(b, cells, width, height)
+  const a = construct(ref, name, cells, width, height)
+  const b = construct(cur, name, cells, width, height)
   const pa = blank(width, height, cap, givens)
   const pb = blank(width, height, cap, givens)
   let nodes = 0
@@ -137,10 +134,8 @@ for (const [name, { truth, width, height, cap }] of FIXTURES) {
   const cells = Array.from({ length: width * height }, (_, i) => i)
   for (const deferred of [false, true]) {
     for (const keepTruth of [true, false]) {
-      const a = {}
-      const b = {}
-      ref.setParams(a, cells, width, height)
-      cur.setParams(b, cells, width, height)
+      const a = construct(ref, name, cells, width, height)
+      const b = construct(cur, name, cells, width, height)
       for (let rep = 0; rep < 300; rep++) {
         const seed = c => randomCandidates(rnd, 1, cap, keepTruth ? truth[c] : null)
         const start = new Map(cells.map(c => [c, seed(c)]))

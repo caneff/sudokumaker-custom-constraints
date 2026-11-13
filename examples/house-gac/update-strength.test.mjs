@@ -8,7 +8,7 @@
 // update-strength test (docs/example-layout.md).
 
 import { join } from 'path'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 // The component lives in `_shared`, not owned by this example, so `load` is
@@ -23,19 +23,13 @@ const N = 9
 installGlobals(1, N) // the component reads helpers.digits at load time
 
 const REF_COMMIT = '3279a3d'
-const NAMES = ['setParams', 'update']
-const cur = load('HouseGacComponent.js', NAMES)
-const ref = loadGolden(`HouseGacComponent.${REF_COMMIT}.js`, NAMES)
+const cur = load('HouseGacComponent.js')
+const ref = loadGolden(`HouseGacComponent.${REF_COMMIT}.js`)
 
 const { rnd } = makeRng(422)
 
 const CELLS = Array.from({ length: N }, (_, i) => i)
-// The app's constructor stores the cells as instance.cells before setParams.
-const apply = (mod, p) => {
-  const inst = { cells: CELLS }
-  mod.setParams(inst, CELLS)
-  fixpoint(mod, inst, p)
-}
+const apply = (mod, p) => fixpoint(mod, construct(mod, 'row 1', CELLS), p)
 
 const REPS = 6000
 strengthSweep('house-gac', {

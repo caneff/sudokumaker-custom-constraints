@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, fixpoint, fuzzSoundness } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, fixpoint, fuzzSoundness } from '../_shared/harness-lib.mjs'
 import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = import.meta.dirname
@@ -9,7 +9,7 @@ const { load } = makeIo(HERE)
 const { rnd } = makeRng(676)
 
 installGlobals(1, 9)
-const mod = load('DutchFlatmatesComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('DutchFlatmatesComponent.js')
 
 const N = 9
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -45,8 +45,7 @@ for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (
   const r = fuzzSoundness(label, {
     iters: ITERS,
     draw: () => {
-      const inst = { cells: CELLS }
-      mod.setParams(inst, CELLS)
+      const inst = construct(mod, 'dutch-flatmates', CELLS)
       return { truth, seed: seeder, houses, parts: [{ mod, inst }] }
     }
   })
@@ -74,8 +73,7 @@ for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, 
     draw: () => {
       const truthHere = {}
       for (let col = 0; col < width; col++) drawColumn().forEach((d, row) => { truthHere[row * width + col] = d })
-      const inst = { cells }
-      mod.setParams(inst, cells)
+      const inst = construct(mod, 'dutch-flatmates', cells)
       return { truth: truthHere, seed: makeSeeder(rnd, digits), houses: columns, parts: [{ mod, inst }] }
     }
   })
@@ -85,8 +83,7 @@ for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, 
 }
 
 {
-  const inst = { cells: CELLS }
-  mod.setParams(inst, CELLS)
+  const inst = construct(mod, 'dutch-flatmates', CELLS)
   const solved = makePuzzle(truth, (c, v) => [v], { houses: COLUMNS })
   assert.strictEqual(mod.validate(inst, solved), true, 'validate rejected the shipped solution')
   fixpoint(mod, inst, solved)

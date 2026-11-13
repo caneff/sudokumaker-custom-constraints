@@ -1,9 +1,9 @@
 import assert from 'assert'
-import { fixpoint, installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, fixpoint, installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
-const mod = load('IsofillComponent.js', ['setParams', 'update'])
+const mod = load('IsofillComponent.js')
 
 installGlobals(0, 9)
 
@@ -19,8 +19,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   const short = {}
   for (const c of cells) short[c] = truth[c]
   const p = makePuzzle(short, (c, v) => [v])
-  const inst = {}
-  mod.setParams(inst, cells, N, N)
+  const inst = construct(mod, 'isofill', cells, N, N)
   runUpdate(mod, inst, p)
   assert.notStrictEqual(p.stopMessage(), null, 'an uneven board must yield puzzle.stop')
   assert.match(p.stopMessage(), /evenly/)
@@ -30,8 +29,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
 // the cap it records is what nextVisit wraps at, and a bare Uint32Array would
 // never wrap.
 {
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   assert.strictEqual(inst.mask.visitLimit, 0xFFFFFFFF, 'the mask was not allocated through newVisitMarks')
   assert.strictEqual(inst.targets.visitLimit, 0xFFFFFFFF, 'the targets were not allocated through newVisitMarks')
 }
@@ -39,8 +37,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
 {
   const p = makePuzzle(truth, seed)
   p.getCandidates = () => { throw new Error('scan called getCandidates; read getCandidatesBitMask') }
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   runUpdate(mod, inst, p)
 }
 
@@ -48,8 +45,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
 {
   const run = visit => {
     const p = makePuzzle(truth, (c, v) => (c % 3 === 0 ? [v] : randomCandidates(makeRng(c).rnd, 0, 9, v)))
-    const inst = {}
-    mod.setParams(inst, CELLS, N, N)
+    const inst = construct(mod, 'isofill', CELLS, N, N)
     // A field the component does not read would make the assignment a silent no-op.
     assert.ok('visit' in inst && 'targetVisit' in inst, 'setParams must create instance.visit and instance.targetVisit')
     if (visit) { inst.visit = visit; inst.targetVisit = visit }
@@ -67,8 +63,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
     for (let rep = 0; rep < 200; rep++) {
       const r = makeRng(1000 + rep).rnd
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
-      const inst = {}
-      mod.setParams(inst, CELLS, N, N)
+      const inst = construct(mod, 'isofill', CELLS, N, N)
       assert.ok('targetVisit' in inst, 'setParams must create instance.targetVisit')
       if (visit) inst.targetVisit = visit
       runUpdate(mod, inst, p)
@@ -86,8 +81,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
     const out = []
     for (let rep = 0; rep < 60; rep++) {
       const r = makeRng(3000 + rep).rnd
-      const inst = {}
-      mod.setParams(inst, CELLS, N, N)
+      const inst = construct(mod, 'isofill', CELLS, N, N)
       runUpdate(mod, inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v)))
       assert.ok('seenVisit' in inst.budget, 'the budget matcher must keep seenVisit')
       if (below !== null) inst.budget.seenVisit = 0xFFFFFFFF - below

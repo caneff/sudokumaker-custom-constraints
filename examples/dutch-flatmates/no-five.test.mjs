@@ -1,13 +1,13 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { drainChanges, installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { construct, drainChanges, installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const N = 9
 installGlobals(1, N)
-const mod = load('NoFiveComponent.js', ['setParams', 'initialize', 'validate', 'getAffectedCells'])
+const mod = load('NoFiveComponent.js')
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 
@@ -17,8 +17,7 @@ const circles = gen.circles
 
 {
   const p = makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), () => ALL)
-  const inst = { cells: circles }
-  mod.setParams(inst, circles)
+  const inst = construct(mod, 'dutch-flatmates', circles)
   assert.deepStrictEqual(mod.getAffectedCells(circles), circles)
   drainChanges(mod.initialize(inst, p), p)
   for (const c of CELLS) {
@@ -29,8 +28,7 @@ const circles = gen.circles
 }
 
 {
-  const inst = { cells: circles }
-  mod.setParams(inst, circles)
+  const inst = construct(mod, 'dutch-flatmates', circles)
   const solved = makePuzzle(truth, (c, v) => [v])
   assert.strictEqual(mod.validate(inst, solved), true, 'validate rejected the recorded solution')
   drainChanges(mod.initialize(inst, solved), solved)

@@ -12,7 +12,7 @@
 import { fileURLToPath } from 'url'
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, runUpdate } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, makeRng, patchSource, runUpdate } from '../_shared/harness-lib.mjs'
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -30,7 +30,7 @@ export function instrument (src) {
 
 // The shared loader attributes the run to IsofillComponent.js, so c8 counts it.
 export function loadComponent (here, transform = s => s) {
-  return makeIo(here).load('IsofillComponent.js', ['setParams', 'update'], transform)
+  return makeIo(here).load('IsofillComponent.js', [], transform)
 }
 
 export function GRIDS (here) {
@@ -46,8 +46,7 @@ export function GRIDS (here) {
 
 function propagate (mod, fx, cand) {
   const p = makePuzzle(fx.truth, c => cand.get(c))
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   runUpdate(mod, inst, p)
   const next = new Map()
   for (const c of CELLS) {
@@ -101,8 +100,7 @@ export function timeUpdate (mod, snaps, reps = 3) {
   // `update` once per search node. A fresh instance per call would charge the
   // first call with the component's lazy scratch allocation, which lands
   // inside `update` and outside the cut loop.
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'isofill', CELLS, N, N)
   for (let r = 0; r < reps + 1; r++) {
     const warm = r === 0
     for (const snap of snaps) {

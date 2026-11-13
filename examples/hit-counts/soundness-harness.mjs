@@ -22,7 +22,7 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { drainChanges, finishHarness, fixpoint, fixpointAll, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, makeWaker, patchSource, runUpdate, shuffle, violates } from '../_shared/harness-lib.mjs'
+import { construct, drainChanges, finishHarness, fixpoint, fixpointAll, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, makeWaker, patchSource, runUpdate, shuffle, violates } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
@@ -32,11 +32,10 @@ const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
-const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update', 'validate'])
-const mod = load('HitCountsComponent.js', ['setParams', 'update', 'noNMinusOne', 'validate'])
-const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update', 'validate']
-const sideMod = load('SideSumComponent.js', SIDE_NAMES)
-const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
+const pairComp = load('HitCountsPairComponent.js')
+const mod = load('HitCountsComponent.js', ['noNMinusOne'])
+const sideMod = load('SideSumComponent.js')
+const matchMod = load('SideHitMatchingComponent.js')
 
 const seeder = (lo, hi) => makeSeeder(rnd, Array.from({ length: hi - lo + 1 }, (_, i) => lo + i), ['pin', 'subset', 'subset'])
 
@@ -61,8 +60,7 @@ function fuzzLines (label, { kind, lines, lo, hi, clueHi, iters }) {
       for (let i = 0; i < line.length; i++) truth[i] = line[i]
       const lineSeed = seeder(lo, hi)
       const clueSeed = seeder(0, clueHi)
-      const inst = { cells: [A, B, ...cells] }
-      pairComp.setParams(inst, A, B, cells)
+      const inst = construct(pairComp, 'hit-counts', A, B, cells)
       return {
         truth,
         seed: (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v),
@@ -112,8 +110,7 @@ function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
       for (let i = 0; i < line.length; i++) truth[i] = line[i]
       const lineSeed = seeder(lo, hi)
       const clueSeed = seeder(0, clueHi)
-      const inst = { cells: [CLUE, ...cells] }
-      mod.setParams(inst, CLUE, cells)
+      const inst = construct(mod, 'hit-counts', CLUE, cells)
       const nMinus1 = line.length - 1
       return {
         truth,
@@ -191,16 +188,14 @@ function fuzzGrids (label, { pairComps, sides }) {
         const parts = []
         for (const [sa, sb] of pairComps ? [['L', 'R'], ['T', 'B']] : []) {
           for (let i = 0; i < n; i++) {
-            const inst = { cells: [clueCell(sa, i), clueCell(sb, i), ...lineCells(sa, i)] }
-            pairComp.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
+            const inst = construct(pairComp, 'hit-counts', clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
             parts.push({ mod: pairComp, inst })
           }
         }
         for (const side of sides ? ['L', 'R', 'T', 'B'] : []) {
           const clues = Array.from({ length: n }, (_, i) => clueCell(side, i))
           const lines = Array.from({ length: n }, (_, i) => lineCells(side, i))
-          const inst = { cells: [...clues, ...lines.flat()] }
-          matchMod.setParams(inst, clues, lines)
+          const inst = construct(matchMod, 'hit-counts', clues, lines)
           parts.push({ mod: matchMod, inst })
         }
         return { truth, seed: (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), houses, parts, note: `${file} iter ${iter}` }
@@ -264,8 +259,7 @@ const exclusion = fuzzBeating('mirrored-pair exclusion', {
   draw: () => {
     const { n, cells, truth, cands } = drawFullHouseLine({ dropNMinus1FromClues: true })
     const part = () => {
-      const inst = { cells: [A, B, ...cells] }
-      pairComp.setParams(inst, A, B, cells)
+      const inst = construct(pairComp, 'hit-counts', A, B, cells)
       return [{ mod: pairComp, inst }]
     }
     const bare = makePuzzle(truth, c => cands.get(c), { houses: housesOf('bare', cells) })
@@ -283,14 +277,13 @@ console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the hous
 // The case-sweep floor is a frozen copy in `.golden/`, named for its commit, not a
 // `git show` read (the Pants sandbox holds no git history). Raising it means
 // replacing the copy in the same commit as the stronger component.
-const caseSweep = load(CASE_SWEEP_REF, ['setParams', 'update', 'validate'])
+const caseSweep = load(CASE_SWEEP_REF)
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,
   draw: () => {
     const { n, cells, truth, cands } = drawFullHouseLine()
     const part = component => {
-      const inst = { cells: [A, B, ...cells] }
-      component.setParams(inst, A, B, cells)
+      const inst = construct(component, 'hit-counts', A, B, cells)
       return [{ mod: component, inst }]
     }
     const old = makePuzzle(truth, c => cands.get(c), { houses: [cells] })
@@ -308,8 +301,7 @@ const R = [0, 1, 2, 3]
 const rTruth = { [A]: 0, [B]: 0, 0: 2, 1: 1, 2: 4, 3: 3 } // a derangement both ways
 function gateProbe (seed) {
   const p = makePuzzle(rTruth, () => seed.slice(), { houses: [R] })
-  const inst = {}
-  pairComp.setParams(inst, A, B, R)
+  const inst = construct(pairComp, 'hit-counts', A, B, R)
   runUpdate(pairComp, inst, p) // the load pass: the base initialize runs update once
   return { p, inst }
 }
@@ -342,8 +334,7 @@ const LATCH = [0, 1, 2, 3]
 const lTruth = { [A]: 3, [B]: 0, 0: 1, 1: 2, 2: 3, 3: 9 }
 const latchState = fill => makePuzzle(lTruth, c => (c === A || c === B ? [0, 1, 2, 3, 4] : fill), { houses: [LATCH] })
 function latchProbe (component, params) {
-  const inst = {}
-  component.setParams(inst, ...params)
+  const inst = construct(component, 'hit-counts', ...params)
   runUpdate(component, inst, latchState([1, 2, 3, 4])) // deep node: the union is exactly {1..4}
   return violates(component, inst, latchState([1, 2, 3, 4, 5, 6, 7, 8, 9]), lTruth) // the parent it backtracks to
 }
@@ -366,8 +357,7 @@ function validateAt (kind) {
     if (c === B) return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     return line
   }, { houses: housesOf(kind, [0, 1, 2, 3, 4, 5, 6, 7, 8]) })
-  const inst = { cells: [A, B, 0, 1, 2, 3, 4, 5, 6, 7, 8] }
-  pairComp.setParams(inst, A, B, [0, 1, 2, 3, 4, 5, 6, 7, 8])
+  const inst = construct(pairComp, 'hit-counts', A, B, [0, 1, 2, 3, 4, 5, 6, 7, 8])
   return pairComp.validate(inst, p)
 }
 const validateOk = validateAt('bare') === true && validateAt('fullHouse') === false
@@ -391,8 +381,7 @@ function sideGateProbe (withZero) {
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
   const p = makePuzzle(truth, c => (c >= 400 ? [1] : CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
     { houses: HOUSES })
-  const inst = {}
-  matchMod.setParams(inst, CLUES, LINES)
+  const inst = construct(matchMod, 'hit-counts', CLUES, LINES)
   return { p, inst, v: violates(matchMod, inst, p, truth) }
 }
 const zeroLive = sideGateProbe(true)
@@ -420,8 +409,7 @@ function sideValidate (clueVals, openCell) {
   CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
   const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: HOUSES })
-  const inst = { cells: [...CLUES, ...LINES.flat()] }
-  matchMod.setParams(inst, CLUES, LINES)
+  const inst = construct(matchMod, 'hit-counts', CLUES, LINES)
   return matchMod.validate(inst, p)
 }
 const sideValidateOk = sideValidate([1, 1, 1, 1], null) === true &&
@@ -455,8 +443,7 @@ function fuzzSide (label, { kind, sums, iters }) {
       for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
       for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
       const clueSeed = seeder(0, 9)
-      const inst = {}
-      sideMod.setParams(inst, SIDE, N, PERP)
+      const inst = construct(sideMod, 'hit-counts', SIDE, N, PERP)
       return {
         truth,
         seed: (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)),
@@ -481,8 +468,7 @@ const sideBare = fuzzSide('side-sum, bare perpendiculars      ', {
 // one component object across every search node, so a gate latched open deep in
 // a branch is still open in the parent state the search returns to -- where the
 // perpendiculars have regained their 0 and the side need not sum to N at all.
-const sideLatchInst = {}
-sideMod.setParams(sideLatchInst, SIDE, N, PERP)
+const sideLatchInst = construct(sideMod, 'hit-counts', SIDE, N, PERP)
 function sideSumState (vals, fill, clueSeed) {
   const truth = {}
   for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
@@ -507,8 +493,7 @@ console.log('side-sum gate after a backtrack:', sideLatchBad === null ? 'gate re
 // The truth has the 0 in that line, so the side need not sum to N: a gate
 // still open would force the first clue to 1 and take its true 3 away.
 function staleWakeRun (mod) {
-  const inst = {}
-  mod.setParams(inst, SIDE, N, PERP)
+  const inst = construct(mod, 'hit-counts', SIDE, N, PERP)
   const affected = mod.getAffectedCells(SIDE, N, PERP)
   const truth = {}
   const vals = [3, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -531,7 +516,7 @@ function staleWakeRun (mod) {
 }
 const staleWakeLost = staleWakeRun(sideMod)
 // The same run against a gate that latches once open, to show the case bites.
-const latchedSide = load('SideSumComponent.js', SIDE_NAMES, src => patchSource(src,
+const latchedSide = load('SideSumComponent.js', [], src => patchSource(src,
   '  for (const line of lines) if (!lineKind(instance, puzzle, line).oneToN) return false\n  return true\n',
   '  if (instance.latched) return true\n  for (const line of lines) if (!lineKind(instance, puzzle, line).oneToN) return false\n  instance.latched = true\n  return true\n'))
 const staleWakeBites = staleWakeRun(latchedSide) !== null

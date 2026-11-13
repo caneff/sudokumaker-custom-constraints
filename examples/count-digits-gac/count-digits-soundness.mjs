@@ -18,15 +18,15 @@
 //      supported digits off them. The component must remove no more than the
 //      oracle (sound); on `exact` shapes it must remove no less either.
 
-import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
+import { construct, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
 installGlobals(1, 9)
 
-const gac = load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
-const builtin = load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
+const gac = load('CountDigitsGacComponent.js')
+const builtin = load('BuiltinCountDigitsComponent.js')
 
 const { rnd } = makeRng(4242)
 function maskOf (digits) { let m = 0; for (const d of digits) m |= 1 << d; return m }
@@ -63,8 +63,7 @@ const puzzleOf = state => makePuzzle(state.truth, cell => state.seed.get(cell))
 const candidatesOf = p => new Map([...p._cand].map(([cell, set]) => [cell, new Set(set)]))
 
 function runComponent (mod, state) {
-  const instance = { name: 'count digits' }
-  mod.setParams(instance, state.digitMask, state.counter, state.targets)
+  const instance = construct(mod, 'count digits', state.digitMask, state.counter, state.targets)
   return instance
 }
 
