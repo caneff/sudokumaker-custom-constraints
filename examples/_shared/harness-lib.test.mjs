@@ -460,6 +460,13 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   fixpointAll([{ mod: stops, inst: {} }, { mod: later, inst: {} }], q)
   assert.strictEqual(q.stopMessage(), 'dead')
   assert.strictEqual(laterRan, false, 'a stopped branch propagates no further, mid-pass included')
+  // A component that never settles: it removes one candidate per pass from a
+  // board with more removals to make than the pass cap allows. Reaching the
+  // cap is a failure to report, never a silent pass.
+  const truth = Object.fromEntries(Array.from({ length: 40 }, (_, c) => [c, 1]))
+  const slow = makePuzzle(truth, () => [1, 2])
+  const drip = { * update (inst, p) { const c = [...p._cand.keys()].find(c => p._cand.get(c).has(2)); if (c !== undefined) yield p.removeCandidateFromCell(2, c) } }
+  assert.throws(() => fixpointAll([{ mod: drip, inst: {} }], slow), /never settled/)
 }
 
 // makeWaker: update runs only when a watched cell changed since the last call
