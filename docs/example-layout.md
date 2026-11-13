@@ -240,18 +240,31 @@ a template is dead data that can only drift. `check_gen_frame_backends` requires
 the field to be empty.
 
 Every example's `build_link.py` takes `--refresh`, the command a stale-backend
-violation names. A laned example runs `lanes.rebuild_all`, which re-encodes
-every carved `gen*.json` board against the tree. Two frame boards have no
-`gen_*.json` and so no `--rebuild`: `running-start/PUZZLE_LINK.txt`, rebuilt
-whole by its own `build_link.py`, and `numbered-rooms/PUZZLE_LINK.txt`, which is
-hand-built. Their `--refresh` runs that hand-built rebuild, then `rebuild_all`
-for their carved boards. numbered-rooms' also pins its digit range and rewrites
-its rules text — nothing else writes either; both values belong to that one
-board, so `--refresh` touches this example's own links only and refuses
-`--board`. Both go through `document.refresh_frame_backends`. numbered-rooms has three
-more hand-built links derived from `PUZZLE_LINK.txt` (`_original`, `_clued`,
-`_clued_original`); `--refresh` drives `build_original` and `build_clued`
-itself after the rewrite, so one refresh leaves all four in step. After such a
+violation names, and it rewrites every committed link of the example that
+embeds shared code. `size_builders.test.py` runs it on every example in a copy
+of the tree and fails on a link it leaves unwritten or changes. A laned
+example ends with `lanes.link_main(SPEC, ...)`: `lanes.rebuild_all` re-encodes
+every carved `gen*.json` board against the tree, then each extra step rewrites
+the links no gen JSON records. skyscraper's step is
+`build_original.build_all`, its four `_original` twins; outside-sudoku's is
+`build_clued.build`, its `_clued` twins. Two frame boards have no `gen_*.json`
+and so no `--rebuild`: `running-start/PUZZLE_LINK.txt`, rebuilt whole by its
+own `build_link.py`, and `numbered-rooms/PUZZLE_LINK.txt`, which is
+hand-built; their step is that hand-built rebuild. numbered-rooms' also pins
+its digit range and rewrites its rules text — nothing else writes either; both
+values belong to that one board. Both go through
+`document.refresh_frame_backends`. numbered-rooms has three more hand-built
+links derived from `PUZZLE_LINK.txt` (`_original`, `_clued`,
+`_clued_original`); its step drives `build_original` and `build_clued` after
+the rewrite, so one refresh leaves all four in step. The examples with no lane
+give `link_swap.swap_main` a refresh body of their own: dutch-flatmates and
+house-gac rebuild every link including the `_annotated` twins, squishdoku both
+boards, and count-digits-gac the two `required-digits/` links, the only ones
+it ships that embed a shared backend. isofill and fillomino embed no shared
+code, and their `--refresh` is `bareboard`'s rebuild of `PUZZLE_LINK.txt`
+alone. `--refresh` takes no other flag: it
+refuses `--out`, `--board`, `--backend` and an example's own, rather than
+ignore them. After such a
 rebuild, re-check every link in the live app and record what it said:
 `docs/frame-link-verdicts.md` holds that sweep.
 

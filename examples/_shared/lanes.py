@@ -13,6 +13,9 @@
 #   --rebuild n [--paths|--local] [--height H]
 #
 # Writes PUZZLE_LINK*.txt and gen*.json next to the caller's script.
+#
+# `link_main(spec, *also)` is what a laned example's `build_link.py` ends with:
+# its `--refresh` is `rebuild_all` and then the example's own extra steps.
 
 import argparse
 import json
@@ -28,16 +31,17 @@ from component_scan import describe_mismatch, mismatch
 from document import (
     FRAME_ALWAYS_ON,
     FRAME_ROWCOL,
-    HOUSE_GAC_BACKEND_TITLE,
+    HOUSE_GAC,
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
     backend_code,
     board_document,
     frame_groups,
     house_gac_constraint,
+    link_suffix,
 )
 from frame import corner_cells, cosmetics, ring_cell
-from link_swap import frame_and_comment_only
+from link_swap import frame_and_comment_only, swap_main
 from minify import minify_file
 from sm_document import assert_round_trips, code_constraint, find_constraint
 from sudoku_kit import link_codec
@@ -226,7 +230,7 @@ class Lane:
             d["puzzle"]["constraints"] = [
                 c
                 for c in d["puzzle"]["constraints"]
-                if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+                if c.get("definition", {}).get("name") != HOUSE_GAC.title
                 and c.get("type") not in self.derived
             ]
             return d
@@ -475,14 +479,29 @@ def rebuild_all(spec, write=True):
             assert len(lanes) == 1, (
                 f"{gen} is no lane's board: name it in its lane's files()"
             )
-            tag = gen.name[len("gen") : -len(".json")].lstrip("_")
-            pair = named_files(spec, tag)
+            pair = named_files(spec, link_suffix(gen.name, "gen", ".json"))
             rebuilt[pair[0]] = lanes[0].rebuild(n, pair=pair)
     if write:
         for link_path, link in rebuilt.items():
             link_path.write_text(link + "\n")
             print(f"wrote {link_path.name} ({len(link)} chars)")
     return rebuilt
+
+
+def link_main(spec, *also, rebuild=None):
+    """The command line a laned example's `build_link.py` ends with:
+    `link_swap.swap_main`, whose `--refresh` re-encodes every carved board
+    (`rebuild_all`) and then runs each of `also` -- the example's links that
+    no gen JSON records (a hand-built board, a `_clued` or `_original` twin),
+    each a callable taking no arguments that rewrites its own. `rebuild` is
+    the example's no-flag build, for one that has a hand-built board."""
+
+    def refresh(_args, _parser):
+        rebuild_all(spec)
+        for step in also:
+            step()
+
+    swap_main(spec.dir, rebuild=rebuild, refresh=refresh)
 
 
 def main(spec, argv=None):

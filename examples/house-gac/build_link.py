@@ -24,6 +24,9 @@
 #   uv run examples/house-gac/build_link.py \
 #       --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
 #
+# --refresh rebuilds both committed links, PUZZLE_LINK.txt and
+# PUZZLE_LINK_annotated.txt: each embeds the shared HouseGacComponent.js.
+#
 # --component swaps a candidate's code into PUZZLE_LINK.txt, or into --board,
 # and nothing else changes (_shared/link_swap.swap_main) -- the way
 # `just time house-gac --board <fixture>` reaches a fixture other than the
@@ -132,18 +135,31 @@ def check(link, doc):
     assert names == [TIMED_COMPONENT], f"expected one {TIMED_COMPONENT}, got {names}"
 
 
-def rebuild(args, _parser):
-    out = args.out or HERE / "PUZZLE_LINK.txt"
-    link, doc, sol, n_givens = build(
-        COMPONENT, args.backend or BACKEND, keep_comments=args.keep_comments
-    )
+def write(out, backend=BACKEND, keep_comments=False):
+    """Build, check and write one link; returns the proved solution and the
+    given count."""
+    link, doc, sol, n_givens = build(COMPONENT, backend, keep_comments=keep_comments)
     check(link, doc)
     pathlib.Path(out).write_text(link + "\n")
+    print(f"wrote {out}: {len(link)} characters")
+    return sol, n_givens
+
+
+def refresh(_args, _parser):
+    write(HERE / "PUZZLE_LINK.txt")
+    write(HERE / "PUZZLE_LINK_annotated.txt", keep_comments=True)
+
+
+def rebuild(args, _parser):
+    sol, n_givens = write(
+        args.out or HERE / "PUZZLE_LINK.txt",
+        args.backend or BACKEND,
+        args.keep_comments,
+    )
     print(f"givens carried over: {n_givens}")
     print("unique; solution rows:")
     for r in range(9):
         print("  " + "".join(str(sol[r, c]) for c in range(9)))
-    print(f"wrote {out}: {len(link)} characters")
 
 
 if __name__ == "__main__":
@@ -154,4 +170,4 @@ if __name__ == "__main__":
         help="build the annotated link: embedded code keeps every comment "
         "instead of the usual full strip (#433)",
     )
-    swap_main(HERE, p, rebuild, rebuild_reads_backend=True)
+    swap_main(HERE, p, rebuild, refresh, rebuild_reads_backend=True)

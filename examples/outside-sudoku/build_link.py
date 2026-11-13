@@ -11,8 +11,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_clued
 from build_size import SPEC
-from lanes import rebuild_all
-from link_swap import swap_main
+from lanes import link_main
 from manifest import load_manifest
 
 HERE = pathlib.Path(__file__).parent
@@ -20,15 +19,7 @@ MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name
 
 
-def refresh(_args, _parser):
-    """Re-encode every board from its recorded seed, then its twin from it.
-
-    The twins come last: a twin is its board's clues filled, so one built
-    before the board is re-encoded would carry the old embedded code."""
-    rebuild_all(SPEC)
-    build_clued.build()
-    print("refreshed the four boards and the four _clued twins built from them")
-
-
 if __name__ == "__main__":
-    swap_main(HERE, refresh=refresh)
+    # The twins come last: a twin is its board's clues filled, so one built
+    # before the board is re-encoded would carry the old embedded code.
+    link_main(SPEC, build_clued.build)

@@ -11,8 +11,7 @@ import build_clued
 import build_original
 from build_size import SPEC
 from document import RULES_PREFIX, refresh_frame_backends
-from lanes import rebuild_all
-from link_swap import swap_main
+from lanes import link_main
 from manifest import load_manifest
 from minify import minify_file
 from sm_document import find_constraint, write_link
@@ -87,11 +86,5 @@ def refresh(root=HERE):
     build_clued.build(root, board_path)
 
 
-def refresh_command(args, _parser):
-    refresh()
-    rebuild_all(SPEC)
-    print("refreshed PUZZLE_LINK.txt and the three links derived from it")
-
-
 if __name__ == "__main__":
-    swap_main(HERE, refresh=refresh_command)
+    link_main(SPEC, refresh)

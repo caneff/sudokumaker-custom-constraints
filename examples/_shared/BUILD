@@ -104,6 +104,9 @@ for file in [
     "spec_897_closing.test.mjs",
     "spec_898_closing.test.py",
     "spec_951_closing.test.mjs",
+    # Copies the examples tree and docs/builtin-components.md, and runs every
+    # example's build_link.py --refresh and check_layout.py on the copy.
+    "spec_952_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 

@@ -6,6 +6,10 @@
 # every component change so the shipped link carries the code in the repo.
 #
 #   uv run examples/skyscraper/build_original.py 9
+#   uv run examples/skyscraper/build_original.py --all
+#
+# --all rebuilds every size that ships an _original twin (`build_all`); it is
+# what build_link.py --refresh runs after re-encoding the carved boards.
 #
 # Writes PUZZLE_LINK_<n>x<n>.txt and PUZZLE_LINK_<n>x<n>_original.txt next to
 # this script (PUZZLE_LINK.txt / PUZZLE_LINK_original.txt for n=9, the
@@ -81,11 +85,39 @@ def build(n, out_dir=HERE, spec=build_size.SPEC):
     print(f"wrote {out_name} ({len(link)} chars) — same puzzle, original wrapper code")
 
 
+def twin_sizes(spec=build_size.SPEC):
+    """The sizes whose global-lane board ships an `_original` twin: every gen
+    JSON the global lane owns, read for its size, whose link's twin is
+    committed. Read off the files, so a twin added at a new size is refreshed
+    without a list here to keep."""
+    lane = RingGlobal(spec)
+    sizes = []
+    for gen in sorted(spec.dir.glob("gen*.json")):
+        n = load_board(gen).n
+        link_path, owned = lane.files(n)
+        if owned == gen and (spec.dir / f"{link_path.stem}_original.txt").exists():
+            sizes.append(n)
+    return sorted(sizes)
+
+
+def build_all(out_dir=HERE, spec=build_size.SPEC):
+    """`build` for every size in `twin_sizes`."""
+    for n in twin_sizes(spec):
+        build(n, out_dir, spec)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("n", type=int)
+    p.add_argument("n", type=int, nargs="?")
+    p.add_argument("--all", action="store_true", help="every size with a twin")
     p.add_argument(
         "--out", help="directory to write into (default: next to this script)"
     )
     args = p.parse_args()
-    build(args.n, pathlib.Path(args.out) if args.out else HERE)
+    if args.all == (args.n is not None):
+        p.error("give a size n, or --all")
+    out = pathlib.Path(args.out) if args.out else HERE
+    if args.all:
+        build_all(out)
+    else:
+        build(args.n, out)

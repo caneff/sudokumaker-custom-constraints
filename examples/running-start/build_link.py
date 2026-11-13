@@ -30,15 +30,14 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import SPEC, rule_text
 from document import (
     FRAME_ALWAYS_ON,
-    HOUSE_GAC_BACKEND_TITLE,
+    HOUSE_GAC,
     RULES_PREFIX,
     backend_code,
     house_gac_constraint,
     refresh_frame_backends,
 )
 from frame import cosmetics
-from lanes import rebuild_all
-from link_swap import swap_main
+from lanes import link_main
 from manifest import load_manifest
 from minify import minify_file
 from sm_document import assert_round_trips, find_constraint
@@ -79,9 +78,7 @@ def build_from_template():
     # docs/research/421-frame-link-timing.md). The local, 4x4 and 6x6 lanes are
     # frame-builder-native and were not timed, so they do not carry it.
     cons[:] = [
-        c
-        for c in cons
-        if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+        c for c in cons if c.get("definition", {}).get("name") != HOUSE_GAC.title
     ]
     cons.append(house_gac_constraint(9))
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
@@ -104,18 +101,13 @@ def check(link, doc):
         assert embedded == backend_code(b), f"{b.title} is not the copy in the tree"
 
 
-def rebuild(_args, _parser):
+def write_board():
     link, doc = build_from_template()
     check(link, doc)
     (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
     print(f"wrote PUZZLE_LINK.txt ({len(link)} chars)")
 
 
-def refresh(args, parser):
-    """The hand-built board, then every carved board build_size.py ships."""
-    rebuild(args, parser)
-    rebuild_all(SPEC)
-
-
 if __name__ == "__main__":
-    swap_main(HERE, rebuild=rebuild, refresh=refresh)
+    # --refresh: every carved board build_size.py ships, then the hand-built one.
+    link_main(SPEC, write_board, rebuild=lambda *_: write_board())

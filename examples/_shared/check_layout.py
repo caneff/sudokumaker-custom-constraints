@@ -46,7 +46,7 @@ import sys
 import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from document import SHARED_BACKEND_TITLES
+from document import SHARED_BACKEND_TITLES, link_suffix
 from link_checks import LINK_CHECKS, CommittedLink
 from manifest import load_manifest
 from minify import minify_file
@@ -168,12 +168,6 @@ def check_lanes(example_dir):
     return violations
 
 
-def _link_suffix(filename, prefix, ext):
-    """The part of a `gen*.json`/`PUZZLE_LINK*.txt` name between `prefix` and
-    `ext`, minus one leading underscore -- "" for the plain-named file."""
-    return filename[len(prefix) : -len(ext)].lstrip("_")
-
-
 def check_gen_link_pairing(example_dir, manifest):
     """Return one violation string per gen*.json / PUZZLE_LINK*.txt name that
     does not pair with the other of the same suffix (docs/example-layout.md,
@@ -186,7 +180,7 @@ def check_gen_link_pairing(example_dir, manifest):
     violations = []
 
     for gen in sorted(example_dir.glob("gen*.json")):
-        suffix = _link_suffix(gen.name, "gen", ".json")
+        suffix = link_suffix(gen.name, "gen", ".json")
         link_name = f"PUZZLE_LINK_{suffix}.txt" if suffix else "PUZZLE_LINK.txt"
         if not (example_dir / link_name).is_file():
             violations.append(f"{name}: {gen.name} has no matching {link_name}")
@@ -198,7 +192,7 @@ def check_gen_link_pairing(example_dir, manifest):
             continue
         if link_tags(link.name) & NO_GENERATOR_TAGS:
             continue
-        suffix = _link_suffix(link.name, "PUZZLE_LINK", ".txt")
+        suffix = link_suffix(link.name, "PUZZLE_LINK", ".txt")
         if link.name in manifest.generator_less_links:
             continue
         gen_name = f"gen_{suffix}.json" if suffix else "gen.json"

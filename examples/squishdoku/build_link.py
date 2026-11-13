@@ -14,6 +14,9 @@
 #   uv run examples/squishdoku/build_link.py
 #   uv run examples/squishdoku/build_link.py --generate squish --seed 7
 #   uv run examples/squishdoku/build_link.py --generate embedded --seed 7
+#   uv run examples/squishdoku/build_link.py --refresh
+#
+# No flag, and --refresh, rebuild every board's template and puzzle links.
 #
 # --generate writes a new gen_<n>g.json and its link, <n> the givens left after
 # removing every given the uniqueness proof allows.
@@ -116,10 +119,15 @@ def rebuild(args, _parser):
         write_all(spec)
 
 
+def refresh(_args, _parser):
+    for spec in BOARDS:
+        write_all(spec)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(
         description="Rebuild the squishdoku links, or generate a new puzzle."
     )
     p.add_argument("--generate", choices=[s.name for s in BOARDS])
     p.add_argument("--seed", type=int, default=0)
-    swap_main(HERE, p, rebuild)
+    swap_main(HERE, p, rebuild, refresh)

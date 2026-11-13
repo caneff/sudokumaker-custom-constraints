@@ -171,9 +171,10 @@ def swap_main(
     A flag the chosen path cannot honour is refused, never ignored: an
     example's own flag beside --component (it belongs to the rebuild),
     --board without --component (there is nothing to swap into it), and
-    --component beside --refresh (two commands). A `refresh`-only example
-    rewrites its own links, so it takes neither --out, --board nor --backend
-    beside --refresh."""
+    --component beside --refresh (two commands). --refresh rewrites the
+    example's own links where they are committed, so it takes no other flag
+    at all -- not --out, --board or --backend, and not one of the example's
+    own -- whether `refresh` or the `rebuild` fallback answers it."""
     p = parser or argparse.ArgumentParser()
     own = [a.dest for a in p._actions if a.dest != "help"]
     p.add_argument("--component", help="component file to swap into the board")
@@ -192,12 +193,12 @@ def swap_main(
         run = refresh or rebuild
         if run is None:
             p.error("this example has nothing to refresh; give --component with --out")
-        if refresh is not None:
-            for flag in ("out", "board", "backend"):
-                if getattr(args, flag) is not None:
-                    p.error(
-                        f"--refresh rewrites this example's own links; drop --{flag}"
-                    )
+        for dest in [*own, "out", "board", "backend"]:
+            if getattr(args, dest) != p.get_default(dest):
+                p.error(
+                    "--refresh rewrites this example's own links; "
+                    f"drop --{dest.replace('_', '-')}"
+                )
         run(args, p)
         return
     if args.component is None:

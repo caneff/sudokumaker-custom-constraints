@@ -33,6 +33,15 @@ LOCAL_RULES_SUFFIX = (
 )
 
 
+def link_suffix(filename, prefix, ext):
+    """The part of a `gen*.json`/`PUZZLE_LINK*.txt` name between `prefix` and
+    `ext`, minus one leading underscore -- "" for the plain-named file. The
+    one reading of a board's file tag: the layout gate pairs a gen JSON with
+    its link by it, and `lanes.rebuild_all` names a second board's files by
+    it."""
+    return filename[len(prefix) : -len(ext)].lstrip("_")
+
+
 def frame_groups(n, lines):
     """The drawn groups for `lines` on an n x n interior: each group is the
     clue's ring cell, then that line's cells inward, which is the order
@@ -117,9 +126,6 @@ def refresh_frame_backends(doc):
         )
     return doc
 
-
-HOUSE_GAC_BACKEND_TITLE = HOUSE_GAC.title
-HOUSE_GAC_COMPONENT_NAME = HOUSE_GAC.component
 
 # HouseGacComponent.js's own MAX_CELLS: the largest house it will register on.
 # `build_doc` reads it here, not from the JS, so a board past this size fails

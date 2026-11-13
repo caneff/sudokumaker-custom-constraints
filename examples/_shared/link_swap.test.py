@@ -8,6 +8,7 @@
 #
 #   uv run examples/_shared/link_swap.test.py
 
+import argparse
 import contextlib
 import io
 import itertools
@@ -402,5 +403,45 @@ if __name__ == "__main__":
         assert stdout == (
             f"wrote {out} ({len(link)} chars, from {example_dir / 'PUZZLE_LINK.txt'})\n"
         ), stdout
+
+        # --refresh rewrites the example's own links, so every other flag is
+        # refused rather than ignored -- whether the example's `refresh` body
+        # answers it or, with none, its `rebuild` does. A flag let through
+        # would be dropped and the committed links rewritten anyway.
+        def own_parser():
+            p = argparse.ArgumentParser()
+            p.add_argument("--puzzle", default="gen.json")
+            p.add_argument("--keep-comments", action="store_true")
+            return p
+
+        flags = [
+            ("--out", str(out)),
+            ("--board", str(example_dir / "PUZZLE_LINK.txt")),
+            ("--backend", str(component)),
+            ("--puzzle", "gen_0g.json"),
+            ("--keep-comments",),
+        ]
+        ran = []
+        bodies = {
+            "refresh": {"refresh": lambda *_: ran.append("refresh")},
+            "rebuild fallback": {"rebuild": lambda *_: ran.append("rebuild")},
+        }
+        for path, body in bodies.items():
+            for flag in flags:
+                code, _, stderr = call_swap_main(
+                    example_dir, "--refresh", *flag, parser=own_parser(), **body
+                )
+                assert code == 2, (path, flag, code, stderr)
+                assert (
+                    f"--refresh rewrites this example's own links; drop {flag[0]}"
+                    in (stderr)
+                ), (path, flag, stderr)
+                assert ran == [], f"{path} ran beside {flag[0]}"
+            code, _, stderr = call_swap_main(
+                example_dir, "--refresh", parser=own_parser(), **body
+            )
+            assert code == 0, (path, stderr)
+            assert ran == [path.split()[0]], (path, ran)
+            ran.clear()
 
     print("ok")
