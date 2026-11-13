@@ -12,7 +12,7 @@
 import { fileURLToPath } from 'url'
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, patchSource } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, runUpdate } from '../_shared/harness-lib.mjs'
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -48,7 +48,7 @@ function propagate (mod, fx, cand) {
   const p = makePuzzle(fx.truth, c => cand.get(c))
   const inst = {}
   mod.setParams(inst, CELLS, N, N)
-  Array.from(mod.update(inst, p))
+  runUpdate(mod, inst, p)
   const next = new Map()
   for (const c of CELLS) {
     const s = [...p._cand.get(c)].sort((a, b) => a - b)
@@ -109,7 +109,7 @@ export function timeUpdate (mod, snaps, reps = 3) {
       const p = makePuzzle(Object.fromEntries([...snap.keys()].map(c => [c, 0])), c => snap.get(c))
       globalThis.__cutMs = 0
       const t0 = performance.now()
-      Array.from(mod.update(inst, p))
+      runUpdate(mod, inst, p)
       const took = performance.now() - t0
       if (warm) continue
       totalMs += took

@@ -4,9 +4,7 @@
 //   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
-import {
-  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, violates, fixpoint, fuzzSoundness, finishHarness
-} from '../_shared/harness-lib.mjs'
+import { finishHarness, fixpoint, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate, drainChanges, shuffle, TIES_FLAG, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -209,13 +207,16 @@ for (let iter = 0; iter < PAIRS; iter++) {
   const start = makePuzzle(truth, seeder, BOTH)
 
   const serial = copyOf(start)
-  Array.from(mod.update(instA, serial))
-  Array.from(mod.update(instB, serial))
+  runUpdate(mod, instA, serial)
+  runUpdate(mod, instB, serial)
   const mixed = copyOf(start)
+  // A suspends at its first yield with that change applied, as the app
+  // applies a change before it resumes the generator; B runs; A finishes.
   const genA = mod.update(instA, mixed)
-  genA.next()
-  Array.from(mod.update(instB, mixed))
-  Array.from(genA)
+  const firstA = genA.next()
+  if (!firstA.done) mixed.applyChange(firstA.value)
+  runUpdate(mod, instB, mixed)
+  drainChanges(genA, mixed)
 
   if (state(mixed) !== state(serial)) {
     interleaveBad++
@@ -268,7 +269,7 @@ for (let iter = 0; iter < EXACT; iter++) {
   }
   if (oracle.get(CA).size === 0) continue
   exactRuns++
-  while (Array.from(mod.update(smallInst, p)).length > 0) { /* to fixpoint */ }
+  while (runUpdate(mod, smallInst, p)?.length > 0) { /* to fixpoint */ }
   const d = disagreement(p, oracle)
   if (d !== null) {
     exactBad++

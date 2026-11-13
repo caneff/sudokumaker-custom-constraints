@@ -8,7 +8,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
-  columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, shuffle, strengthSweep
+  columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, runUpdate, shuffle, strengthSweep
 } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -126,17 +126,17 @@ assert.strictEqual(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1])).total(
     * update (inst, p) { for (const c of inst.cells) if (p.getCandidates(c).size > 1) yield p.removeCandidateFromCell(3, c) }
   }
   const idle = { * update () {} }
-  const apply = (mod, p) => { Array.from(mod.update({ cells: [0, 1] }, p)) }
+  const apply = (mod, p) => runUpdate(mod, { cells: [0, 1] }, p)
   const states = n => Array.from({ length: n }, () => new Map([[0, [1, 2, 3]], [1, [2, 3]]]))
   const r = strengthSweep('same strength', { cur: dropThree, ref: dropThree, apply, states: states(10) })
   assert.deepStrictEqual(r, { drawn: 10, compared: 10, weaker: 0 })
   assert.throws(() => strengthSweep('weaker', { cur: idle, ref: dropThree, apply, states: states(10) }), /weaker/)
-  const killer = { * update (inst, p) { p.removeCandidateFromCell(2, 1); p.removeCandidateFromCell(3, 1) } }
+  const killer = { * update (inst, p) { yield p.removeCandidateFromCell(2, 1); yield p.removeCandidateFromCell(3, 1) } }
   assert.throws(() => strengthSweep('dead', { cur: dropThree, ref: killer, apply, states: states(10) }), /compared/)
   // states each built around a solution: a single death is a version emptying
   // a cell the solution needs, and fails however many states compared
   const killsOne = {
-    * update (inst, p) { if (p.getCandidates(1).size === 2 && ++killsOne.calls === 3) { p.removeCandidateFromCell(2, 1); p.removeCandidateFromCell(3, 1) } },
+    * update (inst, p) { if (p.getCandidates(1).size === 2 && ++killsOne.calls === 3) { yield p.removeCandidateFromCell(2, 1); yield p.removeCandidateFromCell(3, 1) } },
     calls: 0
   }
   assert.throws(() => strengthSweep('solvable', { cur: dropThree, ref: killsOne, apply, states: states(10), solvable: true }), /died/)
@@ -216,16 +216,16 @@ assert.strictEqual(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1])).total(
   assert.deepStrictEqual(six.getCellsOrthogonallyAdjacentToCell(2).sort(), [1, 5])
   assert.throws(() => makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }, () => [1]).getCellsOrthogonallyAdjacentToCell(0), /square board/)
 
-  p.removeCandidateFromCells(2, [0, 1])
+  p.applyChange(p.removeCandidateFromCells(2, [0, 1]))
   assert.deepStrictEqual([...p.getCandidates(0)].sort(), [1, 3])
   assert.deepStrictEqual([...p.getCandidates(2)].sort(), [1, 2, 3])
 
-  p.filterCandidatesInCells(DigitSet.from([3]), [2])
+  p.applyChange(p.filterCandidatesInCells(DigitSet.from([3]), [2]))
   assert.deepStrictEqual([...p.getCandidates(2)], [3])
 
   // stop says the branch has no solution; the mock records it where
   // fixpoint and the strength compare look for it.
-  p.stop('no room')
+  p.applyChange(p.stop('no room'))
   assert.strictEqual(p.stopMessage(), 'no room')
 }
 
@@ -236,14 +236,14 @@ assert.strictEqual(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1])).total(
   assert.strictEqual(p.stopMessage(), null, 'nothing stopped yet')
   assert.strictEqual(p.total(), 6)
   // A stop with no message still reads as stopped.
-  p.stop()
+  p.applyChange(p.stop())
   assert.strictEqual(p.isDead(), true, 'a stop kills the branch')
   assert.strictEqual(p.stopMessage(), 'stopped')
   p.reset()
   assert.strictEqual(p.isDead(), false, 'reset clears the stop')
   assert.strictEqual(p.stopMessage(), null)
   // An emptied cell is the other dead state; reset does not refill it.
-  p.removeCandidatesFromCell(DigitSet.from([1, 2, 3]), 1)
+  p.applyChange(p.removeCandidatesFromCell(DigitSet.from([1, 2, 3]), 1))
   assert.strictEqual(p.isDead(), true, 'an emptied cell kills the branch')
   assert.strictEqual(p.stopMessage(), null, 'an emptied cell is not a stop')
   assert.strictEqual(p.total(), 3)
@@ -262,9 +262,9 @@ assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
 {
   const p = makePuzzle({ 0: 1, 1: 1 }, () => [1, 2, 3])
 
-  p.removeCandidatesFromCell(1 << 2, 0)
+  p.applyChange(p.removeCandidatesFromCell(1 << 2, 0))
   assert.deepStrictEqual([...p.getCandidates(0)].sort(), [1, 3], 'a raw mask removes its digits')
-  p.removeCandidatesFromCell(DigitSet.from([3]), 0)
+  p.applyChange(p.removeCandidatesFromCell(DigitSet.from([3]), 0))
   assert.deepStrictEqual([...p.getCandidates(0)], [1], 'a DigitSet still works')
 
   for (const bad of [[2], '4', undefined, null, 1.5, {}]) {
@@ -280,9 +280,9 @@ assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
 // for, and send an author back to allocating a set.
 {
   const p = makePuzzle({ 0: 1 }, () => [1, 2, 3])
-  p.filterCandidatesInCell(~(1 << 2), 0)
+  p.applyChange(p.filterCandidatesInCell(~(1 << 2), 0))
   assert.deepStrictEqual([...p.getCandidates(0)].sort(), [1, 3], 'keep everything but digit 2')
-  p.removeCandidatesFromCell(~(1 << 1), 0)
+  p.applyChange(p.removeCandidatesFromCell(~(1 << 1), 0))
   assert.deepStrictEqual([...p.getCandidates(0)], [1], 'drop everything but digit 1')
 }
 
@@ -291,21 +291,21 @@ assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
 {
   const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3])
 
-  p.removeCandidatesFromCells((1 << 2) | (1 << 3), [0, 1])
+  p.applyChange(p.removeCandidatesFromCells((1 << 2) | (1 << 3), [0, 1]))
   assert.deepStrictEqual([...p.getCandidates(0)], [1], 'a raw mask clears both digits')
   assert.deepStrictEqual([...p.getCandidates(1)], [1])
   assert.deepStrictEqual([...p.getCandidates(2)].sort(), [1, 2, 3], 'an unlisted cell is untouched')
-  p.removeCandidatesFromCells(DigitSet.from([1]), [2])
+  p.applyChange(p.removeCandidatesFromCells(DigitSet.from([1]), [2]))
   assert.deepStrictEqual([...p.getCandidates(2)].sort(), [2, 3], 'and a DigitSet, as every caller passes today')
 
-  p.filterCandidatesInCell(DigitSet.from([2, 3]), 3)
+  p.applyChange(p.filterCandidatesInCell(DigitSet.from([2, 3]), 3))
   assert.deepStrictEqual([...p.getCandidates(3)].sort(), [2, 3], 'the filter keeps only its digits')
   // A filter that removes nothing leaves the cell whole (the app answers such
   // a call with UnchangedResult): the mask covers both candidates and a digit
   // the cell never had.
-  p.filterCandidatesInCell((1 << 2) | (1 << 3) | (1 << 5), 3)
+  p.applyChange(p.filterCandidatesInCell((1 << 2) | (1 << 3) | (1 << 5), 3))
   assert.deepStrictEqual([...p.getCandidates(3)].sort(), [2, 3], 'a filter that removes nothing is a no-op')
-  p.filterCandidatesInCells(1 << 3, [2, 3])
+  p.applyChange(p.filterCandidatesInCells(1 << 3, [2, 3]))
   assert.deepStrictEqual([...p.getCandidates(2)], [3], 'the plural filter takes a raw mask too')
   assert.deepStrictEqual([...p.getCandidates(3)], [3])
 
@@ -344,7 +344,7 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   assert.strictEqual(clean.validateRejects, 0)
 
   // Unsound: update drops the true value of cell 0 whenever it has company.
-  const unsound = { * update (inst, p) { if (p.getCandidates(0).size > 1) p.removeCandidateFromCell(1, 0) }, validate: () => true }
+  const unsound = { * update (inst, p) { if (p.getCandidates(0).size > 1) yield p.removeCandidateFromCell(1, 0) }, validate: () => true }
   quiet.length = 0
   const bad = run(unsound)
   assert.strictEqual(bad.ok, false, 'a component that removes the truth fails the run')
@@ -366,7 +366,7 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
 
   // inspect sees each seeded puzzle BEFORE the components run: this update
   // prunes every cell to its truth, so a state seen after it totals exactly 3.
-  const pruner = { * update (inst, p) { for (const [c, v] of [[0, 1], [1, 2], [2, 3]]) p.filterCandidatesInCell(1 << v, c) } }
+  const pruner = { * update (inst, p) { for (const [c, v] of [[0, 1], [1, 2], [2, 3]]) yield p.filterCandidatesInCell(1 << v, c) } }
   const seen0 = []
   run(pruner, { inspect: p => seen0.push(p.total()) })
   assert.strictEqual(seen0.length, 50)
@@ -388,8 +388,8 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
 {
   const mk = () => makePuzzle({ 0: 1, 1: 2 }, () => [1, 2, 3])
   // b only prunes once a has run: a needs a second pass of b to finish the job.
-  const a = { * update (inst, p) { p.removeCandidateFromCell(3, 0) } }
-  const b = { * update (inst, p) { if (!p.getCandidates(0).has(3)) p.removeCandidateFromCell(3, 1) } }
+  const a = { * update (inst, p) { yield p.removeCandidateFromCell(3, 0) } }
+  const b = { * update (inst, p) { if (!p.getCandidates(0).has(3)) yield p.removeCandidateFromCell(3, 1) } }
   const p = mk()
   fixpointAll([{ mod: b, inst: {} }, { mod: a, inst: {} }], p)
   assert.deepStrictEqual([...p._cand.get(1)], [1, 2], 'order does not matter: the pass repeats until nothing is removed')
@@ -430,6 +430,61 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   p._cand.get(0).delete(3)
   wake()
   assert.strictEqual(calls, 3, 'a change after the restore wakes it')
+}
+
+// runUpdate: a change counts only when update yields it, as in the app
+// The app's runPass applies each yielded change before it resumes the
+// generator, and ends the drain on the first change that fails. A change a
+// component builds and never yields does nothing there, so it fails here.
+{
+  const p = makePuzzle({ 0: 1, 1: 2 }, () => [1, 2, 3])
+  const built = p.removeCandidateFromCell(3, 0)
+  assert.deepStrictEqual([...p._cand.get(0)].sort(), [1, 2, 3], 'building a change edits nothing')
+  p.applyChange(built)
+  assert.deepStrictEqual([...p._cand.get(0)].sort(), [1, 2], 'applying it does')
+
+  // Each yielded change is applied before update resumes.
+  const q = makePuzzle({ 0: 1, 1: 2 }, () => [1, 2, 3])
+  let sawAfterYield = null
+  const reader = {
+    * update (inst, p) {
+      yield p.removeCandidateFromCell(3, 0)
+      sawAfterYield = [...p.getCandidates(0)].sort()
+    }
+  }
+  runUpdate(reader, {}, q)
+  assert.deepStrictEqual(sawAfterYield, [1, 2], 'the yielded change is applied before update resumes')
+
+  // A failed change (an emptied cell) ends the drain.
+  const r = makePuzzle({ 0: 1, 1: 2 }, () => [1, 2])
+  let resumed = false
+  const emptier = { * update (inst, p) { yield p.removeCandidatesFromCell(DigitSet.from([1, 2]), 0); resumed = true; yield p.removeCandidateFromCell(1, 1) } }
+  runUpdate(emptier, {}, r)
+  assert.strictEqual(resumed, false, 'an emptied cell ends the drain')
+  assert.deepStrictEqual([...r._cand.get(1)].sort(), [1, 2])
+
+  // A stop counts when it is yielded, not when it is built.
+  const s = makePuzzle({ 0: 1 }, () => [1, 2])
+  s.stop('built only')
+  assert.strictEqual(s.stopMessage(), null, 'a stop built and not yielded stops nothing')
+  runUpdate({ * update (inst, p) { yield p.stop('dead') } }, {}, s)
+  assert.strictEqual(s.stopMessage(), 'dead')
+
+  // The planted component: builds a removal and never yields it.
+  const forgets = { * update (inst, p) { if (p.getCandidates(0).size > 1) p.removeCandidateFromCell(3, 0) }, validate: () => true }
+  const NEVER_YIELDED = /built 1 change it never yielded/
+  assert.throws(() => runUpdate(forgets, {}, makePuzzle({ 0: 1 }, () => [1, 2, 3])), NEVER_YIELDED)
+  const { rnd } = makeRng(3)
+  assert.throws(() => fuzzSoundness('forgets', {
+    iters: 20,
+    log: () => {},
+    draw: () => ({ truth: { 0: 1, 1: 2 }, seed: makeSeeder(rnd, [1, 2, 3]), parts: [{ mod: forgets, inst: {} }] })
+  }), NEVER_YIELDED, 'fuzzSoundness goes red on the new assertion')
+  const states = Array.from({ length: 10 }, () => new Map([[0, [1, 2, 3]], [1, [2, 3]]]))
+  const apply = (mod, p) => runUpdate(mod, {}, p)
+  const idle = { * update () {} }
+  assert.throws(() => strengthSweep('forgets', { cur: forgets, ref: idle, apply, states }), NEVER_YIELDED,
+    'strengthSweep goes red on the new assertion')
 }
 
 // finishHarness: the exit status is the verdict

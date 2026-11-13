@@ -11,7 +11,7 @@
 // differ in who owns the map; the puzzle API and its outcome (isDead,
 // stopMessage, reset, total) are harness-lib's makeMockCore either way.
 
-import { makeIo, makeMockCore } from './harness-lib.mjs'
+import { drainChanges, makeIo, makeMockCore, runUpdate } from './harness-lib.mjs'
 import { mockBoard, runBackend } from './backend-runner.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
@@ -120,11 +120,16 @@ const MAX_PASSES = 500
 // bound). Repeats to a fixpoint (no candidate removed this pass) or
 // `MAX_PASSES`. Returns the pass count it took, or -1 if it never settled.
 export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null } = {}) {
-  if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle))
+  if (init) {
+    for (const inst of comps) {
+      if (inst.__mod.initialize && !drainChanges(inst.__mod.initialize(inst, state.puzzle), state.puzzle)) return 1
+    }
+  }
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = state.puzzle.total()
-    for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle))
-    if (state.puzzle.stopMessage() !== null) return pass + 1 // the branch is dead; no point propagating on
+    // A failed change (a stop, or a cell emptied) kills the branch, as a failed
+    // result ends the app's fixpoint; no point propagating on.
+    for (const inst of comps) if (!runUpdate(inst.__mod, inst, state.puzzle)) return pass + 1
     for (const g of alldiffGroups) floorGroup(g)
     if (extra) extra()
     if (state.puzzle.total() === before) return pass + 1

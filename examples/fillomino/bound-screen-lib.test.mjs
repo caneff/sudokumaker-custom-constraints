@@ -10,7 +10,7 @@ import { execFileSync } from 'child_process'
 import { join } from 'path'
 import { loadVariants, fixtureBoards, runScreen } from './bound-screen-lib.mjs'
 import { score } from './hunt-lib.mjs'
-import { installGlobals, makePuzzle, makeRng, makeSeeder, randomCandidates, fixpoint, compareStrength, fuzzSoundness } from '../_shared/harness-lib.mjs'
+import { installGlobals, makePuzzle, makeRng, makeSeeder, randomCandidates, fixpoint, compareStrength, fuzzSoundness, runUpdate } from '../_shared/harness-lib.mjs'
 import { pinned, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -41,7 +41,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   const ALL = Array.from({ length: 12 }, (_, i) => i + 1)
   const build = row => makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => (row[c] ? [row[c]] : ALL))
   const dead = p => [...p._cand.values()].some(s => s.size === 0)
-  const once = (mod, inst, row) => { const p = build(row); Array.from(mod.update(inst, p)); return p }
+  const once = (mod, inst, row) => { const p = build(row); runUpdate(mod, inst, p); return p }
   const fresh = mod => { const inst = {}; mod.setParams(inst, CELLS, 9, 9); return inst }
 
   assert.strictEqual(dead(once(baseline, fresh(baseline), SHORT)), false, 'no other rule reaches this state')

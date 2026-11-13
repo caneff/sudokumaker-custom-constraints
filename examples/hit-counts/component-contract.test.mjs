@@ -4,7 +4,7 @@
 // back. The seams are each component's `getAffectedCells`, `update` and
 // `validate` on the harness mock.
 import assert from 'node:assert/strict'
-import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -84,7 +84,7 @@ const { load } = makeIo(HERE)
         const before = { A: size(A), B: size(B), line: cells.reduce((s, c) => s + size(c), 0) }
         const inst = { cells: [A, B, ...cells] }
         pairComp.setParams(inst, A, B, cells)
-        Array.from(pairComp.update(inst, p))
+        runUpdate(pairComp, inst, p)
         if (p.stopMessage() !== null) continue
         removed.A += before.A - size(A)
         removed.B += before.B - size(B)
@@ -114,7 +114,7 @@ const { load } = makeIo(HERE)
     const p = makePuzzle(truth, c => (c === C ? [0, 1, 2, 4] : [truth[c]]), { houses: [] })
     const inst = { cells: [C, ...line] }
     perLine.setParams(inst, C, line)
-    Array.from(perLine.update(inst, p))
+    runUpdate(perLine, inst, p)
     assert.deepEqual([...p._cand.get(C)], [0], 'the reverse bound leaves the clue at 0')
 
     const N = 9
@@ -126,7 +126,7 @@ const { load } = makeIo(HERE)
     const q = makePuzzle(t2, c => (c === SIDE[0] ? [1, 5] : [t2[c]]), { houses: PERP })
     const side = { cells: sideSum.getAffectedCells(SIDE, N, PERP) }
     sideSum.setParams(side, SIDE, N, PERP)
-    Array.from(sideSum.update(side, q))
+    runUpdate(sideSum, side, q)
     assert.deepEqual([...q._cand.get(SIDE[0])], [1], 'side sum propagates with no SudokuDigitSet built')
   } finally {
     globalThis.SudokuDigitSet = real
@@ -162,7 +162,7 @@ const { load } = makeIo(HERE)
   const s = spied()
   const is = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(is, CLUES, LINES)
-  Array.from(side.update(is, s.p))
+  runUpdate(side, is, s.p)
   for (let i = 0; i < 4; i++) {
     assert.deepEqual(onDiagonal(s.calls, i), [['filterCandidatesInCell', 1 << (i + 1), cell(i, i)]],
       `the side pins line ${i} at position ${i} with one keep-only change`)
@@ -172,7 +172,7 @@ const { load } = makeIo(HERE)
   const l = spied()
   const il = { cells: [CLUES[0], ...LINES[0]] }
   line.setParams(il, CLUES[0], LINES[0])
-  Array.from(line.update(il, l.p))
+  runUpdate(line, il, l.p)
   assert.deepEqual(onDiagonal(l.calls, 0), [['filterCandidatesInCell', 1 << 1, cell(0, 0)]],
     'the per-line rule pins its one possible hit with one keep-only change')
   console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
@@ -184,14 +184,14 @@ const { load } = makeIo(HERE)
   const m = spied()
   const im = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(im, CLUES, LINES)
-  Array.from(side.update(im, m.p))
+  runUpdate(side, im, m.p)
   assert.equal(pins(m.calls).length, 4, 'the first sweep pins the diagonal')
   for (const l of LINES) m.p._cand.get(l[3]).delete(4)
   m.calls.length = 0
-  Array.from(side.update(im, m.p))
+  runUpdate(side, im, m.p)
   assert.deepEqual(m.calls, [], 'a position missing a digit is not swept')
   for (const c of LINES.flat()) m.p._cand.set(c, new Set(seed(c))) // the backtrack
-  Array.from(side.update(im, m.p))
+  runUpdate(side, im, m.p)
   for (let i = 0; i < 4; i++) {
     assert.deepEqual([...m.p._cand.get(cell(i, i))], [i + 1], `after the backtrack the side pins line ${i} at position ${i} again`)
   }
@@ -206,13 +206,13 @@ const { load } = makeIo(HERE)
   const f = spied()
   const ifr = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(ifr, CLUES, LINES)
-  Array.from(side.update(ifr, f.p))
+  runUpdate(side, ifr, f.p)
   const swept = new Map(LINES.flat().map(c => [c, new Set(f.p._cand.get(c))]))
   for (const l of LINES) f.p._cand.get(l[3]).delete(4)
-  Array.from(side.update(ifr, f.p))
+  runUpdate(side, ifr, f.p)
   for (const [c, cands] of swept) f.p._cand.set(c, new Set(cands))
   f.p._cand.get(cell(0, 0)).add(2)
-  Array.from(side.update(ifr, f.p))
+  runUpdate(side, ifr, f.p)
   assert.deepEqual([...f.p._cand.get(cell(0, 0))], [1],
     'the restored swept state is swept again: cell (0, 0) is pinned once more')
   console.log('hit-counts side matching: the missing-digit exit forgets the last sweep')
@@ -223,7 +223,7 @@ const { load } = makeIo(HERE)
   q.p._cand.set(cell(0, 0), new Set([1]))
   const iq = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(iq, CLUES, LINES)
-  Array.from(side.update(iq, q.p))
+  runUpdate(side, iq, q.p)
   assert.deepEqual(onDiagonal(q.calls, 0), [], 'no pin on a cell already pinned to its target')
   assert.equal(pins(q.calls).length, 3, 'the other three diagonal cells are still pinned')
   console.log('hit-counts side matching: a forced hit already in place yields nothing')
@@ -244,12 +244,12 @@ const { load } = makeIo(HERE)
     const p = makePuzzle(truth, c => (c >= 100 ? [0, 1, 2] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), { houses: kind === 'bare' ? [] : [LINE] })
     const inst = { cells: [100, 101, ...LINE] }
     pairComp.setParams(inst, 100, 101, LINE)
-    Array.from(pairComp.update(inst, p))
-    Array.from(pairComp.update(inst, p))
+    runUpdate(pairComp, inst, p)
+    runUpdate(pairComp, inst, p)
     const reads = new Map()
     const real = p.getCandidatesBitMask
     p.getCandidatesBitMask = c => { reads.set(c, (reads.get(c) || 0) + 1); return real(c) }
-    const yielded = Array.from(pairComp.update(inst, p))
+    const yielded = runUpdate(pairComp, inst, p)
     assert.equal(yielded.length, 0, `${kind}: the state is unchanged`)
     for (const c of LINE) assert.ok(reads.get(c) <= 2, `${kind}: line cell ${c} read ${reads.get(c)} times on a memo hit`)
   }

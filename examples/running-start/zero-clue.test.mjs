@@ -3,7 +3,7 @@
 // read the cell before the line: no throw, no removal.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 
 const { load } = makeIo(import.meta.dirname)
 const mod = load('RunningStartComponent.js', ['setParams', 'update'])
@@ -16,6 +16,6 @@ const p = makePuzzle(truth, (c, v) => (c === CLUE ? [v] : [0, 1, 2, 3]), { house
 const inst = {}
 mod.setParams(inst, CLUE, LINE)
 const before = p.total()
-assert.doesNotThrow(() => Array.from(mod.update(inst, p)))
+assert.doesNotThrow(() => runUpdate(mod, inst, p))
 assert.strictEqual(p.total(), before, 'a 0 clue removed a candidate')
 console.log('PASS')

@@ -1,9 +1,9 @@
 // The setup pass in FillominoComponent's `initialize`, driven the way the app
 // drives it: a change does nothing until it is yielded, and a cell with one
-// candidate left is not a placed cell until something places it. The harness's
-// own mock does neither (docs/component-contract.md), so a pass that built its
-// removals and never yielded them would pass on it. Soundness over fuzzed
-// states is in soundness-harness.mjs.
+// candidate left is not a placed cell until something places it. The shared
+// mock (harness-lib's makePuzzle) models the first; it reads a cell with one
+// candidate left as placed, so `appPuzzle` below adds the second. Soundness
+// over fuzzed states is in soundness-harness.mjs.
 //
 // The expected grids are the generator's, from fixture-9x9.json and gen_15g.json. The
 // expected counts on the cap12-seed11 board are the ones the README records from
@@ -12,7 +12,7 @@
 import assert from 'assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { installGlobals, makeIo, patchSource } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, patchSource } from '../_shared/harness-lib.mjs'
 import { fixtureBoard } from './bound-screen-lib.mjs'
 import { givensOf } from './hunt-lib.mjs'
 
@@ -33,20 +33,20 @@ const { load } = makeIo(HERE)
 const loadWith = patch => load('FillominoComponent.js', NAMES, src => patch(countCalls(src)))
 const shipped = loadWith(src => src)
 
+// The shared mock over the board, but placed only where a given is: the app
+// places a cell's last candidate only when something sets it, and nothing in
+// the setup pass does.
 function appPuzzle ({ width, height, cap, givens }) {
-  const every = (2 ** (cap + 1)) - 2
-  const candidates = Array.from({ length: width * height }, (_, i) => givens[i] === undefined ? every : 1 << givens[i])
-  const values = candidates.map((_, i) => givens[i])
-  const change = (mask, cell) => ({ mask, cell })
-  return {
-    candidates,
-    hasValue: c => values[c] !== undefined,
-    getValue: c => values[c],
-    getCandidatesBitMask: c => candidates[c],
-    removeCandidatesFromCell: change,
-    apply ({ mask, cell }) { candidates[cell] &= ~mask }
-  }
+  const every = Array.from({ length: cap }, (_, k) => k + 1)
+  const cells = Object.fromEntries(Array.from({ length: width * height }, (_, i) => [i, 0]))
+  const p = makePuzzle(cells, c => (givens[c] === undefined ? every : [givens[c]]))
+  p.hasValue = c => givens[c] !== undefined
+  p.getValue = c => givens[c]
+  return p
 }
+
+// Each cell's candidates as a bitmask, in cell order.
+const masks = p => Array.from({ length: p._cand.size }, (_, c) => p.getCandidatesBitMask(c))
 
 // Returns the puzzle after the pass, how many `update` calls the whole pass
 // made, and how many it had made by its first change.
@@ -61,12 +61,12 @@ function runPass (mod, board) {
   let callsAtFirstChange = null
   for (const change of mod.initialize(inst, p)) {
     if (callsAtFirstChange === null) callsAtFirstChange = calls.n
-    p.apply(change)
+    if (!p.applyChange(change)) break // the app ends the drain on a failed change
   }
   return { p, calls: calls.n, callsAtFirstChange }
 }
 
-const singles = p => p.candidates.filter(m => (m & (m - 1)) === 0).length
+const singles = p => masks(p).filter(m => (m & (m - 1)) === 0).length
 
 function boardFrom (file) {
   const { grid, clues, cap } = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
@@ -77,7 +77,7 @@ function boardFrom (file) {
 
 const assertSolved = (p, { grid }) => {
   const want = grid.flat().map(d => 1 << d)
-  assert.deepStrictEqual(p.candidates, want, 'the pass did not leave exactly the solution')
+  assert.deepStrictEqual(masks(p), want, 'the pass did not leave exactly the solution')
 }
 
 // The pinned 9x9 board (so the gate's time does not follow `gen.json`) falls to
@@ -89,7 +89,7 @@ const assertSolved = (p, { grid }) => {
   const board = boardFrom('fixture-9x9.json')
   const { p, calls: spent, callsAtFirstChange } = runPass(shipped, board)
   assert.strictEqual(singles(p), 81, 'the pass solved a different share of the pinned board')
-  board.grid.flat().forEach((d, cell) => assert.ok(p.candidates[cell] & (1 << d), `the pass removed the true digit of cell ${cell}`))
+  board.grid.flat().forEach((d, cell) => assert.ok(masks(p)[cell] & (1 << d), `the pass removed the true digit of cell ${cell}`))
   assert.strictEqual(callsAtFirstChange, spent, 'a change came out before the pass finished')
 }
 
@@ -133,7 +133,7 @@ const assertSolved = (p, { grid }) => {
     const capped = loadWith(src => patchSource(src, CALL_LIMIT, `const SETUP_CALL_LIMIT = ${limit}`))
     const { p, calls: spent } = runPass(capped, board)
     assert.ok(spent <= limit, `limit ${limit}: ${spent} update calls`)
-    p.candidates.forEach((m, i) => assert.ok(m & truth[i], `limit ${limit}: cell ${i} lost its solution digit`))
+    masks(p).forEach((m, i) => assert.ok(m & truth[i], `limit ${limit}: cell ${i} lost its solution digit`))
   }
 }
 
@@ -142,7 +142,7 @@ const assertSolved = (p, { grid }) => {
 {
   const board = { width: 3, height: 3, cap: 9, givens: { 0: 1, 1: 1 } }
   const { p } = runPass(shipped, board)
-  assert.ok(p.candidates.includes(0), 'a broken board left no cell empty')
+  assert.ok(masks(p).includes(0), 'a broken board left no cell empty')
 }
 
 // The same when only the tests show it: these clues get past the rules alone, and
@@ -150,7 +150,7 @@ const assertSolved = (p, { grid }) => {
 {
   const board = { width: 3, height: 3, cap: 3, givens: { 1: 1, 3: 3, 8: 2 } }
   const { p, calls: spent } = runPass(shipped, board)
-  assert.ok(p.candidates.includes(0), 'a board the tests broke left no cell empty')
+  assert.ok(masks(p).includes(0), 'a board the tests broke left no cell empty')
   assert.strictEqual(spent, 5, 'the pass went on past the removal that broke the board')
 }
 

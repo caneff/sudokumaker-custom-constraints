@@ -7,7 +7,7 @@
 // set"), not read back off the component.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -29,7 +29,7 @@ function run (candidatesByCell, { digits = ONE_OR_TWO, targets = TARGETS } = {})
   const p = puzzleOf(candidatesByCell)
   const instance = { name: 'count' }
   mod.setParams(instance, digits, COUNTER, targets)
-  Array.from(mod.update(instance, p))
+  runUpdate(mod, instance, p)
   const got = {}
   for (const [cell, set] of p._cand) got[cell] = [...set].sort((a, b) => a - b)
   return { p, got }
