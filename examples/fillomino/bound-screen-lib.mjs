@@ -23,8 +23,6 @@ import { join } from 'path'
 import { makeIo, patchSource } from '../_shared/harness-lib.mjs'
 import { score } from './hunt-lib.mjs'
 
-const NAMES = ['setParams', 'update', 'validate']
-
 const SETUP_ANCHOR = '  instance.othersThan = null\n}'
 const UPDATE_ANCHOR = 'function * update (instance, puzzle) {\n'
 
@@ -67,8 +65,8 @@ export function loadVariants (here) {
   // component without it.
   const withoutCount = src => patchSource(src, 'function * cellCountRule (', 'function * cellCountRule () { return MORE }\nfunction * cellCountRuleRemoved (')
   return {
-    baseline: load(file, NAMES, withoutCount),
-    incremental: load(file, NAMES, src => patchSource(patchSource(withoutCount(src), SETUP_ANCHOR, INCREMENTAL_SETUP), UPDATE_ANCHOR, INCREMENTAL_CHECK))
+    baseline: load(file, [], withoutCount),
+    incremental: load(file, [], src => patchSource(patchSource(withoutCount(src), SETUP_ANCHOR, INCREMENTAL_SETUP), UPDATE_ANCHOR, INCREMENTAL_CHECK))
   }
 }
 

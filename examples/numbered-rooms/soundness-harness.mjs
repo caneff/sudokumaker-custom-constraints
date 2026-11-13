@@ -5,13 +5,13 @@
 // The minDigit 0 runs exist because an index of 0 is out of range while 0 is an
 // ordinary digit everywhere else on the line.
 
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const mod = load('NumberedRoomsComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('NumberedRoomsComponent.js')
 
 const CLUE = 0
 const ITERS = 20000
@@ -63,8 +63,7 @@ function fuzz (label, kind, minDigit, sizes, draw) {
       draw: () => {
         let line = null
         while (line === null) line = draw(kind, m, D)
-        const inst = {}
-        mod.setParams(inst, CLUE, lineCells(line.length))
+        const inst = construct(mod, 'numbered-rooms', CLUE, lineCells(line.length))
         return {
           truth: truthOf(line),
           seed: (c, v) => randomCandidates(rnd, minDigit, D, v),
@@ -96,8 +95,7 @@ const p = makePuzzle({ 0: 3, 1: 2, 2: 3, 3: 1, 4: 4 }, (c, v) => {
   if (c === 2) return [3] // target (line[1]) forced to 3
   return [1, 2, 3, 4]
 }, { houses: [lineCells(4)] })
-const inst = {}
-mod.setParams(inst, CLUE, lineCells(4))
+const inst = construct(mod, 'numbered-rooms', CLUE, lineCells(4))
 let removals = p.total()
 fixpoint(mod, inst, p)
 removals -= p.total()

@@ -7,13 +7,13 @@
 // set"), not read back off the component.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, runUpdate } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 installGlobals(1, 9)
 
-const mod = load('CountDigitsGacComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])
+const mod = load('CountDigitsGacComponent.js')
 
 const COUNTER = 0
 const TARGETS = [1, 2, 3, 4]
@@ -27,9 +27,8 @@ function puzzleOf (candidatesByCell) {
 
 function run (candidatesByCell, { digits = ONE_OR_TWO, targets = TARGETS } = {}) {
   const p = puzzleOf(candidatesByCell)
-  const instance = { name: 'count' }
-  mod.setParams(instance, digits, COUNTER, targets)
-  Array.from(mod.update(instance, p))
+  const instance = construct(mod, 'count', digits, COUNTER, targets)
+  runUpdate(mod, instance, p)
   const got = {}
   for (const [cell, set] of p._cand) got[cell] = [...set].sort((a, b) => a - b)
   return { p, got }
@@ -63,14 +62,12 @@ function run (candidatesByCell, { digits = ONE_OR_TWO, targets = TARGETS } = {})
 
 {
   const p = puzzleOf({ 0: [5], 1: [1], 2: [2], 3: [5], 4: [1, 5] })
-  const instance = { name: 'count' }
-  mod.setParams(instance, ONE_OR_TWO, COUNTER, TARGETS)
+  const instance = construct(mod, 'count', ONE_OR_TWO, COUNTER, TARGETS)
   assert.strictEqual(mod.validate(instance, p), false, 'validate refuses an unreachable count')
 }
 {
   const p = puzzleOf({ 0: [2, 3], 1: [1], 2: [2], 3: [5], 4: [1, 5] })
-  const instance = { name: 'count' }
-  mod.setParams(instance, ONE_OR_TWO, COUNTER, TARGETS)
+  const instance = construct(mod, 'count', ONE_OR_TWO, COUNTER, TARGETS)
   assert.strictEqual(mod.validate(instance, p), true, 'validate accepts a reachable count')
 }
 
@@ -114,15 +111,12 @@ function run (candidatesByCell, { digits = ONE_OR_TWO, targets = TARGETS } = {})
 
 assert.deepStrictEqual(mod.getAffectedCells(ONE_OR_TWO, COUNTER, TARGETS), [COUNTER, ...TARGETS])
 
-{
-  const instance = { name: 'count' }
-  assert.throws(() => mod.setParams(instance, [1, 2], COUNTER, TARGETS), TypeError, 'an array of digits is refused')
-  assert.throws(() => mod.setParams(instance, 0, COUNTER, TARGETS), RangeError, 'an empty digit mask is refused')
-  assert.throws(
-    () => mod.setParams(instance, ONE_OR_TWO, COUNTER, [...Array(31).keys()].map(i => i + 1)),
-    RangeError,
-    'a target list past the mask width is refused'
-  )
-}
+assert.throws(() => construct(mod, 'count', [1, 2], COUNTER, TARGETS), TypeError, 'an array of digits is refused')
+assert.throws(() => construct(mod, 'count', 0, COUNTER, TARGETS), RangeError, 'an empty digit mask is refused')
+assert.throws(
+  () => construct(mod, 'count', ONE_OR_TWO, COUNTER, [...Array(31).keys()].map(i => i + 1)),
+  RangeError,
+  'a target list past the mask width is refused'
+)
 
 console.log('ok')

@@ -7,7 +7,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { mockBoard, runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = import.meta.dirname
@@ -65,7 +65,7 @@ const GRID = [
   '659278314'
 ].map(row => row.split('').map(Number))
 
-const mod = load('../_shared/HouseGacComponent.js', ['setParams', 'update'])
+const mod = load('../_shared/HouseGacComponent.js')
 const { rows: RS, cols: CS, boxes: BS } = houses()
 const HOUSES = [...RS, ...CS, ...BS]
 const truth = {}
@@ -84,12 +84,7 @@ const { failures } = fuzzSoundness('full-grid fuzz', {
     truth,
     seed: seeder,
     houses: HOUSES,
-    // As the app's constructor does: cells first, then setParams.
-    parts: HOUSES.map(cells => {
-      const inst = { cells }
-      mod.setParams(inst, cells)
-      return { mod, inst }
-    })
+    parts: HOUSES.map((cells, i) => ({ mod, inst: construct(mod, `house ${i + 1}`, cells) }))
   })
 })
 

@@ -116,9 +116,9 @@ makeFrameProbe({
   here: HERE,
   clueRange: n => [0, n],
   files: [
-    { file: 'HitCountsPairComponent.js', names: ['setParams', 'update'], ctorName: 'HitCountsPairComponent' },
-    { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
-    { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update'], ctorName: 'SideHitMatchingComponent' }
+    { file: 'HitCountsPairComponent.js', ctorName: 'HitCountsPairComponent' },
+    { file: 'SideSumComponent.js', ctorName: 'SideSumComponent' },
+    { file: 'SideHitMatchingComponent.js', ctorName: 'SideHitMatchingComponent' }
   ],
   blankWord: 'hidden',
   headerNote: ({ floorKind }) => ` (floor: ${floorKind})`,
@@ -137,9 +137,9 @@ makeFrameProbe({
     ['matching over naive  (on - off):   ', 'off', 'on']
   ],
   beforeReport: p => {
-    const { st, keys, alldiffGroups, floorGroup, floorKind } = p
+    const { st, keys, floor, floorKind } = p
     const tightStart = tighterLines(p)
-    runToFixpoint(st, [], alldiffGroups, floorGroup, { init: false })
+    runToFixpoint(st, [], floor, { init: false })
     const tightAfterFloor = tighterLines(p)
     console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${floorKind} floor`)
   },

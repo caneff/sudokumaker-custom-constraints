@@ -1,18 +1,17 @@
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, fixpoint, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, fixpoint, strengthSweep } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
-const mod = load('OutsideSudokuComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])
+const mod = load('OutsideSudokuComponent.js')
 
 const g = gridGeometry(9, 3, 3)
 
 function run (line, cands, w) {
   const p = makePuzzle(Object.fromEntries([...cands.keys()].map(c => [c, 0])), c => cands.get(c))
   Object.assign(p, g.api)
-  const inst = {}
-  mod.setParams(inst, g.clue, line, w)
+  const inst = construct(mod, 'outside-sudoku', g.clue, line, w)
   fixpoint(mod, inst, p)
   return new Map([...p._cand].map(([c, s]) => [c, [...s].sort((a, b) => a - b)]))
 }
@@ -67,8 +66,7 @@ installGlobals(1, 9)
     for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [windowDigits[i]] : [1, 2, 3, 4, 5, 6, 7, 8, 9])
     const p = makePuzzle(Object.fromEntries([...cands.keys()].map(c => [c, 0])), c => cands.get(c))
     Object.assign(p, g.api)
-    const inst = {}
-    mod.setParams(inst, g.clue, line, 3)
+    const inst = construct(mod, 'outside-sudoku', g.clue, line, 3)
     return mod.validate(inst, p)
   }
   assert.strictEqual(state(9, [1, 2, 3]), false, 'a filled window without the clue digit is rejected')
@@ -106,8 +104,7 @@ for (const [N, bh, bw] of [[9, 3, 3], [6, 2, 3], [4, 2, 2]]) {
     ref: reference,
     apply: (version, p, { line, w }) => {
       Object.assign(p, geo.api)
-      const inst = {}
-      version.setParams(inst, geo.clue, line, w)
+      const inst = construct(version, 'outside-sudoku', geo.clue, line, w)
       fixpoint(version, inst, p)
     },
     * states () {

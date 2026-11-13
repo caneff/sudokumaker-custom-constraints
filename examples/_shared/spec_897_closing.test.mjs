@@ -62,7 +62,7 @@ const where = (pattern, except) => CODE.filter(f => !except.includes(f) && patte
   assert.deepStrictEqual(where(/\._stopped\b/, LIBS), [], 'a read of the mock\'s private stop')
   const p = makePuzzle({ 0: 1, 1: 2 }, () => [1, 2])
   assert.deepStrictEqual([p.isDead(), p.stopMessage(), p.total()], [false, null, 4])
-  p.stop('clash')
+  p.applyChange(p.stop('clash'))
   assert.deepStrictEqual([p.isDead(), p.stopMessage()], [true, 'clash'])
   p.reset()
   assert.strictEqual(p.isDead(), false, 'reset clears the stop')

@@ -9,7 +9,7 @@
 // full house of {1..n} (docs/line-contract.md), so every state declares that
 // kind, and each size installs its own digits.
 
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -18,14 +18,13 @@ const { load } = makeIo(HERE)
 // `git show` reads (the Pants sandbox holds no git history). Raising one means
 // replacing the copy, and the commit in its name, in the same commit as the
 // stronger component.
-const NAMES = ['setParams', 'update']
-const cur = load('SkyscraperPairComponent.js', NAMES)
+const cur = load('SkyscraperPairComponent.js')
 // Each file carried a different name at its pinned commit, so the floor names its own path.
-const ref = load('.golden/SkyscraperLineComponent.db93523.js', NAMES)
+const ref = load('.golden/SkyscraperLineComponent.db93523.js')
 
 const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
-const oneSidedCur = load(ONE_SIDED_FILE, NAMES)
-const oneSidedRef = load('.golden/SkyscraperRunningCapComponent.c776ab7.js', NAMES)
+const oneSidedCur = load(ONE_SIDED_FILE)
+const oneSidedRef = load('.golden/SkyscraperRunningCapComponent.c776ab7.js')
 
 const { rnd } = makeRng(31415)
 
@@ -47,8 +46,7 @@ for (const m of [4, 6, 9]) {
     cur,
     ref,
     apply: (mod, p) => {
-      const inst = {}
-      mod.setParams(inst, CA, CB, LINE)
+      const inst = construct(mod, 'skyscraper', CA, CB, LINE)
       fixpoint(mod, inst, p)
     },
     opts: { houses: [LINE] },
@@ -74,8 +72,7 @@ for (const m of [4, 6, 9]) {
     cur: oneSidedCur,
     ref: oneSidedRef,
     apply: (mod, p) => {
-      const inst = {}
-      mod.setParams(inst, ONE_SIDED_CLUE, LINE)
+      const inst = construct(mod, 'skyscraper', ONE_SIDED_CLUE, LINE)
       fixpoint(mod, inst, p)
     },
     * states () {

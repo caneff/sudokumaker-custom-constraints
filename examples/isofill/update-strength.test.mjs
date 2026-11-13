@@ -7,7 +7,7 @@
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 import { N, rows, bent, shapeOf, tall, wide, rowsTall, bentWide } from './fixture.mjs'
 
 const HERE = import.meta.dirname
@@ -24,9 +24,8 @@ const { load } = makeIo(HERE)
 // replacing those, after its own setParams, with the board's real ones; the
 // copy itself stays as it was pinned.
 const REF_COMMIT = 'db93523'
-const NAMES = ['setParams', 'update']
-const cur = load('IsofillComponent.js', NAMES)
-const golden = load(`.golden/IsofillComponent.${REF_COMMIT}.js`, NAMES)
+const cur = load('IsofillComponent.js')
+const golden = load(`.golden/IsofillComponent.${REF_COMMIT}.js`)
 const gridNeighbours = (w, h) => Array.from({ length: w * h }, (_, i) => {
   const x = i % w
   const y = Math.floor(i / w)
@@ -65,8 +64,7 @@ JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid
 const SQUARE = shapeOf(N, N)
 
 const apply = shape => (mod, p) => {
-  const inst = {}
-  mod.setParams(inst, shape.cells, shape.w, shape.h)
+  const inst = construct(mod, 'isofill', shape.cells, shape.w, shape.h)
   fixpoint(mod, inst, p)
 }
 

@@ -68,10 +68,24 @@ export function installGlobals (minDigit, maxDigit) {
   }
 }
 
+// The five functions the app's component wrapper copies off a component file
+// (docs/research/bundle-api-reference.md, compileCustomComponentClass).
+export const LIFECYCLE = ['getAffectedCells', 'setParams', 'initialize', 'update', 'validate']
+
+// Which lifecycle functions a loaded module's source defined, keyed on a
+// symbol so Object.keys still lists only the functions, while a spread or a
+// rest copy of the module keeps it: fuzzSoundness reads it to refuse a module
+// that lost the `validate` its file defines.
+const DEFINES = Symbol('defines')
+// The same record keyed on each lifecycle function a load returned, so a
+// wrapper module that reuses one of them still names its file.
+const ORIGIN = new WeakMap()
+
 // Bind file reads to the example's own directory. `read` returns a file's text
 // with its `// #include` directives spliced in (include.mjs), so a probe runs
 // the same assembled paste target the link ships;
-// `load` evals a component file and returns the named functions from it,
+// `load` evals a component file and returns every lifecycle function it
+// defines plus the extra names a caller asks for,
 // after `patch(source)` when one is given -- the file keeps its own name
 // either way, so V8 coverage (c8) still attributes the run to it;
 // `loadSource` does the same for source a caller already holds, which is how a
@@ -81,11 +95,29 @@ export function installGlobals (minDigit, maxDigit) {
 export function makeIo (here) {
   const read = f => assembleSource(join(here, f))
   // vm.Script instead of eval so V8 coverage (c8) attributes the component's
-  // execution to its own file, not to this harness.
-  const evalNamed = (src, names, filename = 'loadSource.js') =>
-    new Script('(function(){' + src + '\n return {' + names.join(',') + '};})()', { filename }).runInThisContext()
+  // execution to its own file, not to this harness. A lifecycle name the
+  // source does not declare is read through `typeof`, so it is left out
+  // rather than thrown on.
+  const evalNamed = (src, names = [], filename = 'loadSource.js') => {
+    const extra = names.filter(n => !LIFECYCLE.includes(n))
+    const lifecycle = LIFECYCLE.map(n => `${n}: typeof ${n} === 'function' ? ${n} : undefined`)
+    const out = new Script('(function(){' + src + '\n return {' + [...lifecycle, ...extra].join(',') + '};})()', { filename }).runInThisContext()
+    for (const n of LIFECYCLE) if (out[n] === undefined) delete out[n]
+    out[DEFINES] = { file: filename, names: LIFECYCLE.filter(n => n in out) }
+    for (const n of out[DEFINES].names) ORIGIN.set(out[n], out[DEFINES])
+    return out
+  }
   const load = (file, names, patch = src => src) => evalNamed(patch(read(file)), names, join(here, file))
   return { read, load, loadSource: evalNamed }
+}
+
+// Build an instance as the app's component constructor does: `cells` is
+// getAffectedCells's result (the first argument when the file defines none),
+// set before setParams runs with the same arguments.
+export function construct (mod, name, ...args) {
+  const inst = { name, cells: mod.getAffectedCells ? mod.getAffectedCells(...args) : args[0] }
+  if (mod.setParams) mod.setParams(inst, ...args)
+  return inst
 }
 
 // Edit component source at an anchor that has to be there exactly once: a
@@ -246,6 +278,12 @@ function maskOf (s, caller) {
 // `getSet`, so it serves a fixed map (makePuzzle) and a map a search reassigns
 // wholesale (recovery-lib's makeCandidateState) alike.
 //
+// The change builders edit nothing: as in the app, each returns a Change for
+// the component to yield (docs/research/bundle-api-reference.md, the six
+// change builders), and `applyChange` is what the solver does with one it was
+// handed. The singular forms build the plural Change over one cell; the type
+// names are the app's ChangeType members.
+//
 // `houses` are the cell groups the board declares all-different. They answer
 // `getCellsCanHaveRepeats` for a query of distinct cells, the only kind a line
 // component makes: false exactly when one house holds every one of them. The
@@ -258,11 +296,8 @@ function maskOf (s, caller) {
 // line is bare.
 export function makePuzzleApi (getSet, { houses = [] } = {}) {
   const houseSets = houses.map(h => new Set(h))
-  // The mask arithmetic every change builder below shares: drop the masked
-  // digits from a cell, or keep only them. Iterating a copy leaves the live
-  // set free to shrink underneath.
-  const dropMask = (m, c) => { const set = getSet(c); for (const d of [...set]) if (m & (1 << d)) set.delete(d) }
-  const keepMask = (m, c) => { const set = getSet(c); for (const d of [...set]) if (!(m & (1 << d))) set.delete(d) }
+  const remove = (value, cells) => ({ type: 'RemoveCandidatesFromCells', value, cells })
+  const filter = (value, cells) => ({ type: 'FilterCandidatesAtCells', value, cells })
   return {
     hasValue: c => getSet(c).size === 1,
     // The solved digit, undefined while the cell is open (docs/puzzle-api.md).
@@ -272,22 +307,47 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
     getCandidatesBitMask: c => { let m = 0; for (const d of getSet(c)) m |= 1 << d; return m },
     getCellsAreFilled: cs => cs.every(c => getSet(c).size === 1),
     getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
-    removeCandidateFromCell: (d, c) => { getSet(c).delete(d) },
-    removeCandidatesFromCell: (s, c) => dropMask(maskOf(s, 'removeCandidatesFromCell'), c),
-    removeCandidatesFromCells: (s, cs) => { const m = maskOf(s, 'removeCandidatesFromCells'); for (const c of cs) dropMask(m, c) },
-    removeCandidateFromCells: (d, cs) => { for (const c of cs) getSet(c).delete(d) },
-    filterCandidatesInCell: (s, c) => keepMask(maskOf(s, 'filterCandidatesInCell'), c),
-    filterCandidatesInCells: (s, cs) => { const m = maskOf(s, 'filterCandidatesInCells'); for (const c of cs) keepMask(m, c) }
+    removeCandidateFromCell: (d, c) => remove(1 << d, [c]),
+    removeCandidatesFromCell: (s, c) => remove(maskOf(s, 'removeCandidatesFromCell'), [c]),
+    removeCandidatesFromCells: (s, cs) => remove(maskOf(s, 'removeCandidatesFromCells'), cs),
+    removeCandidateFromCells: (d, cs) => remove(1 << d, cs),
+    filterCandidatesInCell: (s, c) => filter(maskOf(s, 'filterCandidatesInCell'), [c]),
+    filterCandidatesInCells: (s, cs) => filter(maskOf(s, 'filterCandidatesInCells'), cs),
+    // Apply one removal or filter Change; false when it emptied a cell, the
+    // app's `failed` result. Any other type throws: only the builders above
+    // make a Change here, and the app silently skips a type outside its enum,
+    // so a hand-built Change would prune nothing there. Iterating a copy leaves
+    // the live set free to shrink underneath.
+    applyChange (change) {
+      const keep = change.type === 'FilterCandidatesAtCells'
+      if (!keep && change.type !== 'RemoveCandidatesFromCells') {
+        throw new TypeError(`unknown Change type ${JSON.stringify(change.type)}: the app would skip it, so it prunes nothing there`)
+      }
+      let ok = true
+      for (const c of change.cells) {
+        const set = getSet(c)
+        for (const d of [...set]) if (((change.value & (1 << d)) !== 0) !== keep) set.delete(d)
+        if (set.size === 0) ok = false
+      }
+      return ok
+    }
   }
 }
+
+// The change builders makePuzzleApi exports, which makeMockCore watches.
+const BUILDERS = ['removeCandidateFromCell', 'removeCandidatesFromCell', 'removeCandidatesFromCells',
+  'removeCandidateFromCells', 'filterCandidatesInCell', 'filterCandidatesInCells']
 
 // The mock puzzle a harness runs components on: makePuzzleApi over the map
 // `getMap()` returns, read live so a search may reassign it wholesale, plus
 // the stop a component calls and the outcome a harness asks about. makePuzzle
 // and recovery-lib's makeCandidateState are both built on it.
-//   stop(message, cells)  the app's stop(): aborts the branch as a
-//                         contradiction. Recording at call time is enough
-//                         here: every component yields the stop it just built.
+//   stop(message, cells)  the app's stop(): builds an AbortSolver Change, which
+//                         stops the branch when it is yielded, like any other
+//   applyChange(change)   applies a yielded Change (drainChanges calls it);
+//                         false when it failed: a stop, or a cell emptied
+//   takeUnyielded()       the Changes built since the last call and never
+//                         applied, and forgets them; drainChanges asserts none
 //   stopMessage()         the stop's message ('stopped' when it gave none),
 //                         or null while nothing has stopped
 //   isDead()              stopped, or some cell emptied: no solution here
@@ -295,10 +355,23 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
 //                         cell stays empty
 //   total()               the candidates left, summed over every cell
 export function makeMockCore (getMap, { houses = [] } = {}) {
+  const api = makePuzzleApi(c => getMap().get(c), { houses })
   let stopped = null
-  return {
-    ...makePuzzleApi(c => getMap().get(c), { houses }),
-    stop: (message = '', cells = []) => { stopped = message || 'stopped'; return { message, cells } },
+  const unyielded = new Set()
+  const built = change => { unyielded.add(change); return change }
+  const core = {
+    ...api,
+    stop: (message = '', cells = []) => built({ type: 'AbortSolver', message, cells }),
+    applyChange (change) {
+      if (change === null || typeof change !== 'object') {
+        throw new TypeError(`update yielded ${change === null ? 'null' : typeof change}, not a Change: the app reads .type off it`)
+      }
+      unyielded.delete(change)
+      if (change.type !== 'AbortSolver') return api.applyChange(change)
+      stopped = change.message || 'stopped'
+      return false
+    },
+    takeUnyielded: () => { const out = [...unyielded]; unyielded.clear(); return out },
     stopMessage: () => stopped,
     isDead: () => {
       if (stopped !== null) return true
@@ -308,6 +381,8 @@ export function makeMockCore (getMap, { houses = [] } = {}) {
     reset: () => { stopped = null },
     total: () => { let n = 0; for (const s of getMap().values()) n += s.size; return n }
   }
+  for (const name of BUILDERS) core[name] = (...args) => built(api[name](...args))
+  return core
 }
 
 // A mock puzzle over a truth map (cell -> true value). Each cell starts with a
@@ -350,20 +425,60 @@ export const housesOf = (kind, cells) => (kind === 'bare' ? [] : [cells])
 // top to bottom: the houses a column-rule example declares.
 export const columnsOf = width => Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
 
-// Run components' updates until a pass removes nothing, at most MAX_PASSES
-// times. `parts` is a list of `{ mod, inst }`, run in order each pass. A
-// stop() on the puzzle means the branch is dead, and that ends propagation for
-// every part at once, mid-pass included.
+// Drain a generator of Changes the way the app's runPass does
+// (bundle.claude.js:9006-9030): apply each yielded Change before resuming the
+// generator, and end the drain on the first one that fails -- a stop, or a
+// cell emptied. Returns the Changes applied, or null when one failed. A drain
+// that ran to its end
+// asserts the generator built no Change it never yielded: the app ignores
+// one, so a component that forgets to yield a removal prunes nothing there.
+export function drainChanges (changes, p) {
+  p.takeUnyielded() // a Change built before this drain is not this drain's
+  const applied = []
+  for (const change of changes) {
+    applied.push(change)
+    if (!p.applyChange(change)) { p.takeUnyielded(); return null }
+  }
+  const lost = p.takeUnyielded()
+  assert.strictEqual(lost.length, 0,
+    `a component built ${lost.length} change${lost.length === 1 ? '' : 's'} it never yielded: ${JSON.stringify(lost[0])}`)
+  return applied
+}
+
+// One call of a component's `update` on the mock, drained as the app drains it.
+export const runUpdate = (mod, inst, p) => drainChanges(mod.update(inst, p), p)
+
+// The solver may run another component between two of one component's yields.
+// Run `inst`'s update to its first yield and apply that change, as the app
+// applies a change before it resumes the generator; then `between()`; then
+// drain the rest. A first change that fails ends the drain there, as it does
+// in the app, and `between()` still runs. Returns whether the update had a
+// first yield to suspend at.
+export function interleaveAtFirstYield (mod, inst, p, between) {
+  const gen = mod.update(inst, p)
+  const first = gen.next()
+  const live = !first.done && p.applyChange(first.value)
+  between()
+  if (live) drainChanges(gen, p)
+  return !first.done
+}
+
+// Run components' updates until a pass removes nothing. `parts` is a list of
+// `{ mod, inst }`, run in order each pass. A failed change -- a stop() or an
+// emptied cell -- means the branch is dead, and that ends propagation for
+// every part at once, mid-pass included, as a failed result ends the app's
+// whole fixpoint. Reaching MAX_PASSES throws: a harness that checked a state
+// short of its fixpoint has not checked what it claims.
 const MAX_PASSES = 20
 export function fixpointAll (parts, p) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = p.total()
     for (const { mod, inst } of parts) {
-      Array.from(mod.update(inst, p)) // drain
-      if (p.stopMessage() !== null) return
+      if (!runUpdate(mod, inst, p)) return
     }
     if (p.total() === before) return
   }
+  throw new Error(`fixpointAll: never settled within ${MAX_PASSES} passes`)
 }
 
 // A solver that runs a component's `update` only when a cell in `cells` (its
@@ -376,7 +491,7 @@ export function makeWaker (mod, inst, p, cells) {
   return {
     wake () {
       if (snapshot() === seen) return
-      Array.from(mod.update(inst, p))
+      runUpdate(mod, inst, p)
       seen = snapshot()
     },
     settle () { seen = snapshot() }
@@ -404,6 +519,20 @@ function lostTruth (p, truth) {
   return null
 }
 
+// A module whose file defines `validate` but which lacks it -- dropped from a
+// copy, or left off a wrapper built field by field -- would skip fuzzSoundness's
+// validate check and read as a pass. The file is found from the module's
+// DEFINES record, which a spread or rest copy keeps, or else from any
+// lifecycle function the module carries over from a loaded file. A wrapper that
+// leaves validate out on purpose says so with an explicit `validate: undefined`.
+function refuseLostValidate (mod) {
+  if ('validate' in mod) return
+  const defines = mod[DEFINES] ?? LIFECYCLE.map(n => ORIGIN.get(mod[n])).find(Boolean)
+  if (defines && defines.names.includes('validate')) {
+    throw new Error(`${defines.file} defines validate, but the module fuzzSoundness was handed lacks it`)
+  }
+}
+
 // The soundness runner: draw `iters` states, run the components to a fixpoint,
 // count the states where a true value was lost (or the branch stopped) and the
 // states where something was pruned, log the first five violations and one
@@ -420,13 +549,15 @@ function lostTruth (p, truth) {
 // Returns `{ tests, violations, validateRejects, failures, fired, ok }`;
 // `failures` is the two counts summed and `ok` is true when it is zero.
 // Whether `fired` is enough coverage is the harness's call, so it can differ
-// per pool. A part with no `validate` is not asked one.
+// per pool. A part with no `validate` is not asked one; a part whose file
+// defines one its module lacks is refused (refuseLostValidate).
 export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let violations = 0
   let validateRejects = 0
   let fired = 0
   for (let iter = 0; iter < iters; iter++) {
     const { truth, seed, parts, houses = [], note = '', inspect } = draw(iter)
+    for (const { mod } of parts) refuseLostValidate(mod)
     const p = makePuzzle(truth, seed, { houses })
     if (inspect) inspect(p)
     const before = p.total()
