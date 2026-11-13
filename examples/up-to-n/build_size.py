@@ -38,7 +38,6 @@ from board import Spec, load_board, save_board
 from carve import unique
 from lanes import main
 from no_ring import NoRing
-from sudoku_kit import link_codec
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Up to N"
@@ -143,9 +142,7 @@ def derive_shipped_9x9():
     board = shipped_9x9(load_board(MINIMAL_9X9[1]))
     assert unique(SPEC.cp_sat_clue_fn, board) is True
     lane = NoRing(SPEC)
-    doc = lane.build_doc(board)
-    link = link_codec.encode_link(doc)
-    lane.check(link, doc, board)
+    link, _ = lane.encode(board)
     link_path, gen_path = lane.files(9)
     link_path.write_text(link + "\n")
     save_board(board, gen_path)
