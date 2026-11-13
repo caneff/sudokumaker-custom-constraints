@@ -11,6 +11,7 @@
 
 import importlib.util
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -61,7 +62,7 @@ def test_the_command_the_stale_backend_violation_names_parses_on_every_example()
             text=True,
             check=True,
         ).stdout
-        assert flag in out, f"{builder.parent.name}/build_link.py has no {flag}"
+        assert re.search(rf"{flag}\b", out), f"{builder.parent.name}/build_link.py has no {flag}"
 
 
 if __name__ == "__main__":
