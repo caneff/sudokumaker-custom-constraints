@@ -20,8 +20,8 @@ name no shared file has ever seen, in a throwaway copy of `examples/` and
   7. its 4x4 link opens in the app session's HAR adapter and solves unique.
 
 Then three sweeps over the real tree: every example's timed component
-resolves; every shipped component is loaded by a soundness harness that asks
-it `validate` when it has one, or is listed in NOT_FUZZED with a reason; and
+resolves; every shipped component is loaded by a soundness harness, or is
+listed in NOT_FUZZED with a reason; and
 every component a committed link registers has a file of that name, so a
 rename that leaves a link behind fails here.
 
@@ -36,7 +36,11 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
   - whether a component name matches GLOSSARY.md: sweep 3 catches a link left
     behind by a rename, not a name the glossary does not use.
   - sweep 2 reads harness source for `load(...)` calls: it proves a harness
-    loads the file and names `validate`, not that every draw reaches it.
+    loads the file, not that every draw reaches it. Whether the fuzz asks a
+    component's `validate` is no longer read from source: makeIo's `load`
+    returns every lifecycle function a file defines, and fuzzSoundness
+    refuses a module that lacks the `validate` its file defines
+    (harness-lib.test.mjs).
 
 Left to their own suites, not driven here: the CP-SAT base model and
 solve_unique (the sudoku-kit library's own tests), loadBundle and the bundle-solve
@@ -192,15 +196,14 @@ def step_rebuild(ex):
 # component that drops 4 from cell 0 loses the truth, and `validate` on the
 # filled line must accept it.
 RUNNER = """
-import { installGlobals, makeIo, fuzzSoundness } from './examples/_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, fuzzSoundness } from './examples/_shared/harness-lib.mjs'
 const [dir, from, to] = process.argv.slice(1)
 installGlobals(1, 4)
-const mod = makeIo(dir).load('UpToNComponent.js', ['setParams', 'update', 'validate'],
+const mod = makeIo(dir).load('UpToNComponent.js', [],
   src => from ? src.replace(from, to) : src)
 const line = [0, 1, 2, 3]
 const r = fuzzSoundness('toy', { iters: 1, log: () => {}, draw: () => {
-  const inst = {}
-  mod.setParams(inst, line, 4, 0)
+  const inst = construct(mod, 'toy', line, 4, 0)
   return { truth: { 0: 4, 1: 1, 2: 2, 3: 3 }, seed: () => [1, 2, 3, 4], parts: [{ mod, inst }], houses: [line] }
 } })
 console.log(JSON.stringify(r))
@@ -316,57 +319,40 @@ def sweep_timed_components(tree):
         assert find_component_file(ex, doc).is_file(), ex.name
 
 
-# makeIo's `load(file, names, ...)`, with `names` an array literal or the name
-# of a `const` holding one.
-LOAD = re.compile(
-    r"""\bload\(\s*['"]([^'"]+Component[^'"]*\.js)['"]\s*,\s*(\[[^\]]*\]|[A-Za-z_$][\w$]*)"""
-)
-NAMES_CONST = r"""\bconst\s+{}\s*=\s*(\[[^\]]*\])"""
+# makeIo's `load(file, ...)`.
+LOAD = re.compile(r"""\bload\(\s*['"]([^'"]+Component[^'"]*\.js)['"]""")
 LOCAL_IMPORT = re.compile(r"""from\s+['"](\./[^'"]+\.mjs)['"]""")
 
 
 def harness_loads(harness):
-    """{component path: names loaded} for every component file `harness`
-    loads through makeIo, itself or through the example-local modules it
-    imports. Comments are blanked first, so a commented-out load is no load."""
-    seen, todo, loads = set(), [harness], {}
+    """Every component path `harness` loads through makeIo, itself or through
+    the example-local modules it imports. Comments are blanked first, so a
+    commented-out load is no load."""
+    seen, todo, loads = set(), [harness], set()
     while todo:
         module = todo.pop()
         if module in seen:
             continue
         seen.add(module)
         code = _js_code(module.read_text())
-        for file, names in LOAD.findall(code):
-            if not names.startswith("["):
-                const = re.search(NAMES_CONST.format(re.escape(names)), code)
-                assert const, f"{module.name}: load({file!r}, {names}) not resolved"
-                names = const.group(1)
-            path = (module.parent / file).resolve()
-            loads.setdefault(path, set()).update(re.findall(r"['\"](\w+)['\"]", names))
+        loads.update((module.parent / file).resolve() for file in LOAD.findall(code))
         todo.extend((module.parent / m).resolve() for m in LOCAL_IMPORT.findall(code))
     return loads
 
 
 def sweep_fuzzed(tree):
-    loads = {}
+    loads = set()
     for harness in (tree / "examples").glob("*/soundness-harness.mjs"):
-        for path, names in harness_loads(harness).items():
-            loads.setdefault(path, set()).update(names)
+        loads |= harness_loads(harness)
     shipped = shipped_components(tree)
     problems = []
     for c in shipped:
-        names = loads.get((tree / c).resolve())
+        loaded = (tree / c).resolve() in loads
         if c in NOT_FUZZED:
-            if names is not None:
+            if loaded:
                 problems.append(f"{c}: in NOT_FUZZED but a harness loads it")
-        elif names is None:
+        elif not loaded:
             problems.append(f"{c}: no soundness harness loads it")
-        elif "validate" not in names and re.search(
-            r"^function validate\b", (tree / c).read_text(), re.M
-        ):
-            problems.append(
-                f"{c}: loaded without validate, so the runner never asks it"
-            )
     problems += [f"{c}: in NOT_FUZZED but gone" for c in set(NOT_FUZZED) - set(shipped)]
     assert not problems, "\n".join(problems)
 
