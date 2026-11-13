@@ -101,7 +101,7 @@ for file in [
     "spec_865_closing.test.py",
     "spec_896_closing.test.py",
     "spec_897_closing.test.mjs",
-    "spec_898_closing.test.py",
+    # spec_898_closing.test.py is below: it lists the seam, which needs RUNNER_TOOLS.
 ]:
     suite(file, needs=["//:tree"])
 
@@ -191,6 +191,11 @@ RUNNER_TOOLS = ["bash", "dirname", "awk", "cut", "mkdir"]
 # Lists the seam through `bash tests/all.sh --list`, which starts these.
 suite(
     "spec_748_closing.test.py",
+    needs=["//:tree"],
+    tools=RUNNER_TOOLS,
+)
+suite(
+    "spec_898_closing.test.py",
     needs=["//:tree"],
     tools=RUNNER_TOOLS,
 )
