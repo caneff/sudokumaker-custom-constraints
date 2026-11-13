@@ -84,7 +84,7 @@ that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
 
 Two modules own that loop. `examples/_shared/app_timing.py` is the driver:
 `app_solve` runs `app-solve.mjs`, `run_app_solve` and `combine_reps` interleave
-and aggregate the reps, and `build_row`, `build_link_row` and `ship_verdict`
+and aggregate the reps, and `time_modes` (both modes, one place), `build_row`, `build_link_row` and `ship_verdict`
 pin the row format and the two-row rule; `just time-link` and `count_calls.py`
 import it directly. `examples/_shared/time_example.py` resolves the candidate
 (component file, backend file, the swapped link) and calls the driver. Their

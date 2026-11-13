@@ -139,8 +139,10 @@ DRIVER_NAMES = [
     "read_app_solve_json",
     "rep_order",
     "row_ratio",
+    "ratio_cell",
     "run_app_solve",
     "ship_verdict",
+    "time_modes",
 ]
 # Deleted by the spec: the subprocess candidate build and the output parser.
 GONE = ["build_candidate", "parse_app_solve_output"]

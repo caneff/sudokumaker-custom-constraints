@@ -18,7 +18,7 @@ import sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from app_timing import build_link_row, busy_note, run_app_solve
+from app_timing import build_link_row, time_modes
 
 
 def run(link_a, link_b=None, ring_clues=False):
@@ -37,23 +37,19 @@ def run(link_a, link_b=None, ring_clues=False):
     # the same name (a link before and after a change) stay distinguishable.
     board = f"{links[0].name} (a) vs {links[1].name} (b)" if link_b else links[0].name
     date = datetime.date.today().isoformat()
-    rows = []
-    for after_logical in (False, True):
-        a, b = run_app_solve(
-            links[0], links[1] if link_b else None, ring_clues, after_logical
-        )
-        label = f"{board} {'after-logical' if after_logical else 'cold'}"
-        rows.append(
-            build_link_row(
-                date,
-                a["version"],
-                label,
-                a["median"],
-                b["median"] if b else None,
-                busy_note(a, b),
-            )
-        )
-    return rows
+
+    def make_row(date, version, label, a_ms, b_ms, note):
+        return build_link_row(date, version, label, a_ms, b_ms, note), "—"
+
+    timed = time_modes(
+        links[0],
+        links[1] if link_b else None,
+        ring_clues,
+        date,
+        lambda after_logical: f"{board} {'after-logical' if after_logical else 'cold'}",
+        make_row,
+    )
+    return [row for row, _verdict, _ratio in timed]
 
 
 def main(argv):
