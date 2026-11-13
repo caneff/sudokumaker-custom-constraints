@@ -30,6 +30,7 @@ WHAT A GREEN RUN DOES NOT COVER (this seam, `just check-full`, is blind to it):
     uv run examples/_shared/spec_896_closing.test.py
 """
 
+import dataclasses
 import importlib
 import pathlib
 import re
@@ -43,7 +44,7 @@ sys.path.insert(0, str(HERE))
 import check_layout
 import check_research_loads
 import sm_document
-from board import Geometry
+from board import Geometry, load_board
 from check_layout import LinkFacts, LinkKind
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -119,9 +120,26 @@ def each_link_is_classified_once():
 
 
 def the_ring_verifiers_share_one_stale_check():
+    # Drive each verifier with a board whose recorded clue disagrees with its
+    # grid: the stale-grid problem must come out of the verifier itself.
     for verifier in ("skyscraper", "isofill-skyscraper"):
-        text = (EXAMPLES / verifier / "verify.py").read_text()
-        assert "stale_against_grid" in text, verifier
+        sys.path.insert(0, str(EXAMPLES / verifier))
+        for name in ("build_size", "verify"):
+            sys.modules.pop(name, None)
+        try:
+            verify = importlib.import_module("verify")
+        finally:
+            sys.path.remove(str(EXAMPLES / verifier))
+        board = load_board(EXAMPLES / verifier / "gen.json")
+        assert verify.grid_problems(board) == [], verifier
+        key = sorted(board.clue)[0]
+        bent = dict(board.clue)
+        bent[key] = bent[key] % board.n + 1
+        out = verify.grid_problems(dataclasses.replace(board, clue=bent))
+        assert any(m.startswith(f"clue {key[0]}{key[1]}: gen says") for m in out), (
+            verifier,
+            out,
+        )
 
 
 if __name__ == "__main__":

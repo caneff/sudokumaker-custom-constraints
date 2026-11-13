@@ -87,9 +87,10 @@ if __name__ == "__main__":
         moved["puzzle"]["width"] += 1
         try:
             check_and_write(base, moved, CONSTRAINT_NAME, out)
-            raise AssertionError("expected an assertion when the frame itself changes")
         except AssertionError as e:
             assert "frames differ" in str(e)
+        else:
+            raise AssertionError("expected an assertion when the frame itself changes")
 
     # frame_and_comment_only: a decoration layer redrawn with different
     # polylines over the same ink is the same board. A rebuild that merges the
