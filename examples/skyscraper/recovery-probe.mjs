@@ -91,11 +91,7 @@ const gatedLine = {
   }
 }
 function buildOriginal ({ groups }) {
-  return groups.map(g => {
-    const inst = construct(gatedLine, g.key, g.cells[0], g.cells.slice(1))
-    inst.__mod = gatedLine
-    return inst
-  })
+  return groups.map(g => ({ mod: gatedLine, inst: construct(gatedLine, g.key, g.cells[0], g.cells.slice(1)) }))
 }
 
 function validLeaf ({ st, groups }) {

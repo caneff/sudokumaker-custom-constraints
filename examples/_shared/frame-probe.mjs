@@ -8,7 +8,7 @@
 //   node <probe> [gen.json] [--search [--only=<mode key>] [--cap=N]] [--floor=regin|singles]
 //
 // Every probe callback receives the probe context `p`: { file, gen, n, st,
-// clueOf, floorKind, floorGroup, W, H, idx, interior, clueCell, keys, groups,
+// clueOf, floorKind, floor, W, H, idx, interior, clueCell, keys, groups,
 // alldiffGroups, hiddenKeys }.
 
 import { readFileSync } from 'fs'
@@ -28,7 +28,7 @@ const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) 
 //   installGlobals hands the components.
 // files: loadComponents' component list, wired by main-global.js.
 // modes: [{ key, label, build?, extra?, search? }] in report order. `build(p)`
-//   returns the comps (default: the main-global.js wiring); `extra(p)` is a
+//   returns the `{ mod, inst }` parts (default: the main-global.js wiring); `extra(p)` is a
 //   propagator run after the floor each pass; `search: false` leaves the mode
 //   out of --search. `--only=<key>` picks one search mode.
 // deltas: [[title, fromKey, toKey]] — one DELTA line each, `to - from`.
@@ -62,9 +62,9 @@ export function makeFrameProbe ({
   // on them through getCellsCanHaveRepeats (docs/line-contract.md).
   const st = makeCandidateState({ houses: alldiffGroups })
   const floorKind = flag(argv, 'floor') || 'regin'
-  const floorGroup = makeAllDifferentFloor(st, { kind: floorKind, maxDigit: n })
+  const floor = makeAllDifferentFloor(st, alldiffGroups, { kind: floorKind, maxDigit: n })
   const hiddenKeys = keys.filter(k => !activeSet.has(k))
-  const p = { file, gen, n, st, clueOf, floorKind, floorGroup, hiddenKeys, ...geometry }
+  const p = { file, gen, n, st, clueOf, floorKind, floor, hiddenKeys, ...geometry }
 
   function freshState () {
     st.cand = new Map()
@@ -83,13 +83,13 @@ export function makeFrameProbe ({
   // frame-building produces the identical `groups` list frameGeometry gives.
   const mainSrc = makeIo(here).read('main-global.js')
   const buildMain = () => loadComponents({ here, mainSrc, input: {}, frame: { W, H, idx }, files })
-  const comps = mode => (mode.build ? mode.build(p) : buildMain())
+  const parts = mode => (mode.build ? mode.build(p) : buildMain())
   const extraOf = mode => (mode.extra ? () => mode.extra(p) : null)
 
   function report (mode) {
     freshState()
     const start = st.puzzle.total()
-    const passes = runToFixpoint(st, comps(mode), alldiffGroups, floorGroup, { init: true, extra: extraOf(mode) })
+    const passes = runToFixpoint(st, parts(mode), floor, { init: true, extra: extraOf(mode) })
     const hiddenRecovered = hiddenKeys.filter(k => st.cand.get(clueOf(k)).size === 1).length
     let interiorSolved = 0
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (st.cand.get(interior(r, c)).size === 1) interiorSolved++
@@ -109,10 +109,10 @@ export function makeFrameProbe ({
   const cap = +flag(argv, 'cap') || nodeCap
   function searchRun (mode) {
     freshState()
-    const built = comps(mode)
+    const built = parts(mode)
     const extra = extraOf(mode)
-    runToFixpoint(st, built, alldiffGroups, floorGroup, { init: true, extra })
-    return search(st, { interior: branch, comps: built, alldiffGroups, floorGroup, extra, validLeaf: () => validLeaf(p), nodeCap: cap })
+    runToFixpoint(st, built, floor, { init: true, extra })
+    return search(st, { interior: branch, parts: built, floor, extra, validLeaf: () => validLeaf(p), nodeCap: cap })
   }
 
   console.log(`${file}: n=${n}, box ${bh}x${bw}, ${active.length}/${keys.length} clues shown, ${hiddenKeys.length} ${blankWord}, ${Object.keys(givens).length} interior givens${headerNote(p)}`)

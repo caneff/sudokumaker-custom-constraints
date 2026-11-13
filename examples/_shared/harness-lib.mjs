@@ -441,11 +441,12 @@ export function drainChanges (changes, p) {
 // One call of a component's `update` on the mock, drained as the app drains it.
 export const runUpdate = (mod, inst, p) => drainChanges(mod.update(inst, p), p)
 
-// Run components' updates until a pass removes nothing, at most MAX_PASSES
-// times. `parts` is a list of `{ mod, inst }`, run in order each pass. A
-// failed change -- a stop() or an emptied cell -- means the branch is dead,
-// and that ends propagation for every part at once, mid-pass included, as a
-// failed result ends the app's whole fixpoint.
+// Run components' updates until a pass removes nothing. `parts` is a list of
+// `{ mod, inst }`, run in order each pass. A failed change -- a stop() or an
+// emptied cell -- means the branch is dead, and that ends propagation for
+// every part at once, mid-pass included, as a failed result ends the app's
+// whole fixpoint. Reaching MAX_PASSES throws: a harness that checked a state
+// short of its fixpoint has not checked what it claims.
 const MAX_PASSES = 20
 export function fixpointAll (parts, p) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
@@ -455,6 +456,7 @@ export function fixpointAll (parts, p) {
     }
     if (p.total() === before) return
   }
+  throw new Error(`fixpointAll: never settled within ${MAX_PASSES} passes`)
 }
 
 // A solver that runs a component's `update` only when a cell in `cells` (its

@@ -52,13 +52,16 @@ function maxMatch (cells, getCand) {
   return m
 }
 
-// Build an all-different floor over `state`: a function that prunes one
-// group's candidates. `kind: 'regin'` (default) is the GAC floor — a value
-// stays for a cell only if some perfect matching of the group assigns it
-// there. `kind: 'singles'` is the weaker naked/hidden-singles floor, useful
-// as a bracket to show how much a stronger deduction earns over a weak
-// all-different. `maxDigit` bounds the value range the singles floor scans.
-export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {}) {
+// Build an all-different floor over `state` and its `groups` (cell lists
+// whose digits are all different): `{ groups, prune }`, where `prune()` prunes
+// every group's candidates, in order. The groups travel with the floor so a
+// caller never passes one without the other. `kind: 'regin'` (default) is the
+// GAC floor — a value stays for a cell only if some perfect matching of the
+// group assigns it there. `kind: 'singles'` is the weaker naked/hidden-singles
+// floor, useful as a bracket to show how much a stronger deduction earns over
+// a weak all-different. `maxDigit` bounds the value range the singles floor
+// scans.
+export function makeAllDifferentFloor (state, groups, { kind = 'regin', maxDigit } = {}) {
   function gacGroup (cells) {
     const base = c => state.cand.get(c)
     if (maxMatch(cells, base) !== cells.length) return // dead state: leave it
@@ -80,11 +83,13 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
       if (homes.length === 1 && state.cand.get(homes[0]).size > 1) state.cand.set(homes[0], new Set([v]))
     }
   }
-  return kind === 'singles' ? singlesGroup : gacGroup
+  const pruneGroup = kind === 'singles' ? singlesGroup : gacGroup
+  return { groups, prune () { for (const g of groups) pruneGroup(g) } }
 }
 
 // Load a list of component files plus main.js and run them exactly as
-// SudokuMaker does, returning the built instances.
+// SudokuMaker does, returning the built components as `{ mod, inst }` parts,
+// the shape harness-lib's fixpointAll takes.
 //   files: [{ file, names?, ctorName }, ...] — `names` are extra exports to
 //     read off the component file beyond its lifecycle functions, which
 //     makeIo's load always returns; `ctorName` is the constructor name main.js
@@ -101,49 +106,51 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //     the app's getCellAt takes the column first and `idx` the row first.
 export function loadComponents ({ here, files, mainSrc, input, frame }) {
   const { load } = makeIo(here)
+  const modOf = new Map()
   const makeCtor = mod => function (name, ...args) {
     const inst = construct(mod, name, ...args)
-    inst.__mod = mod
+    modOf.set(inst, mod)
     return inst
   }
   const registrar = mockBoard({ width: frame.W, height: frame.H })
   const ctors = Object.fromEntries(files.map(f => [f.ctorName, makeCtor(load(f.file, f.names))]))
   runBackend(mainSrc, { puzzle: registrar, helpers: globalThis.helpers, input, ctors })
-  return registrar.registered
+  return registrar.registered.map(inst => ({ mod: modOf.get(inst), inst }))
 }
 
 const MAX_PASSES = 500
 
-// One propagation pass is: every component's update, then the all-different
-// floor over every group, then an optional extra propagator (an
+// One propagation pass is: every part's update (`parts` is a list of
+// `{ mod, inst }`), then the all-different `floor` (makeAllDifferentFloor's
+// value), then an optional extra propagator (an
 // example-specific candidate deduction layered on top, e.g. a matching
 // bound). Repeats to a fixpoint (no candidate removed this pass) or
 // `MAX_PASSES`. Returns the pass count it took, or -1 if it never settled.
-export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null } = {}) {
+export function runToFixpoint (state, parts, floor, { init = true, extra = null } = {}) {
   if (init) {
-    for (const inst of comps) {
-      if (inst.__mod.initialize && !drainChanges(inst.__mod.initialize(inst, state.puzzle), state.puzzle)) return 1
+    for (const { mod, inst } of parts) {
+      if (mod.initialize && !drainChanges(mod.initialize(inst, state.puzzle), state.puzzle)) return 1
     }
   }
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = state.puzzle.total()
     // A failed change (a stop, or a cell emptied) kills the branch, as a failed
     // result ends the app's fixpoint; no point propagating on.
-    for (const inst of comps) if (!runUpdate(inst.__mod, inst, state.puzzle)) return pass + 1
-    for (const g of alldiffGroups) floorGroup(g)
+    for (const { mod, inst } of parts) if (!runUpdate(mod, inst, state.puzzle)) return pass + 1
+    floor.prune()
     if (extra) extra()
     if (state.puzzle.total() === before) return pass + 1
   }
   return -1
 }
 
-// A state is dead if a cell is empty OR some all-different group has no
-// perfect matching (its cells cannot take distinct values). The GAC floor
-// leaves an infeasible group untouched rather than emptying a cell, so a
-// caller doing search must test matchability itself.
-export function dead (state, alldiffGroups) {
+// A state is dead if a cell is empty OR some group of the all-different
+// `floor` has no perfect matching (its cells cannot take distinct values).
+// The GAC floor leaves an infeasible group untouched rather than emptying a
+// cell, so a caller doing search must test matchability itself.
+export function dead (state, floor) {
   if (state.puzzle.isDead()) return true
-  for (const g of alldiffGroups) if (maxMatch(g, c => state.cand.get(c)) !== g.length) return true
+  for (const g of floor.groups) if (maxMatch(g, c => state.cand.get(c)) !== g.length) return true
   return false
 }
 
@@ -154,7 +161,7 @@ export function dead (state, alldiffGroups) {
 // (the components prune toward this but do not reject a completed instance
 // on their own). Returns {nodes, solutions, capped} — capped means
 // `nodeCap` was hit before the search finished.
-export function search (state, { interior, comps, alldiffGroups, floorGroup, extra = null, validLeaf, nodeCap = 3_000_000 }) {
+export function search (state, { interior, parts, floor, extra = null, validLeaf, nodeCap = 3_000_000 }) {
   let nodes = 0
   let solutions = 0
   let capped = false
@@ -171,14 +178,14 @@ export function search (state, { interior, comps, alldiffGroups, floorGroup, ext
       nodes++
       const saved = state.clone()
       state.cand.set(cell, new Set([v]))
-      runToFixpoint(state, comps, alldiffGroups, floorGroup, { init: false, extra })
-      if (!dead(state, alldiffGroups)) dfs()
+      runToFixpoint(state, parts, floor, { init: false, extra })
+      if (!dead(state, floor)) dfs()
       state.cand = saved
       state.puzzle.reset()
       if (capped) return
     }
   }
-  if (!dead(state, alldiffGroups)) dfs()
+  if (!dead(state, floor)) dfs()
   return { nodes, solutions, capped }
 }
 
