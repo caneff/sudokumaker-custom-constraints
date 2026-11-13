@@ -86,6 +86,28 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
   assert.strictEqual(runToFixpoint(state, [], floor, { init: false }), 1)
 }
 
+// runToFixpoint drains each update as the app does: a change a component
+// builds and never yields prunes nothing in the app, so it goes red here.
+{
+  const state = makeCandidateState()
+  state.cand.set(0, new Set([1, 2, 3]))
+  const forgets = { mod: { * update (inst, p) { if (p.getCandidates(0).size > 1) p.removeCandidateFromCell(3, 0) } }, inst: {} }
+  assert.throws(() => runToFixpoint(state, [forgets], makeAllDifferentFloor(state, []), { init: false }),
+    /built 1 change it never yielded/, 'runToFixpoint goes red on a change built and never yielded')
+}
+
+// runToFixpoint keeps its own stop rule: a pass stops on a stop(), read once
+// every part has run, so a part after the stopping one still runs that pass.
+{
+  const state = makeCandidateState()
+  state.cand.set(0, new Set([1, 2]))
+  state.cand.set(1, new Set([1, 2]))
+  const stops = { mod: { * update (inst, p) { yield p.stop('dead') } }, inst: {} }
+  const prunes = { mod: { * update (inst, p) { if (p.getCandidates(1).size > 1) yield p.removeCandidateFromCell(2, 1) } }, inst: {} }
+  assert.strictEqual(runToFixpoint(state, [stops, prunes], makeAllDifferentFloor(state, []), { init: false }), 1)
+  assert.deepStrictEqual([...state.cand.get(1)], [1], 'the part after the stop still ran its pass')
+}
+
 // reportLine prints settled / NEVER SETTLED, not a pass count
 // The pass count is order-dependent noise; the report line states only
 // whether the fixpoint settled.

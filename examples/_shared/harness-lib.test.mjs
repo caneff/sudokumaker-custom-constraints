@@ -422,6 +422,12 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   assert.strictEqual(run(loaded).ok, true, 'the loaded module, validate included, runs')
   const { validate: _dropped, ...missed } = loaded
   assert.throws(() => run(missed), /comp\.js defines validate/, 'a module missing its file\'s validate is refused')
+  // A wrapper built field by field carries no DEFINES record; the loaded
+  // function it reuses still names the file, so a dropped validate is refused,
+  // and only an explicit `validate: undefined` opts out.
+  const wrapper = { update: loaded.update }
+  assert.throws(() => run(wrapper), /comp\.js defines validate/, 'a wrapper that drops its file\'s validate is refused')
+  assert.strictEqual(run({ update: loaded.update, validate: undefined }).ok, true, 'an explicit opt-out runs')
 
   // inspect sees each seeded puzzle BEFORE the components run: this update
   // prunes every cell to its truth, so a state seen after it totals exactly 3.
@@ -529,6 +535,11 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   assert.strictEqual(resumed, false, 'an emptied cell ends the drain')
   assert.deepStrictEqual([...r._cand.get(1)].sort(), [1, 2])
 
+  // A hand-built Change of a type the builders never make is refused: the app
+  // skips a type outside its enum, so it would prune nothing there.
+  assert.throws(() => runUpdate({ * update () { yield { type: 'RemoveCandidate', value: 2, cells: [0] } } }, {}, makePuzzle({ 0: 1 }, () => [1, 2])),
+    /unknown Change type "RemoveCandidate"/)
+
   // A stop counts when it is yielded, not when it is built.
   const s = makePuzzle({ 0: 1 }, () => [1, 2])
   s.stop('built only')
@@ -545,12 +556,14 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
     iters: 20,
     log: () => {},
     draw: () => ({ truth: { 0: 1, 1: 2 }, seed: makeSeeder(rnd, [1, 2, 3]), parts: [{ mod: forgets, inst: {} }] })
-  }), NEVER_YIELDED, 'fuzzSoundness goes red on the new assertion')
+  }), NEVER_YIELDED, 'fuzzSoundness goes red on a change built and never yielded')
   const states = Array.from({ length: 10 }, () => new Map([[0, [1, 2, 3]], [1, [2, 3]]]))
   const apply = (mod, p) => runUpdate(mod, {}, p)
   const idle = { * update () {} }
   assert.throws(() => strengthSweep('forgets', { cur: forgets, ref: idle, apply, states }), NEVER_YIELDED,
-    'strengthSweep goes red on the new assertion')
+    'strengthSweep goes red on a change built and never yielded')
+  const waker = makeWaker(forgets, {}, makePuzzle({ 0: 1 }, () => [1, 2, 3]), [0])
+  assert.throws(() => waker.wake(), NEVER_YIELDED, 'makeWaker goes red on a change built and never yielded')
 }
 
 // finishHarness: the exit status is the verdict

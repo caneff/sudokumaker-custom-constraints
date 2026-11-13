@@ -77,6 +77,9 @@ export const LIFECYCLE = ['getAffectedCells', 'setParams', 'initialize', 'update
 // rest copy of the module keeps it: fuzzSoundness reads it to refuse a module
 // that lost the `validate` its file defines.
 const DEFINES = Symbol('defines')
+// The same record keyed on each lifecycle function a load returned, so a
+// wrapper module that reuses one of them still names its file.
+const ORIGIN = new WeakMap()
 
 // Bind file reads to the example's own directory. `read` returns a file's text
 // with its `// #include` directives spliced in (include.mjs), so a probe runs
@@ -101,6 +104,7 @@ export function makeIo (here) {
     const out = new Script('(function(){' + src + '\n return {' + [...lifecycle, ...extra].join(',') + '};})()', { filename }).runInThisContext()
     for (const n of LIFECYCLE) if (out[n] === undefined) delete out[n]
     out[DEFINES] = { file: filename, names: LIFECYCLE.filter(n => n in out) }
+    for (const n of out[DEFINES].names) ORIGIN.set(out[n], out[DEFINES])
     return out
   }
   const load = (file, names, patch = src => src) => evalNamed(patch(read(file)), names, join(here, file))
@@ -310,12 +314,15 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
     filterCandidatesInCell: (s, c) => filter(maskOf(s, 'filterCandidatesInCell'), [c]),
     filterCandidatesInCells: (s, cs) => filter(maskOf(s, 'filterCandidatesInCells'), cs),
     // Apply one removal or filter Change; false when it emptied a cell, the
-    // app's `failed` result. Any other type is skipped, as the app skips a
-    // type outside its enum. Iterating a copy leaves the live set free to
-    // shrink underneath.
+    // app's `failed` result. Any other type throws: only the builders above
+    // make a Change here, and the app silently skips a type outside its enum,
+    // so a hand-built Change would prune nothing there. Iterating a copy leaves
+    // the live set free to shrink underneath.
     applyChange (change) {
       const keep = change.type === 'FilterCandidatesAtCells'
-      if (!keep && change.type !== 'RemoveCandidatesFromCells') return true
+      if (!keep && change.type !== 'RemoveCandidatesFromCells') {
+        throw new TypeError(`unknown Change type ${JSON.stringify(change.type)}: the app would skip it, so it prunes nothing there`)
+      }
       let ok = true
       for (const c of change.cells) {
         const set = getSet(c)
@@ -441,6 +448,21 @@ export function drainChanges (changes, p) {
 // One call of a component's `update` on the mock, drained as the app drains it.
 export const runUpdate = (mod, inst, p) => drainChanges(mod.update(inst, p), p)
 
+// The solver may run another component between two of one component's yields.
+// Run `inst`'s update to its first yield and apply that change, as the app
+// applies a change before it resumes the generator; then `between()`; then
+// drain the rest. A first change that fails ends the drain there, as it does
+// in the app, and `between()` still runs. Returns whether the update had a
+// first yield to suspend at.
+export function interleaveAtFirstYield (mod, inst, p, between) {
+  const gen = mod.update(inst, p)
+  const first = gen.next()
+  const live = !first.done && p.applyChange(first.value)
+  between()
+  if (live) drainChanges(gen, p)
+  return !first.done
+}
+
 // Run components' updates until a pass removes nothing. `parts` is a list of
 // `{ mod, inst }`, run in order each pass. A failed change -- a stop() or an
 // emptied cell -- means the branch is dead, and that ends propagation for
@@ -497,6 +519,20 @@ function lostTruth (p, truth) {
   return null
 }
 
+// A module whose file defines `validate` but which lacks it -- dropped from a
+// copy, or left off a wrapper built field by field -- would skip fuzzSoundness's
+// validate check and read as a pass. The file is found from the module's
+// DEFINES record, which a spread or rest copy keeps, or else from any
+// lifecycle function the module carries over from a loaded file. A wrapper that
+// leaves validate out on purpose says so with an explicit `validate: undefined`.
+function refuseLostValidate (mod) {
+  if ('validate' in mod) return
+  const defines = mod[DEFINES] ?? LIFECYCLE.map(n => ORIGIN.get(mod[n])).find(Boolean)
+  if (defines && defines.names.includes('validate')) {
+    throw new Error(`${defines.file} defines validate, but the module fuzzSoundness was handed lacks it`)
+  }
+}
+
 // The soundness runner: draw `iters` states, run the components to a fixpoint,
 // count the states where a true value was lost (or the branch stopped) and the
 // states where something was pruned, log the first five violations and one
@@ -514,16 +550,7 @@ function lostTruth (p, truth) {
 // `failures` is the two counts summed and `ok` is true when it is zero.
 // Whether `fired` is enough coverage is the harness's call, so it can differ
 // per pool. A part with no `validate` is not asked one; a part whose file
-// defines one its module lacks is refused.
-// A module whose file defines `validate` but which lacks it -- named out of a
-// load, or dropped from a copy -- would skip the check below and read as a pass.
-function refuseLostValidate (mod) {
-  const defines = mod[DEFINES]
-  if (defines && defines.names.includes('validate') && typeof mod.validate !== 'function') {
-    throw new Error(`${defines.file} defines validate, but the module fuzzSoundness was handed lacks it`)
-  }
-}
-
+// defines one its module lacks is refused (refuseLostValidate).
 export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let violations = 0
   let validateRejects = 0

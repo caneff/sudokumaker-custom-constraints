@@ -4,7 +4,7 @@
 //   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
-import { construct, finishHarness, fixpoint, fuzzSoundness, housesOf, installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate, drainChanges, shuffle, TIES_FLAG, violates } from '../_shared/harness-lib.mjs'
+import { construct, finishHarness, fixpoint, fuzzSoundness, housesOf, installGlobals, interleaveAtFirstYield, makeIo, makeLine, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate, shuffle, TIES_FLAG, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -204,13 +204,8 @@ for (let iter = 0; iter < PAIRS; iter++) {
   runUpdate(mod, instA, serial)
   runUpdate(mod, instB, serial)
   const mixed = copyOf(start)
-  // A suspends at its first yield with that change applied, as the app
-  // applies a change before it resumes the generator; B runs; A finishes.
-  const genA = mod.update(instA, mixed)
-  const firstA = genA.next()
-  if (!firstA.done) mixed.applyChange(firstA.value)
-  runUpdate(mod, instB, mixed)
-  drainChanges(genA, mixed)
+  // A suspends at its first yield; B runs; A finishes.
+  interleaveAtFirstYield(mod, instA, mixed, () => runUpdate(mod, instB, mixed))
 
   if (state(mixed) !== state(serial)) {
     interleaveBad++

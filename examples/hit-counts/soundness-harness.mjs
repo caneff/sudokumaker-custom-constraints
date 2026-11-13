@@ -494,7 +494,6 @@ console.log('side-sum gate after a backtrack:', sideLatchBad === null ? 'gate re
 // still open would force the first clue to 1 and take its true 3 away.
 function staleWakeRun (mod) {
   const inst = construct(mod, 'hit-counts', SIDE, N, PERP)
-  const affected = mod.getAffectedCells(SIDE, N, PERP)
   const truth = {}
   const vals = [3, 1, 1, 1, 1, 1, 1, 1, 1]
   for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
@@ -502,7 +501,7 @@ function staleWakeRun (mod) {
   truth[PERP[0][0]] = 0
   const start = c => (c === SIDE[0] ? [0, 1, 3] : c === SIDE[2] ? [1, 2] : c === PERP[0][0] ? [0, 1] : [truth[c]])
   const p = makePuzzle(truth, start, { houses: PERP })
-  const { wake, settle } = makeWaker(mod, inst, p, affected)
+  const { wake, settle } = makeWaker(mod, inst, p, inst.cells)
   wake() // the root: 0 live on line 0, the gate shut
   p._cand.get(PERP[0][0]).delete(0) // branch: the line's 0 goes, woken, gate open
   wake()

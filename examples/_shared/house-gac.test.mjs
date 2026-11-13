@@ -19,7 +19,7 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { construct, drainChanges, housesOf, installGlobals, makeIo, makePuzzle, makeRng, runUpdate, shuffle } from './harness-lib.mjs'
+import { construct, housesOf, interleaveAtFirstYield, installGlobals, makeIo, makePuzzle, makeRng, runUpdate, shuffle } from './harness-lib.mjs'
 import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const here = import.meta.dirname
@@ -239,12 +239,8 @@ board(1, 9)
   const pb = makePuzzle(truth, c => bCands[CELLS.indexOf(c)], { houses: [CELLS] })
   const a = construct(gac, 'A', CELLS)
   const b = construct(gac, 'B', CELLS)
-  const genA = gac.update(a, pa)
-  const firstA = genA.next()
-  assert.strictEqual(firstA.done, false, 'house A yields no removal to suspend at')
-  pa.applyChange(firstA.value) // the app applies a change before it resumes the generator
-  runUpdate(gac, b, pb)
-  drainChanges(genA, pa)
+  const suspended = interleaveAtFirstYield(gac, a, pa, () => runUpdate(gac, b, pb))
+  assert.strictEqual(suspended, true, 'house A yields no removal to suspend at')
   const got = CELLS.map(c => [...pa._cand.get(c)].sort((x, y) => x - y))
   assert.deepStrictEqual(got, runOnce(gac, aCands), 'house A changed because house B ran at its yield')
 }

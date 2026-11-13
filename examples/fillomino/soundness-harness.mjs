@@ -163,6 +163,9 @@ const RULE_FUZZ = Math.ceil(FUZZ / 10)
 for (const rule of Object.keys(RULES)) {
   const solo = {
     setParams: mod.setParams,
+    // One rule is not the whole component; the setup-pass run below asks the
+    // component's own validate.
+    validate: undefined,
     * update (inst, p) {
       if (rule === 'smallPocketsRule') { yield * mod.smallPocketsRule(inst, p); return }
       for (const island of mod.findIslands(inst, p)) {

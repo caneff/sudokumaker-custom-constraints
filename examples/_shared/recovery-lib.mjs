@@ -126,17 +126,15 @@ const MAX_PASSES = 500
 // example-specific candidate deduction layered on top, e.g. a matching
 // bound). Repeats to a fixpoint (no candidate removed this pass) or
 // `MAX_PASSES`. Returns the pass count it took, or -1 if it never settled.
+// Each part's drain ends at its own failed change, as runUpdate drains it; the
+// pass itself stops only on a stop(), checked once every part has run. This
+// loop keeps that rule of its own rather than fixpointAll's.
 export function runToFixpoint (state, parts, floor, { init = true, extra = null } = {}) {
-  if (init) {
-    for (const { mod, inst } of parts) {
-      if (mod.initialize && !drainChanges(mod.initialize(inst, state.puzzle), state.puzzle)) return 1
-    }
-  }
+  if (init) for (const { mod, inst } of parts) if (mod.initialize) drainChanges(mod.initialize(inst, state.puzzle), state.puzzle)
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = state.puzzle.total()
-    // A failed change (a stop, or a cell emptied) kills the branch, as a failed
-    // result ends the app's fixpoint; no point propagating on.
-    for (const { mod, inst } of parts) if (!runUpdate(mod, inst, state.puzzle)) return pass + 1
+    for (const { mod, inst } of parts) runUpdate(mod, inst, state.puzzle)
+    if (state.puzzle.stopMessage() !== null) return pass + 1 // the branch is dead; no point propagating on
     floor.prune()
     if (extra) extra()
     if (state.puzzle.total() === before) return pass + 1

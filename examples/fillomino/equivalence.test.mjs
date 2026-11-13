@@ -14,10 +14,13 @@
 // - Fuzzed states, around a real solution and not, through one instance pair
 //   each, so the cache also sees states that jump around.
 //
-// Each call is run twice: once with each removal applied as it is yielded (the
-// app's order, harness-lib's runUpdate) and once with every removal held until
-// the call ends, so the comparison does not hang on when the solver applies a
-// change.
+// Each call is run twice, so the comparison does not hang on when the solver
+// applies a change. The live mode drains through harness-lib's runUpdate: each
+// removal applied as it is yielded (the app's order), the drain ended by the
+// first change that fails, and a change built but never yielded an error. The
+// deferred mode holds every yielded change until the call ends, then applies
+// them all, going on past one that fails, and does not check for a change
+// that was never yielded.
 
 import assert from 'assert'
 import { construct, installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'

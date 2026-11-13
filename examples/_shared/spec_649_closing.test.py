@@ -37,10 +37,9 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
     behind by a rename, not a name the glossary does not use.
   - sweep 2 reads harness source for `load(...)` calls: it proves a harness
     loads the file, not that every draw reaches it. Whether the fuzz asks a
-    component's `validate` is no longer read from source: makeIo's `load`
-    returns every lifecycle function a file defines, and fuzzSoundness
-    refuses a module that lacks the `validate` its file defines
-    (harness-lib.test.mjs).
+    component's `validate` is not checked here: makeIo's `load` returns every
+    lifecycle function a file defines, and fuzzSoundness refuses a module
+    that lacks the `validate` its file defines (harness-lib.test.mjs).
 
 Left to their own suites, not driven here: the CP-SAT base model and
 solve_unique (the sudoku-kit library's own tests), loadBundle and the bundle-solve
