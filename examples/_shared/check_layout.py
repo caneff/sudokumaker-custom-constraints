@@ -188,6 +188,11 @@ def check_lanes(example_dir):
     return violations
 
 
+# What a stale-backend violation tells the author to run; every example's
+# build_link.py takes the flag (size_builders.test.py).
+REFRESH_COMMAND = "build_link.py --refresh"
+
+
 def _link_suffix(filename, prefix, ext):
     """The part of a `gen*.json`/`PUZZLE_LINK*.txt` name between `prefix` and
     `ext`, minus one leading underscore -- "" for the plain-named file."""
@@ -714,8 +719,8 @@ def check_stale_backend_code(link, manifest):
         return link.fail(
             f"embeds a stale copy of {source} -- "
             f"rebuild it in the same commit as the change (the example's "
-            f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
-            f"for a hand-built board)"
+            f"`build_size.py --rebuild <n>`, or `{REFRESH_COMMAND}` "
+            f"for every board of the example)"
         )
 
     violations = []

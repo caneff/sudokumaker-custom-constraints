@@ -3,14 +3,15 @@
 # PUZZLE_LINK.txt runs the global lane (docs/example-layout.md), so a
 # --backend to swap in is main-global.js.
 
-import argparse
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_clued
 import build_original
+from build_size import SPEC
 from document import RULES_PREFIX, refresh_frame_backends
+from lanes import rebuild_all
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
@@ -86,22 +87,11 @@ def refresh(root=HERE):
     build_clued.build(root, board_path)
 
 
-def rebuild(args, parser):
-    if not args.refresh:
-        parser.error("give --component with --out, or --refresh")
-    if args.board:
-        parser.error("--refresh rewrites this example's own links; drop --board")
+def refresh_command(args, _parser):
     refresh()
+    rebuild_all(SPEC)
     print("refreshed PUZZLE_LINK.txt and the three links derived from it")
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument(
-        "--refresh",
-        action="store_true",
-        help="bring the board link up to date in place: the shared frame\n"
-        "backends, the digit range, the rules text; then rebuild the\n"
-        "_original, _clued and _clued_original links derived from it",
-    )
-    swap_main(HERE, p, rebuild)
+    swap_main(HERE, refresh=refresh_command)

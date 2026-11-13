@@ -26,7 +26,7 @@
 #   (move the plain pair to PUZZLE_LINK_9x9.txt / gen_9x9.json)
 #   uv run examples/up-to-n/build_size.py --derive-shipped-9x9
 #   uv run examples/up-to-n/build_size.py --rebuild 9 --local
-#   uv run examples/up-to-n/build_size.py --rebuild-minimal-9x9
+#   uv run examples/up-to-n/build_link.py --refresh   # re-encodes both 9x9 boards
 
 import pathlib
 import random
@@ -152,9 +152,5 @@ def derive_shipped_9x9():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--derive-shipped-9x9"]:
         derive_shipped_9x9()
-    elif sys.argv[1:] == ["--rebuild-minimal-9x9"]:
-        link = NoRing(SPEC).rebuild(9, pair=MINIMAL_9X9)
-        MINIMAL_9X9[0].write_text(link + "\n")
-        print(f"wrote {MINIMAL_9X9[0].name} -- current component code, same board")
     else:
         main(SPEC)

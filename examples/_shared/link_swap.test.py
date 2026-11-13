@@ -260,7 +260,7 @@ if __name__ == "__main__":
     # swap_main refuses a flag the path it takes cannot honour, rather than
     # write a link for a board nobody asked for: an example's own flag beside
     # --component (isofill's --puzzle names a board to build, not swap into;
-    # numbered-rooms' --refresh rewrites PUZZLE_LINK.txt), and --board with no
+    # --refresh is a command of its own, not a swap), and --board with no
     # --component to swap into it.
     ex = HERE.parent
     with tempfile.TemporaryDirectory() as tmp:
@@ -300,7 +300,7 @@ if __name__ == "__main__":
                     "--out",
                     out,
                 ],
-                f"--refresh {belongs}",
+                "--refresh and --component are two commands; give one",
             ),
             # --backend on a rebuild that never reads it: the bare boards and
             # running-start's template take their backend from the tree

@@ -7,8 +7,10 @@
 # component, so this path injects the current files and re-encodes.
 #
 #   uv run examples/running-start/build_link.py
+#   uv run examples/running-start/build_link.py --refresh
 #
-# Writes PUZZLE_LINK.txt next to this script.
+# Writes PUZZLE_LINK.txt next to this script. --refresh does that, then
+# re-encodes every carved board build_size.py ships (lanes.rebuild_all).
 #
 # --component/--out: build a same-board comparison link (the contract in
 # docs/real-app-timing.md; _shared/link_swap.swap_main): the committed
@@ -25,7 +27,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from build_size import rule_text
+from build_size import SPEC, rule_text
 from document import (
     FRAME_ALWAYS_ON,
     HOUSE_GAC_BACKEND_TITLE,
@@ -35,6 +37,7 @@ from document import (
     refresh_frame_backends,
 )
 from frame import cosmetics
+from lanes import rebuild_all
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
@@ -108,5 +111,11 @@ def rebuild(_args, _parser):
     print(f"wrote PUZZLE_LINK.txt ({len(link)} chars)")
 
 
+def refresh(args, parser):
+    """The hand-built board, then every carved board build_size.py ships."""
+    rebuild(args, parser)
+    rebuild_all(SPEC)
+
+
 if __name__ == "__main__":
-    swap_main(HERE, rebuild=rebuild)
+    swap_main(HERE, rebuild=rebuild, refresh=refresh)
