@@ -27,9 +27,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import rule_text
 from document import (
+    FRAME_ALWAYS_ON,
     HOUSE_GAC_BACKEND_TITLE,
     RULES_PREFIX,
-    frame_backend_code,
+    backend_code,
     house_gac_constraint,
     refresh_frame_backends,
 )
@@ -95,9 +96,9 @@ def check(link, doc):
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
     assert rs["definition"]["backend"]["code"] == minify_file(HERE / "main-global.js")
     assert rs["input"] == {}, "the global board reads no drawn groups"
-    for title, code in frame_backend_code():
-        embedded = find_constraint(doc, title)["definition"]["backend"]["code"]
-        assert embedded == code, f"{title} is not the copy in the tree"
+    for b in FRAME_ALWAYS_ON:
+        embedded = find_constraint(doc, b.title)["definition"]["backend"]["code"]
+        assert embedded == backend_code(b), f"{b.title} is not the copy in the tree"
 
 
 def rebuild(_args, _parser):

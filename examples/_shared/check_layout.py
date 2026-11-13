@@ -46,17 +46,19 @@ import tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import describe_mismatch, mismatch
 from document import (
-    FRAME_BACKENDS,
-    HOUSE_GAC_BACKEND_TITLE,
-    HOUSE_GAC_COMPONENT_NAME,
+    FRAME_CORNERS,
+    FRAME_ROWCOL,
+    GRID_ROWCOL,
+    HOUSE_GAC,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
-    frame_backend_code,
-    house_gac_backend_code,
+    SHARED_BACKEND_TITLES,
+    SHARED_BACKENDS,
+    backend_code,
+    component_code,
 )
 from manifest import load_manifest
 from minify import minify_file
-from no_ring import GRID_BACKEND, grid_backend_constraint
 from sudoku_kit.link_codec import decode_puzzle
 
 # What a boardless example (manifest `boardless = true`) still needs: it ships
@@ -109,7 +111,7 @@ def is_no_ring(puzzle):
     what marks a board as no-ring: its rows and columns are declared in JS, and
     its edge cells are real cells, not a clue ring."""
     return any(
-        (c.get("definition") or {}).get("name") == GRID_BACKEND[1]
+        (c.get("definition") or {}).get("name") == GRID_ROWCOL.title
         for c in puzzle.get("constraints", [])
     )
 
@@ -404,9 +406,9 @@ def declared_houses(puzzle):
 # under, read off the one place that pairing lives so a rename reaches this
 # sweep too. It is the handle that says "this board meant to declare its lines
 # in JS" even when the code embedded under it is an old copy.
-FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
+FRAME_ROWCOL_CONSTRAINT = FRAME_ROWCOL.title
 # ...and the corner pin's, which only a ring board carries.
-CORNERS_TITLE = dict(FRAME_BACKENDS)["frame-corners"]
+CORNERS_TITLE = FRAME_CORNERS.title
 
 
 def frame_backend_files(keep_comments=False):
@@ -416,13 +418,10 @@ def frame_backend_files(keep_comments=False):
     carries them -- `check_stale_backend_code` only checks a title it finds in a
     link's own constraints, so an opt-in backend needs no separate gate here.
     `keep_comments` is the copy an annotated link embeds."""
-    code = dict(frame_backend_code(keep_comments))
-    files = {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
-    gac_title, gac_backend_code, _ = house_gac_backend_code(keep_comments)
-    files[gac_title] = ("house-gac.js", gac_backend_code)
-    grid = grid_backend_constraint(keep_comments)["definition"]
-    files[grid["name"]] = (f"{GRID_BACKEND[0]}.js", grid["backend"]["code"])
-    return files
+    return {
+        b.title: (f"{b.stem}.js", backend_code(b, keep_comments))
+        for b in SHARED_BACKENDS
+    }
 
 
 def house_gac_component_file(keep_comments=False):
@@ -431,21 +430,21 @@ def house_gac_component_file(keep_comments=False):
     it against a link's own copy the same way it compares the backend, since
     HouseGacComponent.js is not a per-example file `check_components` would
     ever look for. `keep_comments` is the copy an annotated link embeds."""
-    _, _, code = house_gac_backend_code(keep_comments)
-    return (HOUSE_GAC_COMPONENT_NAME, f"{HOUSE_GAC_COMPONENT_NAME}.js", code)
+    return (
+        HOUSE_GAC.component,
+        f"{HOUSE_GAC.component}.js",
+        component_code(HOUSE_GAC, keep_comments),
+    )
 
 
 # The constraint type of `SudokuRules`: the app expands it into a house for
 # every row and column of the grid (a custom document can carry it too).
 SUDOKU_RULES_TYPE = 2003
 
-# Every backend title a link can ship under its own name: the frame's two, the
-# opt-in house-GAC filter and a no-ring board's whole-grid rows and columns.
-# Titles only -- reading the code behind them means minifying it, which
-# `frame_backend_files` does for the staleness check alone.
-FRAME_BACKEND_TITLES = frozenset(
-    [*(title for _, title in FRAME_BACKENDS), HOUSE_GAC_BACKEND_TITLE, GRID_BACKEND[1]]
-)
+# Every backend title a link can ship under its own name is
+# `document.SHARED_BACKEND_TITLES`. Titles only -- reading the code behind them
+# means minifying it, which `frame_backend_files` does for the staleness check
+# alone.
 
 
 class LinkKind(enum.Enum):
@@ -496,7 +495,7 @@ class LinkFacts:
     def of(cls, puzzle):
         constraints = puzzle.get("constraints", [])
         names = [(c.get("definition") or {}).get("name") for c in constraints]
-        titles = tuple(n for n in names if n in FRAME_BACKEND_TITLES)
+        titles = tuple(n for n in names if n in SHARED_BACKEND_TITLES)
         no_ring = is_no_ring(puzzle)
         if no_ring:
             kind = LinkKind.NO_RING
@@ -824,7 +823,7 @@ def check_gen_frame_backends(example_dir):
     `check_gen_json_parses`'s to report.
     """
     name = example_dir.name
-    titles = {title for _, title in FRAME_BACKENDS} | {HOUSE_GAC_BACKEND_TITLE}
+    titles = SHARED_BACKEND_TITLES
     violations = []
     for gen in sorted(example_dir.glob("gen*.json")):
         doc, error = _parse_gen(gen)

@@ -5,6 +5,7 @@
 
 import pathlib
 import sys
+from typing import NamedTuple
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from board import ring_name
@@ -58,24 +59,45 @@ def frame_groups(n, lines):
     ]
 
 
-# The frame's own two backends, shared by every example: the file in _shared
-# that holds each one, and the constraint name it ships under. `build_doc`
-# embeds them; `rebuild`'s guard reads the names off here, because their code
-# is generated from the working tree and is not part of the board.
-FRAME_BACKENDS = (
-    ("frame-rowcol", "Frame Rows and Columns"),
-    ("frame-corners", "Frame Corners"),
-)
+class SharedBackend(NamedTuple):
+    """One backend file in `_shared/`: `stem` names `<stem>.js`, `title` is the
+    constraint name it ships under, `component` the one component it registers
+    (`<component>.js`), None for none."""
+
+    stem: str
+    title: str
+    component: str | None = None
 
 
-def frame_backend_code(keep_comments=False):
-    """The frame's own two backends as `(constraint name, minified code)`,
-    read from the working tree. `keep_comments` is the annotated-link build."""
+# The one registry of shared backends. The checker, the builders, the lanes and
+# the timing tool read the file names and titles from here and keep no list of
+# their own. The code is generated from the working tree, so it is not part of
+# a board.
+FRAME_ROWCOL = SharedBackend("frame-rowcol", "Frame Rows and Columns")
+FRAME_CORNERS = SharedBackend("frame-corners", "Frame Corners")
+# Opt-in per board (`Spec.house_gac`).
+HOUSE_GAC = SharedBackend("house-gac", "House GAC", "HouseGacComponent")
+# A no-ring board's one backend: every row and column of the whole grid as a
+# house, in place of both frame backends (no ring lines to drop, no corners).
+GRID_ROWCOL = SharedBackend("grid-rowcol", "Grid Rows and Columns")
+SHARED_BACKENDS = (FRAME_ROWCOL, FRAME_CORNERS, HOUSE_GAC, GRID_ROWCOL)
+SHARED_BACKEND_TITLES = frozenset(b.title for b in SHARED_BACKENDS)
+# The two a ring board always carries: `refresh_frame_backends` treats their
+# absence as an error.
+FRAME_ALWAYS_ON = (FRAME_ROWCOL, FRAME_CORNERS)
+
+
+def backend_code(backend, keep_comments=False):
+    """`backend`'s minified code, read from the working tree. `keep_comments`
+    is the annotated-link build."""
     shared = pathlib.Path(__file__).parent
-    return [
-        (title, minify_file(shared / f"{name}.js", keep_comments))
-        for name, title in FRAME_BACKENDS
-    ]
+    return minify_file(shared / f"{backend.stem}.js", keep_comments)
+
+
+def component_code(backend, keep_comments=False):
+    """`backend`'s one component's minified code, read from the working tree."""
+    shared = pathlib.Path(__file__).parent
+    return minify_file(shared / f"{backend.component}.js", keep_comments)
 
 
 def refresh_frame_backends(doc):
@@ -89,35 +111,21 @@ def refresh_frame_backends(doc):
     backend is missing, so a board that should carry them cannot quietly skip
     the refresh.
     """
-    for title, code in frame_backend_code():
-        find_constraint(doc, title)["definition"]["backend"]["code"] = code
+    for backend in FRAME_ALWAYS_ON:
+        find_constraint(doc, backend.title)["definition"]["backend"]["code"] = (
+            backend_code(backend)
+        )
     return doc
 
 
-# The shared house-GAC filter: opt-in per board
-# (`Spec.house_gac`), so it is a separate name from FRAME_BACKENDS, whose two
-# entries are always-on and whose absence `refresh_frame_backends` treats as
-# an error.
-HOUSE_GAC_BACKEND_TITLE = "House GAC"
-HOUSE_GAC_COMPONENT_NAME = "HouseGacComponent"
+HOUSE_GAC_BACKEND_TITLE = HOUSE_GAC.title
+HOUSE_GAC_COMPONENT_NAME = HOUSE_GAC.component
 
 # HouseGacComponent.js's own MAX_CELLS: the largest house it will register on.
 # `build_doc` reads it here, not from the JS, so a board past this size fails
 # loud at build time instead of registering a component that refuses itself
 # at solve time on a link already shipped.
 HOUSE_GAC_MAX_CELLS = 9
-
-
-def house_gac_backend_code(keep_comments=False):
-    """`(constraint name, minified backend code, minified component code)` for
-    the shared house-GAC filter, read from the working tree. `keep_comments`
-    is the annotated-link build."""
-    shared = pathlib.Path(__file__).parent
-    return (
-        HOUSE_GAC_BACKEND_TITLE,
-        minify_file(shared / "house-gac.js", keep_comments),
-        minify_file(shared / f"{HOUSE_GAC_COMPONENT_NAME}.js", keep_comments),
-    )
 
 
 def house_gac_constraint(n):
@@ -133,9 +141,10 @@ def house_gac_constraint(n):
             "column and box on this board would be that many cells, so the "
             "filter refuses to register at all (#421)"
         )
-    title, backend_code, component_code = house_gac_backend_code()
     return code_constraint(
-        title, backend_code, [(HOUSE_GAC_COMPONENT_NAME, component_code)]
+        HOUSE_GAC.title,
+        backend_code(HOUSE_GAC),
+        [(HOUSE_GAC.component, component_code(HOUSE_GAC))],
     )
 
 

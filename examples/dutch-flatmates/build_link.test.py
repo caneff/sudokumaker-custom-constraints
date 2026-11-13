@@ -20,7 +20,7 @@ from build_link import (
 )
 from document import NO_RING_RULES_PREFIX
 from link_swap import swap_build
-from no_ring import GRID_BACKEND
+from document import GRID_ROWCOL
 from sudoku_kit.link_codec import decode_puzzle
 from verify import verify
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     assert given == {(r, c): int(gen["grid"][r][c]) for r, c in gen["clues"]}
     constraints = [c for c in p["constraints"] if c["type"] == 1000]
     assert [c["definition"]["name"] for c in constraints] == [
-        GRID_BACKEND[1],
+        GRID_ROWCOL.title,
         CONSTRAINT_NAME,
     ]
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     assert by_type[306]["cells"] == gen0["circles"] and len(gen0["circles"]) == 28
     assert {10, 11} <= by_type.keys()
     names = [c["definition"]["name"] for c in p0["constraints"] if c["type"] == 1000]
-    assert names == [GRID_BACKEND[1], CONSTRAINT_NAME, NO_FIVE_NAME], names
+    assert names == [GRID_ROWCOL.title, CONSTRAINT_NAME, NO_FIVE_NAME], names
     no_five = p0["constraints"][-1]["definition"]
     assert [c["name"] for c in no_five["components"]] == [NO_FIVE_COMPONENT]
     assert json.dumps(gen0["circles"]) in no_five["backend"]["code"]

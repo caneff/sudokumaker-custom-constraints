@@ -11,25 +11,17 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from document import NO_RING_RULES_PREFIX, board_document
+from document import GRID_ROWCOL, NO_RING_RULES_PREFIX, backend_code, board_document
 from lanes import Lane, named_files
 from minify import minify_file
 from sm_document import code_constraint
-
-# A no-ring board's one shared backend: every row and column of the whole grid
-# as a house. It takes the place of both frame backends there, since a board
-# with no ring has no ring lines to drop and no corners to pin.
-GRID_BACKEND = ("grid-rowcol", "Grid Rows and Columns")
-
 
 def grid_backend_constraint(keep_comments=False):
     """The whole-grid rows-and-columns constraint a no-ring board ships, its
     code read from the working tree. `keep_comments` is the annotated-link
     build."""
-    name, title = GRID_BACKEND
     return code_constraint(
-        title,
-        minify_file(pathlib.Path(__file__).parent / f"{name}.js", keep_comments),
+        GRID_ROWCOL.title, backend_code(GRID_ROWCOL, keep_comments)
     )
 
 
@@ -110,7 +102,7 @@ class NoRing(Lane):
     # No ring means no inner grid to name.
     rules_prefix = NO_RING_RULES_PREFIX
     # A no-ring board ships the grid backend in place of the two frame ones.
-    generated = (GRID_BACKEND[1],)
+    generated = (GRID_ROWCOL.title,)
     # `check` holds the clue labels to the drawn groups, and a rebuild
     # compares the groups, so the labels are not board data either.
     derived = frozenset({2002})

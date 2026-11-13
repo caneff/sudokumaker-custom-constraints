@@ -17,6 +17,7 @@ import tempfile
 import tomllib
 
 import check_layout
+import document
 from check_layout import (
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
@@ -32,7 +33,7 @@ from check_layout import (
 )
 from manifest import Manifest, load_manifest
 from minify import minify_file
-from no_ring import GRID_BACKEND
+from document import GRID_ROWCOL, SHARED_BACKENDS
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
@@ -1002,6 +1003,18 @@ if __name__ == "__main__":
         assert "gen_6x6.json" in violations[0], violations[0]
         assert "House GAC" in violations[0], violations[0]
 
+    # ...and so does a no-ring board's: the registry covers the grid backend too
+    with example(
+        extra_links=["PUZZLE_LINK_6x6.txt"],
+        extra_gens=["gen_6x6.json"],
+        contents={
+            "gen_6x6.json": _gen("// a copy", name="Grid Rows and Columns")
+        },
+    ) as (root, d):
+        violations = check_gen_frame_backends(d)
+        assert len(violations) == 1, violations
+        assert "Grid Rows and Columns" in violations[0], violations[0]
+
     # A gen JSON that does not parse stops the gate. It is the board's record,
     # and a corrupt one must not drop out of the checks that read it.
     with example(
@@ -1387,11 +1400,11 @@ if __name__ == "__main__":
     def named(title, **extra):
         return {"definition": {"name": title}, **extra}
 
-    no_ring_doc = LinkFacts.of(doc(named(GRID_BACKEND[1])))
+    no_ring_doc = LinkFacts.of(doc(named(GRID_ROWCOL.title)))
     assert no_ring_doc.kind is LinkKind.NO_RING and no_ring_doc.ringless, no_ring_doc
     assert no_ring_doc.house_source is HouseSource.NO_RING_BACKEND, no_ring_doc
     # a no-ring backend wins over the document type: it is the stronger claim
-    both = LinkFacts.of(doc(named(GRID_BACKEND[1]), type="sudoku"))
+    both = LinkFacts.of(doc(named(GRID_ROWCOL.title), type="sudoku"))
     assert both.kind is LinkKind.NO_RING, both
     sudoku_doc = LinkFacts.of(doc(type="sudoku"))
     assert sudoku_doc.kind is LinkKind.SUDOKU_DOCUMENT and sudoku_doc.ringless, (
@@ -1406,9 +1419,9 @@ if __name__ == "__main__":
     assert LinkFacts.of(doc({"type": 2003})).house_source is HouseSource.SUDOKU_RULES
     # backend titles keep constraint order and skip unrelated names
     ordered = LinkFacts.of(
-        doc(named(check_layout.CORNERS_TITLE), named("Mine"), named(GRID_BACKEND[1]))
+        doc(named(check_layout.CORNERS_TITLE), named("Mine"), named(GRID_ROWCOL.title))
     )
-    assert ordered.backend_titles == (check_layout.CORNERS_TITLE, GRID_BACKEND[1])
+    assert ordered.backend_titles == (check_layout.CORNERS_TITLE, GRID_ROWCOL.title)
     assert "Mine" in ordered.constraint_names, ordered
     # interior: the region cells, or None when the size is not declared
     regions = LinkFacts.of(
@@ -1416,15 +1429,30 @@ if __name__ == "__main__":
     )
     assert regions.interior == frozenset({0, 1, 3, 4}), regions
     assert LinkFacts.of(doc(width=None)).interior is None
-    # reading the titles never minifies a backend (ARCH-8 a)
-    real = check_layout.frame_backend_files
-    check_layout.frame_backend_files = lambda *a, **k: (_ for _ in ()).throw(
-        AssertionError("LinkFacts minified the backends")
-    )
+    # reading the titles never minifies a backend (ARCH-8 a): stub every
+    # minify route the backends share -- the registry's reader and the minify
+    # entry under it -- so a minify through any of them fails the call
+    def refuse(*a, **k):
+        raise AssertionError("LinkFacts minified a backend")
+
+    every_title = [named(b.title) for b in SHARED_BACKENDS]
+    stubs = [
+        (check_layout, "backend_code"),
+        (check_layout, "component_code"),
+        (check_layout, "minify_file"),
+        (document, "backend_code"),
+        (document, "component_code"),
+        (document, "minify_file"),
+    ]
+    real = [getattr(m, n) for m, n in stubs]
+    for m, n in stubs:
+        setattr(m, n, refuse)
     try:
-        LinkFacts.of(doc(named(check_layout.CORNERS_TITLE)))
+        facts = LinkFacts.of(doc(*every_title))
     finally:
-        check_layout.frame_backend_files = real
+        for (m, n), r in zip(stubs, real):
+            setattr(m, n, r)
+    assert facts.backend_titles == tuple(b.title for b in SHARED_BACKENDS), facts
 
     # check_layout names no example: no string in its source equals the name
     # of a directory under examples/ -- a name-keyed table or an

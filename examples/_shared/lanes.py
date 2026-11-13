@@ -25,12 +25,13 @@ from board import Geometry, Spec, load_board, make_lines, ring_name, save_board
 from carve import generate
 from component_scan import describe_mismatch, mismatch
 from document import (
-    FRAME_BACKENDS,
+    FRAME_ALWAYS_ON,
+    FRAME_ROWCOL,
     HOUSE_GAC_BACKEND_TITLE,
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
+    backend_code,
     board_document,
-    frame_backend_code,
     frame_groups,
     house_gac_constraint,
 )
@@ -247,13 +248,12 @@ class _RingLane(Lane):
         return tuple(title for title, _ in self._frame_backends())
 
     def _frame_backends(self):
-        """`frame_backend_code()` less frame-rowcol when the Spec's interior
-        has no row/column houses."""
-        code = dict(frame_backend_code())
+        """`(title, code)` for each always-on frame backend, less frame-rowcol
+        when the Spec's interior has no row/column houses."""
         return [
-            (title, code[title])
-            for stem, title in FRAME_BACKENDS
-            if stem != "frame-rowcol" or self.spec.rowcol_houses
+            (b.title, backend_code(b))
+            for b in FRAME_ALWAYS_ON
+            if b is not FRAME_ROWCOL or self.spec.rowcol_houses
         ]
 
     @property

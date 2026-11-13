@@ -32,7 +32,7 @@ sys.path.insert(0, str(HERE))
 from board import load_board
 from build_size import MIN_DIGIT, SPEC
 from carve import unique
-from document import FRAME_BACKENDS
+from document import FRAME_ROWCOL
 from isofill_model import Board as IsofillBoard
 from isofill_model import model
 from lanes import RingGlobal
@@ -40,7 +40,7 @@ from ring_link import mismatches, stale_against_grid
 from sudoku_kit import cpsat
 from sudoku_kit.link_codec import decode_puzzle
 
-ROWCOL_TITLE = dict(FRAME_BACKENDS)["frame-rowcol"]
+ROWCOL_TITLE = FRAME_ROWCOL.title
 
 # Seconds per solve for this gate's proofs: well past what the shipped board
 # takes (OPTIMIZATION_LOG.md has the figure), so a loaded box does not turn a
