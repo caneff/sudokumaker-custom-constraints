@@ -139,6 +139,18 @@ LINK_RE = re.compile(
 )
 
 
+def link_tags(filename):
+    """The tags `filename` carries, read once from `LINK_RE`'s groups. Empty
+    for a name the grammar rejects: a link found by its `LINK_PREFIX` text, or a
+    malformed `PUZZLE_LINK*` name, claims no tag and so earns no exemption."""
+    match = LINK_RE.match(filename)
+    if not match:
+        return frozenset()
+    return frozenset(
+        t for t, g in zip(TAGS, match.groups()[-len(TAGS) :], strict=True) if g
+    )
+
+
 def check_lanes(example_dir):
     """`main.js` (the local, drawn-groups paste target) must never build the
     frame itself; `main-global.js` (the whole-grid paste target) must never
@@ -202,9 +214,9 @@ def check_gen_link_pairing(example_dir, manifest):
         # "suffix" is not well-formed either, so pairing does not pile on.
         if not LINK_RE.match(link.name):
             continue
-        suffix = _link_suffix(link.name, "PUZZLE_LINK", ".txt")
-        if set(suffix.split("_")) & NO_GENERATOR_TAGS:
+        if link_tags(link.name) & NO_GENERATOR_TAGS:
             continue
+        suffix = _link_suffix(link.name, "PUZZLE_LINK", ".txt")
         if link.name in manifest.generator_less_links:
             continue
         gen_name = f"gen_{suffix}.json" if suffix else "gen.json"
@@ -251,11 +263,6 @@ def committed_links(example_dir):
     return named + sniffed
 
 
-def _shown(example_dir, link):
-    """`link`'s path inside its example, as a violation names it."""
-    return link.relative_to(example_dir).as_posix()
-
-
 def is_sudoku_document(puzzle):
     """Is this a "sudoku" document? The app prepends SudokuRules to one --
     every row and column of the whole grid a house (bundle.claude.js:11450-11456,
@@ -281,9 +288,9 @@ def _ring_state(puzzle):
     return sum(1 for i in ring if cells[i]), len(ring)
 
 
-def check_share_ready(example_dir, link, puzzle, manifest, facts):
+def check_share_ready(link, manifest):
     """Return one violation string per pre-share criterion `link` (a
-    committed link, decoded as `puzzle`) fails: the link opens clean, the ring is
+    `CommittedLink`) fails: the link opens clean, the ring is
     not filled end to end, and the rules text carries the sudoku prefix
     (docs/share-checklist.md).
 
@@ -291,27 +298,29 @@ def check_share_ready(example_dir, link, puzzle, manifest, facts):
     filled hands the solver every outside clue, which is the recurring share
     mistake. It is a floor, not the whole criterion -- "no unnecessary clue"
     still needs a human against the recorded carve."""
-    name = example_dir.name
+    puzzle, facts = link.puzzle, link.facts
     violations = []
 
     # The clued twins fill every outside clue on purpose -- that is what the
     # name means, and app-solve.mjs reads them with --ring-clues. The
     # entered-values check and the full-ring check do not apply to them; the
     # prefix check still does.
-    clued = f"_{TAGS[0]}" in link.name
+    clued = "clued" in link.tags
     entered = sum(
         1 for cell in puzzle["cells"] if "value" in cell and not cell.get("given")
     )
     if entered and not clued:
         violations.append(
-            f"{name}: {_shown(example_dir, link)} has {entered} entered value(s) on non-given cells"
+            link.fail(f"has {entered} entered value(s) on non-given cells")
         )
 
     ring_filled, ring_total = (0, 0) if facts.ringless else _ring_state(puzzle)
     if ring_total and ring_filled == ring_total and not clued:
         violations.append(
-            f"{name}: {_shown(example_dir, link)} fills all {ring_total} ring cells -- curate "
-            f"the clue set, or name the link _clued if every clue is meant"
+            link.fail(
+                f"fills all {ring_total} ring cells -- curate "
+                f"the clue set, or name the link _clued if every clue is meant"
+            )
         )
 
     ringless = facts.ringless or manifest.rules_prefix == "ringless"
@@ -319,15 +328,13 @@ def check_share_ready(example_dir, link, puzzle, manifest, facts):
     if manifest.rules_prefix != "none" and not puzzle.get("comment", "").startswith(
         prefix
     ):
-        violations.append(
-            f"{name}: {_shown(example_dir, link)} comment missing rules prefix"
-        )
+        violations.append(link.fail("comment missing rules prefix"))
 
     return violations
 
 
-def check_components(example_dir, link, puzzle):
-    """Return one violation string per custom constraint in `puzzle`
+def check_components(link, manifest):
+    """Return one violation string per custom constraint in `link`'s puzzle
     whose shipped component set differs from the set its own embedded code
     registers: the backend, plus any shipped component that constructs another
     in its place (`new customComponents.<Name>`, a wrapper swapping itself
@@ -353,9 +360,8 @@ def check_components(example_dir, link, puzzle):
     carry them, and a note that names a component must not read as a
     registration.
     """
-    name = example_dir.name
     violations = []
-    for constraint in puzzle.get("constraints", []):
+    for constraint in link.puzzle.get("constraints", []):
         definition = constraint.get("definition")
         if not definition:
             continue
@@ -372,7 +378,7 @@ def check_components(example_dir, link, puzzle):
             ]
         )
         violations.extend(
-            f"{name}: {_shown(example_dir, link)} constraint {definition['name']!r}: {problem}"
+            link.fail(f"constraint {definition['name']!r}: {problem}")
             for problem in describe_mismatch(*mismatch(shipped, registering))
         )
 
@@ -522,6 +528,35 @@ class LinkFacts:
         return self.kind is not LinkKind.FRAME
 
 
+@dataclasses.dataclass(frozen=True)
+class CommittedLink:
+    """One committed link, read once and handed to every per-link check:
+    `example` (the example's directory name), `shown` (its path inside the
+    example, as a violation names it), `tags` (from `link_tags`: empty for a
+    link found by its `LINK_PREFIX` text), the decoded `puzzle` and its
+    `LinkFacts`."""
+
+    example: str
+    shown: str
+    tags: frozenset
+    puzzle: dict
+    facts: LinkFacts
+
+    @classmethod
+    def of(cls, example_dir, path, puzzle):
+        return cls(
+            example_dir.name,
+            path.relative_to(example_dir).as_posix(),
+            link_tags(path.name),
+            puzzle,
+            LinkFacts.of(puzzle),
+        )
+
+    def fail(self, message):
+        """A violation naming this link, then `message`."""
+        return f"{self.example}: {self.shown} {message}"
+
+
 def declares_rows_and_columns(manifest, facts):
     """Does this link get its row and column houses from something other than
     a region or cage, which declared_houses' static read of the document
@@ -563,17 +598,29 @@ def _interior_cells(constraints, backend_titles, width, height):
     return frozenset(i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0)
 
 
+def interior_lines(facts, width, height):
+    """`(rows, columns)`: for each row and each column of the board, the
+    interior cells on it. A frame board's ring rows and columns hold none, so
+    a line may be empty."""
+    inside = facts.interior
+    rows = [[i for i in inside if i // width == r] for r in range(height)]
+    columns = [[i for i in inside if i % width == c] for c in range(width)]
+    return rows, columns
+
+
 def interior_line_lengths(facts, width, height):
     """How many interior cells each row and each column holds, empty lines
-    dropped -- a frame board's ring rows and columns hold none."""
-    inside = facts.interior
-    rows = ([i for i in inside if i // width == r] for r in range(height))
-    columns = ([i for i in inside if i % width == c] for c in range(width))
-    return {len(line) for line in (*rows, *columns) if line}
+    dropped."""
+    return {
+        len(line)
+        for lines in interior_lines(facts, width, height)
+        for line in lines
+        if line
+    }
 
 
-def check_houses(example_dir, link, puzzle, manifest, facts):
-    """Return one violation string per interior row or column of `puzzle`
+def check_houses(link, manifest):
+    """Return one violation string per interior row or column of `link`'s puzzle
     that is neither a house the document declares nor one the shared frame
     backend declares in JS.
 
@@ -590,14 +637,13 @@ def check_houses(example_dir, link, puzzle, manifest, facts):
 
     Interior is `LinkFacts.interior`.
     """
-    name = example_dir.name
+    puzzle, facts = link.puzzle, link.facts
     if not manifest.houses:
         return []
 
     if facts.interior is None:
         return []
     width, height = puzzle["width"], puzzle["height"]
-    inside = facts.interior
 
     # A board carrying a row/column backend declares its lines in JS, so
     # counting missing rows here would send the reader after a constraint that
@@ -613,23 +659,23 @@ def check_houses(example_dir, link, puzzle, manifest, facts):
 
     houses = declared_houses(puzzle)
     violations = []
-    for label, lines in (
-        ("row", [[i for i in inside if i // width == r] for r in range(height)]),
-        ("column", [[i for i in inside if i % width == c] for c in range(width)]),
-    ):
+    rows, columns = interior_lines(facts, width, height)
+    for label, lines in (("row", rows), ("column", columns)):
         missing = sum(1 for line in lines if line and frozenset(line) not in houses)
         if missing:
             violations.append(
-                f"{name}: {_shown(example_dir, link)} declares no house for {missing} interior "
-                f"{label}(s) -- a region constraint gives boxes only, so rows and "
-                f"columns need their own constraints (docs/gotchas.md #9)"
+                link.fail(
+                    f"declares no house for {missing} interior "
+                    f"{label}(s) -- a region constraint gives boxes only, so rows "
+                    f"and columns need their own constraints (docs/gotchas.md #9)"
+                )
             )
     return violations
 
 
-def check_stale_backend_code(example_dir, link, puzzle, manifest):
+def check_stale_backend_code(link, manifest):
     """Return one violation per shared frame backend or shared component `link`
-    (decoded as `puzzle`) ships with code that is not the copy in the tree.
+    ships with code that is not the copy in the tree.
 
     BOTH frame backends need checking here and only here. `check_components`
     cannot see `frame-corners.js` at all: it registers a
@@ -655,47 +701,43 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     `_annotated` link under `annotated_keeps_comments` embeds the
     comment-keeping copy, so a prose edit does stale it: rebuild it too.
     """
-    name = example_dir.name
     # An annotated link embeds the shared backends and the shared component
     # through the comment-keeping minify mode, not the usual full strip --
     # compare it against those copies instead, or every rebuild would read as
     # stale. The manifest says which example builds one.
-    annotated = manifest.annotated_keeps_comments and "annotated" in link.stem.split(
-        "_"
-    )
+    annotated = manifest.annotated_keeps_comments and "annotated" in link.tags
     current = frame_backend_files(keep_comments=annotated)
     comp_name, comp_source, comp_want = house_gac_component_file(
         keep_comments=annotated
     )
+
+    def stale(source):
+        return link.fail(
+            f"embeds a stale copy of {source} -- "
+            f"rebuild it in the same commit as the change (the example's "
+            f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
+            f"for a hand-built board)"
+        )
+
     violations = []
-    for constraint in puzzle.get("constraints", []):
+    for constraint in link.puzzle.get("constraints", []):
         definition = constraint.get("definition") or {}
         title = definition.get("name")
         if title in current:
             source, want = current[title]
             if definition.get("backend", {}).get("code") != want:
-                violations.append(
-                    f"{name}: {_shown(example_dir, link)} embeds a stale copy of {source} -- "
-                    f"rebuild it in the same commit as the change (the example's "
-                    f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
-                    f"for a hand-built board)"
-                )
+                violations.append(stale(source))
         comp = next(
             (c for c in definition.get("components", []) if c["name"] == comp_name),
             None,
         )
         if comp is not None and comp.get("code") != comp_want:
-            violations.append(
-                f"{name}: {_shown(example_dir, link)} embeds a stale copy of {comp_source} -- "
-                f"rebuild it in the same commit as the change (the example's "
-                f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
-                f"for a hand-built board)"
-            )
+            violations.append(stale(comp_source))
     return violations
 
 
-def check_digit_range(example_dir, link, puzzle, manifest, facts):
-    """Return one violation if `puzzle` ships a frame backend and declares no
+def check_digit_range(link, manifest):
+    """Return one violation if `link`'s puzzle ships a frame backend and declares no
     digit range, or a range that does not span the interior line.
 
     Both backends read `helpers.digits`, and the app defaults a custom puzzle
@@ -708,7 +750,7 @@ def check_digit_range(example_dir, link, puzzle, manifest, facts):
     the line and not merely for being there. None of it shows on the board or
     in the source text.
     """
-    name = example_dir.name
+    puzzle, facts = link.puzzle, link.facts
     carried = facts.backend_titles
     if not carried:
         return []
@@ -716,10 +758,12 @@ def check_digit_range(example_dir, link, puzzle, manifest, facts):
     lo, hi = puzzle.get("minDigit"), puzzle.get("maxDigit")
     if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
         return [
-            f"{name}: {_shown(example_dir, link)} ships {sorted(carried)} but declares no "
-            f"digit range -- the app defaults a custom puzzle to 1..9 whatever "
-            f"the grid size, so the range rests on that default, not on the "
-            f"document. Pin minDigit/maxDigit on the document (#394)"
+            link.fail(
+                f"ships {sorted(carried)} but declares no "
+                f"digit range -- the app defaults a custom puzzle to 1..9 whatever "
+                f"the grid size, so the range rests on that default, not on the "
+                f"document. Pin minDigit/maxDigit on the document (#394)"
+            )
         ]
 
     width, height = puzzle.get("width"), puzzle.get("height")
@@ -733,12 +777,14 @@ def check_digit_range(example_dir, link, puzzle, manifest, facts):
     if lengths and lengths != {span}:
         cells = "/".join(str(n) for n in sorted(lengths))
         return [
-            f"{name}: {_shown(example_dir, link)} ships {sorted(carried)} and declares "
-            f"{span} digits (minDigit {lo}, maxDigit {hi}) against {cells} "
-            f"cell interior lines -- a line as long as the range is a house, "
-            f"any other length falls back to plain all-different, and the "
-            f"corner pin lands on minDigit whether or not the board uses it. "
-            f"Match the range to the interior (#394)"
+            link.fail(
+                f"ships {sorted(carried)} and declares "
+                f"{span} digits (minDigit {lo}, maxDigit {hi}) against {cells} "
+                f"cell interior lines -- a line as long as the range is a house, "
+                f"any other length falls back to plain all-different, and the "
+                f"corner pin lands on minDigit whether or not the board uses it. "
+                f"Match the range to the interior (#394)"
+            )
         ]
     return []
 
@@ -814,6 +860,16 @@ def required_files(manifest):
     return REQUIRED_FILES
 
 
+# Every per-link check, run in this order over each committed link.
+LINK_CHECKS = (
+    check_share_ready,
+    check_components,
+    check_stale_backend_code,
+    check_digit_range,
+    check_houses,
+)
+
+
 def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
@@ -872,27 +928,23 @@ def check_example(example_dir):
     violations.extend(check_gen_json_parses(example_dir))
     violations.extend(check_gen_frame_backends(example_dir))
 
-    for link in committed_links(example_dir):
-        if link.name.startswith("PUZZLE_LINK") and not LINK_RE.match(link.name):
+    for path in committed_links(example_dir):
+        shown = path.relative_to(example_dir).as_posix()
+        if path.name.startswith("PUZZLE_LINK") and not LINK_RE.match(path.name):
             violations.append(
-                f"{name}: link name {_shown(example_dir, link)} does not match "
+                f"{name}: link name {shown} does not match "
                 f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "
                 f"(size=NxN, tags in fixed order {list(TAGS)})"
             )
         # Decoded once, here: every check below reads the same puzzle.
         try:
-            puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+            puzzle = decode_puzzle(path.read_text().strip())["puzzle"]
         except Exception as e:
-            violations.append(
-                f"{name}: {_shown(example_dir, link)} failed to decode: {e}"
-            )
+            violations.append(f"{name}: {shown} failed to decode: {e}")
             continue
-        facts = LinkFacts.of(puzzle)
-        violations.extend(check_share_ready(example_dir, link, puzzle, manifest, facts))
-        violations.extend(check_components(example_dir, link, puzzle))
-        violations.extend(check_stale_backend_code(example_dir, link, puzzle, manifest))
-        violations.extend(check_digit_range(example_dir, link, puzzle, manifest, facts))
-        violations.extend(check_houses(example_dir, link, puzzle, manifest, facts))
+        link = CommittedLink.of(example_dir, path, puzzle)
+        for check in LINK_CHECKS:
+            violations.extend(check(link, manifest))
 
     return violations
 
