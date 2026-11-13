@@ -150,6 +150,15 @@ class Lane:
         )
         assert doc["puzzle"]["minDigit"] == spec.min_digit
 
+    def encode(self, board):
+        """`board`'s document and its encoded link, checked: `build_doc`,
+        `encode_link` and `check` in one call, so no script can write a link
+        that skipped the check. Returns `(link, doc)`."""
+        doc = self.build_doc(board)
+        link = link_codec.encode_link(doc)
+        self.check(link, doc, board)
+        return link, doc
+
     def run(self, geo, seeds):
         """Search `seeds` for a board of geometry `geo` on this lane, build its
         link, and write both files. A rectangle's box is the builder's grammar
@@ -158,9 +167,7 @@ class Lane:
             "box_height * box_width must equal n"
         )
         board = generate(self.spec, geo, seeds, paths=self.paths)
-        doc = self.build_doc(board)
-        link = link_codec.encode_link(doc)
-        self.check(link, doc, board)
+        link, doc = self.encode(board)
         link_path, gen_path = self.files(
             geo.n, height=geo.height if geo.is_rect else None
         )
@@ -189,9 +196,7 @@ class Lane:
             "not carved here is rebuilt by its own build_link.py."
         )
         board = load_board(gen_path)
-        doc = self.build_doc(board)
-        link = link_codec.encode_link(doc)
-        self.check(link, doc, board)
+        link, doc = self.encode(board)
         assert link_path.exists(), (
             f"{link_path.name} does not exist: there is no committed link for "
             "this board to rebuild"
