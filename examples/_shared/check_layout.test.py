@@ -20,6 +20,7 @@ import check_layout
 from check_layout import (
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
+    CommittedLink,
     HouseSource,
     LinkFacts,
     LinkKind,
@@ -1052,12 +1053,13 @@ if __name__ == "__main__":
     # only the second
     def _checks(link_text):
         with example(contents={"PUZZLE_LINK.txt": link_text}) as (_, d):
-            link = d / "PUZZLE_LINK.txt"
-            puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+            path = d / "PUZZLE_LINK.txt"
+            puzzle = decode_puzzle(path.read_text().strip())["puzzle"]
             manifest = load_manifest(d)
+            link = CommittedLink.of(d, path, puzzle)
             return (
-                check_stale_backend_code(d, link, puzzle, manifest),
-                check_digit_range(d, link, puzzle, manifest, LinkFacts.of(puzzle)),
+                check_stale_backend_code(link, manifest),
+                check_digit_range(link, manifest),
             )
 
     stale_found, range_found = _checks(_link(frame_backend="stale", houses="none"))
@@ -1080,20 +1082,14 @@ if __name__ == "__main__":
     }
     widget = pathlib.Path("widget")
     found = check_digit_range(
-        widget,
-        widget / "PUZZLE_LINK.txt",
-        ring_no_boxes,
+        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", ring_no_boxes),
         Manifest(timed_component="WidgetComponent"),
-        LinkFacts.of(ring_no_boxes),
     )
     assert found == [], found
     wide = dict(ring_no_boxes, maxDigit=5)
     found = check_digit_range(
-        widget,
-        widget / "PUZZLE_LINK.txt",
-        wide,
+        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", wide),
         Manifest(timed_component="WidgetComponent"),
-        LinkFacts.of(wide),
     )
     assert len(found) == 1 and "3 cell interior lines" in found[0], found
 
@@ -1186,6 +1182,23 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert fixture in violations[0], violations
         assert "entered value" in violations[0], violations
+
+    # a link found only by its LINK_PREFIX text claims no tag: a name that
+    # merely contains `_clued` earns no exemption from the share checks
+    planted = "hunt_clued_record.txt"
+    with example(extra_links=[planted], contents={planted: _link(entered=True)}) as (
+        root,
+        _,
+    ):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert planted in violations[0] and "entered value" in violations[0], violations
+    assert check_layout.link_tags(planted) == frozenset()
+    assert check_layout.link_tags("PUZZLE_LINK_6x6_clued_annotated.txt") == {
+        "clued",
+        "annotated",
+    }
+    assert check_layout.link_tags("PUZZLE_LINK_original_clued.txt") == frozenset()
 
     # ...but the link-NAME grammar does not: a fixture names itself for what it
     # records, and only PUZZLE_LINK*.txt has a grammar to break
@@ -1349,21 +1362,15 @@ if __name__ == "__main__":
     widget = pathlib.Path("widget")
     assert (
         check_layout.check_share_ready(
-            widget,
-            widget / "PUZZLE_LINK.txt",
-            misfit,
+            CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", misfit),
             Manifest(timed_component="WidgetComponent"),
-            LinkFacts.of(misfit),
         )
         == []
     )
     fits = dict(misfit, cells=misfit["cells"][:9])
     found = check_layout.check_share_ready(
-        widget,
-        widget / "PUZZLE_LINK.txt",
-        fits,
+        CommittedLink.of(widget, widget / "PUZZLE_LINK.txt", fits),
         Manifest(timed_component="WidgetComponent"),
-        LinkFacts.of(fits),
     )
     assert len(found) == 1 and "fills all 8 ring cells" in found[0], found
 
