@@ -2,7 +2,10 @@
 // example's components. Run: node examples/_shared/recovery-lib.test.mjs
 
 import assert from 'assert'
-import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, reportLine } from './recovery-lib.mjs'
+import { mkdtempSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { loadComponents, makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, reportLine } from './recovery-lib.mjs'
 
 // the GAC floor prunes a group to only values some perfect matching allows
 // A 3-cell all-different group with values 1..3: cell 0 is pinned to 1, cell
@@ -128,4 +131,28 @@ console.log('recovery-lib.test.mjs: all seams pass')
   const stopsOnOne = { __mod: { * update (inst, p) { if (p.getValue(0) === 1) yield p.stop('one') } } }
   const r = search(s, { interior: [0], comps: [stopsOnOne], alldiffGroups: [], floorGroup: () => {}, validLeaf: () => true })
   assert.strictEqual(r.solutions, 1, 'the branch after a stopped one still counts')
+}
+
+// loadComponents builds each instance as the app's constructor does
+// The instance gets `cells` from getAffectedCells before setParams runs
+// (harness-lib's construct), and carries its module for the fixpoint.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'recovery-'))
+  writeFileSync(join(dir, 'Clue.js'), [
+    'function getAffectedCells (clue, line) { return [clue, ...line] }',
+    'function setParams (inst, clue, line) { inst.sawCells = inst.cells; inst.clue = clue }',
+    'function * update () {}'
+  ].join('\n'))
+  const mainSrc = 'puzzle.addConstraintComponent(new ClueComponent(\'c\', 0, [1, 2]))'
+  const [inst] = loadComponents({
+    here: dir,
+    files: [{ file: 'Clue.js', ctorName: 'ClueComponent' }],
+    mainSrc,
+    input: {},
+    frame: { W: 3, H: 1, idx: (r, c) => c + 3 * r }
+  })
+  assert.deepStrictEqual(inst.cells, [0, 1, 2], 'instance.cells is getAffectedCells\'s result')
+  assert.strictEqual(inst.sawCells, inst.cells, 'setParams runs after cells is set')
+  assert.strictEqual(inst.name, 'c')
+  assert.strictEqual(typeof inst.__mod.update, 'function', 'a file needs no names list for its lifecycle functions')
 }
