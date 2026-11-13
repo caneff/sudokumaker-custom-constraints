@@ -538,7 +538,7 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
   // A hand-built Change of a type the builders never make is refused: the app
   // skips a type outside its enum, so it would prune nothing there.
   assert.throws(() => runUpdate({ * update () { yield { type: 'RemoveCandidate', value: 2, cells: [0] } } }, {}, makePuzzle({ 0: 1 }, () => [1, 2])),
-    /unknown Change type "RemoveCandidate"/)
+    /unknown Change type "RemoveCandidate"/, 'a hand-built Change of an unknown type is refused')
 
   // A stop counts when it is yielded, not when it is built.
   const s = makePuzzle({ 0: 1 }, () => [1, 2])
