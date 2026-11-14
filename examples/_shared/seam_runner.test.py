@@ -20,6 +20,7 @@ from gate_lib import (
     ROOT_BUILD,
     by_mechanism,
     commands,
+    fixture_git_env,
     gate_tree,
     pants,
     pants_suites,
@@ -230,10 +231,7 @@ def agents_md_names_both_commands():
 
 
 def git(tree, *args):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    for who in ("AUTHOR", "COMMITTER"):
-        env[f"GIT_{who}_NAME"] = "fixture"
-        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
+    env = fixture_git_env()
     r = subprocess.run(
         ["git", *args], cwd=tree, env=env, capture_output=True, text=True
     )
@@ -924,11 +922,11 @@ def a_log_that_cannot_be_written_costs_one_stderr_line():
         blocked = pathlib.Path(tmp) / "blocked"
         blocked.write_text("")
         no_home = {"SEAM_RUNS_LOG": None, "XDG_CACHE_HOME": None, "HOME": None}
-        for log, extra in (
+        for log, env in (
             (blocked / "seam-runs.jsonl", None),
             (None, no_home),
         ):
-            r, _ = run_stubbed(["bash", RUNNER], root=tree, runs_log=log, extra=extra)
+            r, _ = run_stubbed(["bash", RUNNER], root=tree, runs_log=log, env=env)
             assert r.returncode == 0, f"a log failure changed the exit:\n{r.stderr}"
             assert r.stdout.splitlines()[-1] == f"{m} of {m} suites passed", r.stdout
             said = [x for x in r.stderr.splitlines() if "could not write" in x]

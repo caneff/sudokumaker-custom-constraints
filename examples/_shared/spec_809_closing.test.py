@@ -41,7 +41,6 @@ cross-unit edges (known_edges.test.py).
     uv run examples/_shared/spec_809_closing.test.py
 """
 
-import os
 import pathlib
 import re
 import shutil
@@ -53,7 +52,14 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from gate_lib import pants, pants_suites, run_logged, run_stubbed, runner_listing
+from gate_lib import (
+    fixture_git_env,
+    pants,
+    pants_suites,
+    run_logged,
+    run_stubbed,
+    runner_listing,
+)
 
 RUNNER = ["bash", "tests/all.sh"]
 
@@ -84,10 +90,7 @@ SANDBOXED, UNDECLARED = "examples/up-to-n:marker-contract.test.mjs", "main.js"
 
 
 def git(tree, *args):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    for who in ("AUTHOR", "COMMITTER"):
-        env[f"GIT_{who}_NAME"] = "fixture"
-        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
+    env = fixture_git_env()
     r = subprocess.run(
         ["git", *args], cwd=tree, env=env, capture_output=True, text=True
     )

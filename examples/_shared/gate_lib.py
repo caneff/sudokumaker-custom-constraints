@@ -133,6 +133,17 @@ def path_without(names, scratch):
     return os.pathsep.join(dirs)
 
 
+def fixture_git_env():
+    """The environment for a git call in a fixture repo: the caller's `GIT_*`
+    variables dropped, so an outer hook's repo never leaks in, and a fixed
+    author and committer identity."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    for who in ("AUTHOR", "COMMITTER"):
+        env[f"GIT_{who}_NAME"] = "fixture"
+        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
+    return env
+
+
 def run_logged(
     argv,
     root=ROOT,
@@ -142,7 +153,7 @@ def run_logged(
     unreported="",
     runs_log=None,
     pants_status="",
-    extra=None,
+    env=None,
 ):
     """Run `argv` from `root` with node, npx, uv, uvx and pants replaced by
     stubs that log their argv and exit 0, except the names in `real`; a name in
@@ -173,7 +184,7 @@ def run_logged(
             stub.chmod(0o755)
         log = pathlib.Path(tmp) / "log"
         log.touch()
-        env = {
+        run_env = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{path_without(absent, tmp)}",
             "GATE_LOG": str(log),
@@ -183,12 +194,12 @@ def run_logged(
             "GATE_PANTS_TEST_STATUS": str(pants_status or 0),
             "SEAM_RUNS_LOG": str(runs_log or pathlib.Path(tmp) / "seam-runs.jsonl"),
         }
-        for name, value in (extra or {}).items():
+        for name, value in (env or {}).items():
             if value is None:
-                env.pop(name, None)
+                run_env.pop(name, None)
             else:
-                env[name] = value
-        r = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True)
+                run_env[name] = value
+        r = subprocess.run(argv, cwd=root, env=run_env, capture_output=True, text=True)
         return r, log.read_text().splitlines()
 
 
