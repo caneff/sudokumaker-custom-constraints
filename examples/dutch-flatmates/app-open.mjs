@@ -9,7 +9,7 @@
 import fs from 'fs'
 import { join } from 'path'
 import { readGrid } from '../_shared/app-dom.mjs'
-import { withApp, solveInApp } from '../_shared/app-session.mjs'
+import { withApp, openLink, solveOpen } from '../_shared/app-session.mjs'
 
 const HERE = import.meta.dirname
 const live = process.argv.includes('--live')
@@ -22,23 +22,21 @@ await withApp({ live }, async app => {
   const page = await app.newPage()
   page.on('pageerror', e => console.error('PAGEERROR', e.message))
 
-  let opening, title, rules
-  const readOpening = async openPage => {
-    opening = await readGrid(openPage, size)
-    title = await openPage.title()
+  await openLink(page, link, { deterministic: false })
+  const opening = await readGrid(page, size)
+  const title = await page.title()
 
-    // The rules text shows on the play page, which "Playtest" opens in a new tab.
-    rules = null
-    if (live) {
-      const [play] = await Promise.all([openPage.context().waitForEvent('page'), openPage.getByText('Playtest', { exact: true }).click()])
-      await play.waitForLoadState('networkidle')
-      await play.waitForTimeout(1500)
-      rules = (await play.evaluate(() => document.body.innerText)).match(/Normal sudoku rules apply\.[^\n]*/)?.[0] ?? null
-      await play.close()
-    }
+  // The rules text shows on the play page, which "Playtest" opens in a new tab.
+  let rules = null
+  if (live) {
+    const [play] = await Promise.all([page.context().waitForEvent('page'), page.getByText('Playtest', { exact: true }).click()])
+    await play.waitForLoadState('networkidle')
+    await play.waitForTimeout(1500)
+    rules = (await play.evaluate(() => document.body.innerText)).match(/Normal sudoku rules apply\.[^\n]*/)?.[0] ?? null
+    await play.close()
   }
 
-  const { first, unique, sum, verdict, version } = await solveInApp(page, link, { afterOpen: readOpening, ringClues: true, deterministic: false, name: linkFile })
+  const { first, unique, sum, verdict, version } = await solveOpen(page, { ringClues: true, name: linkFile })
   if (verdict === '?') throw new Error('no verdict from the app')
   const solved = await readGrid(page, size)
 
