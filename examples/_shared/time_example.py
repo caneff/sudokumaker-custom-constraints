@@ -32,6 +32,7 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
 import app_timing
+from document import SHARED_BACKENDS
 from link_swap import swap_build
 from manifest import load_manifest
 from minify import minify_file
@@ -113,12 +114,13 @@ def registered_backend(doc, constraint_name):
 # main-global.js -- so it is detected, never assumed.
 BACKEND_FILES = ("main.js", "main-global.js")
 
-# A backend declared in `_shared/` rather than per-example: house-gac.js backs
-# the shared HouseGacComponent (document.HOUSE_GAC_BACKEND_TITLE). A
+# A backend declared in `_shared/` rather than per-example, read off the
+# registry (document.SHARED_BACKENDS): house-gac.js backs the shared
+# HouseGacComponent, for one. A
 # board that opts in has no per-example copy of its own to drift from the
 # committed one -- resolve_backend_file follows the shared file the same way
 # find_component_file already follows the shared component file, above.
-SHARED_BACKEND_FILES = ("house-gac.js",)
+SHARED_BACKEND_FILES = tuple(f"{b.stem}.js" for b in SHARED_BACKENDS)
 
 
 @functools.cache

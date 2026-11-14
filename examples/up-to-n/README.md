@@ -140,13 +140,12 @@ After a change to `main.js`, the component, `grid-rowcol.js`, the labels or
 the rules text, re-encode every committed board instead, with no search:
 
 ```
-uv run examples/up-to-n/build_size.py --rebuild 4 --local
-uv run examples/up-to-n/build_size.py --rebuild 6 --local
-uv run examples/up-to-n/build_size.py --rebuild 9 --local
-uv run examples/up-to-n/build_size.py --rebuild-minimal-9x9
+uv run examples/up-to-n/build_link.py --refresh
 ```
 
-`--local` is required: a no-ring board has only the drawn-groups lane.
+That rewrites all four links from their gen JSON. To rebuild one board,
+`build_size.py --rebuild <n> --local` does it (`--local` is required: a
+no-ring board has only the drawn-groups lane).
 
 **Clue labels.** A drawn group renders nothing in the app, so the builder
 draws each clued marker's number as a text label half a cell outside the grid,

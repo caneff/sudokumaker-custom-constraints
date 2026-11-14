@@ -8,13 +8,13 @@
 // line and `update` must kill it.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { upToN } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd, pick } = makeRng(368)
-const mod = load('UpToNComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('UpToNComponent.js')
 
 const ITERS = 20000
 const SIZES = [4, 6, 9]
@@ -44,8 +44,7 @@ function fuzz (label, { kind, D, n, atLeast = 1 }) {
       const clue = upToN(digits, target)
       const truth = {}
       for (let i = 0; i < n; i++) truth[i] = digits[i]
-      const inst = {}
-      mod.setParams(inst, cells, target, clue)
+      const inst = construct(mod, 'up-to-n', cells, target, clue)
       return {
         truth,
         seed: seeder(D),
@@ -90,8 +89,7 @@ for (const D of SIZES) {
     const clue = (rnd() * D * D) | 0
     const truth = {}
     for (let i = 0; i < D; i++) truth[i] = digits[i]
-    const inst = {}
-    mod.setParams(inst, cells, target, clue)
+    const inst = construct(mod, 'up-to-n', cells, target, clue)
     const accepted = mod.validate(inst, makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) }))
     const p = makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) })
     fixpoint(mod, inst, p)
@@ -108,8 +106,7 @@ console.log('update/validate agreement on filled lines:', runs, 'lines,', disagr
 
 {
   installGlobals(1, 4)
-  const inst = {}
-  mod.setParams(inst, [3, 2, 1, 0], 4, 1)
+  const inst = construct(mod, 'up-to-n', [3, 2, 1, 0], 4, 1)
   const p = makePuzzle({ 0: 1, 1: 2, 2: 3, 3: 4 }, (c, v) => [v], { houses: [[0, 1, 2, 3]] })
   fixpoint(mod, inst, p)
   // cell 3 is R1C4 on the mock's 9-wide naming; the lowest cell id, 0, is R1C1.

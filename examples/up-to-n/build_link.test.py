@@ -64,14 +64,13 @@ def model_accepts(digits, target, clue):
 
 def validate_accepts(cases):
     script = f"""
-import {{ makeIo, makePuzzle, installGlobals }} from './examples/_shared/harness-lib.mjs'
+import {{ construct, makeIo, makePuzzle, installGlobals }} from './examples/_shared/harness-lib.mjs'
 const {{ load }} = makeIo({json.dumps(str(HERE))})
-const mod = load('UpToNComponent.js', ['setParams', 'validate'])
+const mod = load('UpToNComponent.js')
 installGlobals(1, 9)
 const out = {json.dumps(cases)}.map(([digits, target, clue]) => {{
   const truth = Object.fromEntries(digits.map((d, i) => [i, d]))
-  const inst = {{}}
-  mod.setParams(inst, digits.map((_, i) => i), target, clue)
+  const inst = construct(mod, 'up-to-n', digits.map((_, i) => i), target, clue)
   return mod.validate(inst, makePuzzle(truth, (c, v) => [v], {{ kind: 'bare' }}))
 }})
 console.log(JSON.stringify(out))
@@ -196,8 +195,7 @@ def test_every_committed_board_is_unique_and_rebuilds_without_a_search():
         link = (HERE / link_name).read_text()
         assert NoRing(SPEC).rebuild(n, pair=files) + "\n" == link, (
             f"{link_name} is not what --rebuild makes of {gen_name}: regenerate "
-            f"it with `build_size.py "
-            f"{'--rebuild-minimal-9x9' if named else f'--rebuild {n} --local'}`"
+            f"it with `build_link.py --refresh`"
         )
 
 

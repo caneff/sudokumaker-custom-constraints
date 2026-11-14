@@ -4,14 +4,14 @@
 // The digit count D stays below the board's so the enumeration stays
 // exhaustive.
 
-import { installGlobals, makeIo, makeRng, randomCandidates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, randomCandidates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const mod = load('OutsideSudokuComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('OutsideSudokuComponent.js')
 
 // Every valid tuple for one line shape: the line ranges over {1..D}^m, and the
 // clue over the distinct digits of the window — the rule says the clue appears
@@ -55,8 +55,7 @@ for (const { N, bh, bw, down, from, m, D } of CASES) {
   const r = fuzzSoundness(`outside-sudoku N=${N} m=${m} D=${D}`, {
     iters: states.length,
     draw: iter => {
-      const inst = {}
-      mod.setParams(inst, geo.clue, line, w)
+      const inst = construct(mod, 'outside-sudoku', geo.clue, line, w)
       return {
         truth: states[iter],
         seed,

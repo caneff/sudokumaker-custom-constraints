@@ -83,7 +83,7 @@ def test_check_catches_a_shipped_component_the_backend_never_registers():
 def test_check_accepts_a_backend_that_reaches_for_a_built_in_component():
     # SudokuMaker provides the built-ins, so a backend that constructs one
     # ships no component file for it and the link is not missing anything.
-    # `check_layout.check_components` says the same at the sweep seam; both
+    # `link_checks.check_components` says the same at the sweep seam; both
     # callers share `component_scan.mismatch`.
     with temp_spec(
         ["FooComponent.js"],
@@ -193,6 +193,26 @@ def test_a_lane_refuses_a_spec_of_another_kind():
             assert "local_components" in str(e), e
         else:
             raise AssertionError("NoRing ignored a local_components it cannot ship")
+
+
+def test_encode_returns_the_checked_link_and_refuses_one_check_rejects():
+    class Unruled(RingGlobal):
+        def build_doc(self, board):
+            doc = super().build_doc(board)
+            doc["puzzle"]["comment"] = "Rules. test rules"
+            return doc
+
+    with temp_spec(["FooComponent.js"]) as spec:
+        board = make_board()
+        link, doc = RingGlobal(spec).encode(board)
+        assert link == link_codec.encode_link(doc)
+        assert doc == RingGlobal(spec).build_doc(board)
+        try:
+            Unruled(spec).encode(board)
+        except AssertionError as e:
+            assert "Normal sudoku rules apply" in str(e), e
+        else:
+            raise AssertionError("encode returned a link check rejects")
 
 
 def test_run_and_rebuild_check_the_link_before_writing_it():
@@ -995,6 +1015,7 @@ if __name__ == "__main__":
     test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag()
     test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane()
     test_a_lane_refuses_a_spec_of_another_kind()
+    test_encode_returns_the_checked_link_and_refuses_one_check_rejects()
     test_run_and_rebuild_check_the_link_before_writing_it()
     test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues()
     test_lane_files_plain_names_the_9x9_and_tags_every_other_size()

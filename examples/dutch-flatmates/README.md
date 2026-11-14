@@ -53,7 +53,7 @@ No local lane (`main-global.js`, `PUZZLE_LINK_local.txt`, `gen_local.json`):
 one whole-grid constraint has no drawn groups to split a lane from, so
 its `example.toml` says `lanes = "single"`; that is what the checker needed.
 Its manifest also says `rules_prefix = "ringless"`, which does no work for this board: the link carries the shared
-grid backend, so `check_layout.is_no_ring` already gives it the "Normal sudoku
+grid backend, so `link_checks.is_no_ring` already gives it the "Normal sudoku
 rules apply." opening. It matters only if the board is ever rebuilt without that
 backend.
 
@@ -92,7 +92,7 @@ plus the credit.
   the app's production bundle writes; the app solving the board to a unique
   verdict is the only check they have beyond that.
 - **Why `NoFiveComponent` is its own constraint, in its own file.**
-  `check_layout.check_components` compares each custom constraint's shipped
+  `link_checks.check_components` compares each custom constraint's shipped
   components with what its own backend registers, so a second constraint that
   ships and registers one component passes with no allow-list. It is not a shared
   component: no other example needs it.

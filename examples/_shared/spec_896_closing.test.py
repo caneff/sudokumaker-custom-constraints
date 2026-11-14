@@ -44,7 +44,7 @@ import check_layout
 import check_research_loads
 import sm_document
 from board import Geometry
-from check_layout import LinkFacts, LinkKind
+from link_checks import LinkFacts, LinkKind
 from sudoku_kit.link_codec import decode_puzzle
 
 # The shared builders and every example's builder code: tests are left out,

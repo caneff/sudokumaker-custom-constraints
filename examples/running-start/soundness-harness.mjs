@@ -7,7 +7,7 @@
 // puzzle reaches the A + B === n + 1 case that drives its unimodal branch.
 
 import {
-  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, fixpoint, fuzzSoundness, finishHarness
+  TIES_FLAG, construct, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, fixpoint, fuzzSoundness, finishHarness
 } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
@@ -17,9 +17,9 @@ const { rnd } = makeRng()
 const N = 9
 installGlobals(1, N)
 
-const loadLine = allowTies => load('RunningStartComponent.js', ['setParams', 'update', 'validate'],
+const loadLine = allowTies => load('RunningStartComponent.js', [],
   src => patchSource(src, TIES_FLAG, `const ALLOW_TIES = ${allowTies}`))
-const pairMod = load('RunningStartPairComponent.js', ['setParams', 'update', 'validate'])
+const pairMod = load('RunningStartPairComponent.js')
 
 // A third statement of the rule (CODING_STANDARDS.md, "The rule has one
 // home"): it must agree with the component and with build_size.rs.
@@ -58,8 +58,7 @@ function fuzzLine (label, { allowTies, kind, n, iters, digitsOf }) {
       const digits = digitsOf ? digitsOf(n) : makeLine(rnd, kind, n, N)
       const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
       for (let i = 0; i < n; i++) truth[i] = digits[i]
-      const inst = {}
-      mod.setParams(inst, LINE_CLUE, cells)
+      const inst = construct(mod, 'running-start', LINE_CLUE, cells)
       return { truth, seed: seeder, houses: housesOf(kind, cells), parts: [{ mod, inst }], note: `line ${digits.join('')}` }
     }
   })
@@ -92,8 +91,7 @@ for (const allowTies of [false, true]) {
       const [clue, line] = sol.groups[iter % sol.groups.length]
       const truth = {}
       for (const c of [clue, ...line]) truth[c] = sol.val[c]
-      const inst = {}
-      mod.setParams(inst, clue, line)
+      const inst = construct(mod, 'running-start', clue, line)
       return { truth, seed: seeder, houses: [line], parts: [{ mod, inst }], note: `clue ${clue}` }
     }
   })
@@ -112,8 +110,7 @@ for (const allowTies of [false, true]) {
   const mod = loadLine(allowTies)
   const n = 7
   const cells = Array.from({ length: n }, (_, i) => i)
-  const inst = {}
-  mod.setParams(inst, LINE_CLUE, cells)
+  const inst = construct(mod, 'running-start', LINE_CLUE, cells)
   for (let iter = 0; iter < 2000; iter++) {
     const digits = makeTieLine(n)
     const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
@@ -156,8 +153,7 @@ function fuzzPair (label, { allowTies, kind, digitsOf, iters }) {
       const line = digits.map((_, i) => i)
       const truth = { [CA]: runWith(allowTies, digits), [CB]: runWith(allowTies, [...digits].reverse()) }
       for (let i = 0; i < digits.length; i++) truth[i] = digits[i]
-      const inst = {}
-      mod.setParams(inst, CA, CB, line)
+      const inst = construct(mod, 'running-start', CA, CB, line)
       return {
         truth,
         seed: seeder,

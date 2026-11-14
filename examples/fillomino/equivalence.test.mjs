@@ -14,31 +14,33 @@
 // - Fuzzed states, around a real solution and not, through one instance pair
 //   each, so the cache also sees states that jump around.
 //
-// Each call is run twice: once with each removal applied as it is made (the
-// harness mock's reading) and once with every removal held until the call
-// ends, so the comparison does not hang on when the solver applies a change.
+// Each call is run twice, so the comparison does not hang on when the solver
+// applies a change. The live mode drains through harness-lib's runUpdate: each
+// removal applied as it is yielded (the app's order), the drain ended by the
+// first change that fails, and a change built but never yielded an error. The
+// deferred mode holds every yielded change until the call ends, then applies
+// them all, going on past one that fails, and does not check for a change
+// that was never yielded.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makePuzzle, makeRng, patchSource, randomCandidates, runUpdate } from '../_shared/harness-lib.mjs'
 import { fixtureBoards } from './bound-screen-lib.mjs'
 import { FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const FROZEN = '95bf886'
 const io = makeIo(HERE)
-const NAMES = ['setParams', 'update']
-const ref = io.load(`.golden/FillominoComponent.${FROZEN}.js`, NAMES)
+const ref = io.load(`.golden/FillominoComponent.${FROZEN}.js`)
 // The cell count came after the rewrite, so it stays out of the comparison.
-const cur = io.load('FillominoComponent.js', NAMES, src =>
+const cur = io.load('FillominoComponent.js', [], src =>
   patchSource(src, 'function * cellCountRule (', 'function * cellCountRule () { return MORE }\nfunction * cellCountRuleRemoved ('))
 
 const REMOVERS = ['removeCandidateFromCell', 'removeCandidatesFromCell', 'removeCandidateFromCells', 'removeCandidatesFromCells']
 // One `update` call on `p`, returning its removals as [cell, digit mask]
-// pairs in the order they were made. `deferred` holds them until the call is
-// over, then applies them.
+// pairs in the order they were built. `deferred` holds the yielded changes
+// until the call is over, then applies them.
 function oneCall (mod, inst, p, deferred) {
   const log = []
-  const held = []
   const view = Object.create(p)
   for (const name of REMOVERS) {
     const single = name.startsWith('removeCandidateFrom')
@@ -46,11 +48,14 @@ function oneCall (mod, inst, p, deferred) {
     view[name] = (what, where) => {
       const mask = single ? 1 << what : Number(what)
       for (const c of many ? where : [where]) log.push([c, mask])
-      if (deferred) held.push(() => p[name](what, where)); else p[name](what, where)
+      return p[name](what, where)
     }
   }
-  Array.from(mod.update(inst, view))
-  for (const apply of held) apply()
+  if (!deferred) {
+    runUpdate(mod, inst, view)
+    return log
+  }
+  for (const change of [...mod.update(inst, view)]) p.applyChange(change)
   return log
 }
 
@@ -91,10 +96,8 @@ function lockstepSearch (board, deferred, nodeCap) {
   const { width, height, cap, givens, name } = board
   installGlobals(1, cap)
   const cells = Array.from({ length: width * height }, (_, i) => i)
-  const a = {}
-  const b = {}
-  ref.setParams(a, cells, width, height)
-  cur.setParams(b, cells, width, height)
+  const a = construct(ref, name, cells, width, height)
+  const b = construct(cur, name, cells, width, height)
   const pa = blank(width, height, cap, givens)
   const pb = blank(width, height, cap, givens)
   let nodes = 0
@@ -134,10 +137,8 @@ for (const [name, { truth, width, height, cap }] of FIXTURES) {
   const cells = Array.from({ length: width * height }, (_, i) => i)
   for (const deferred of [false, true]) {
     for (const keepTruth of [true, false]) {
-      const a = {}
-      const b = {}
-      ref.setParams(a, cells, width, height)
-      cur.setParams(b, cells, width, height)
+      const a = construct(ref, name, cells, width, height)
+      const b = construct(cur, name, cells, width, height)
       for (let rep = 0; rep < 300; rep++) {
         const seed = c => randomCandidates(rnd, 1, cap, keepTruth ? truth[c] : null)
         const start = new Map(cells.map(c => [c, seed(c)]))

@@ -8,14 +8,14 @@
 // checks must fail, so a rule that quietly stops deducing, or starts reaching
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { construct, finishHarness, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, patchSource, runUpdate } from '../_shared/harness-lib.mjs'
 import { gridOf, shipped, FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const NAMES = ['setParams', 'initialize', 'update', 'validate', 'findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
+const NAMES = ['findIslands', 'islandRules', 'neededCellsRule', 'exitRules', 'smallPocketsRule', 'cellCountRule', 'BROKEN']
 const mod = load('FillominoComponent.js', NAMES)
 
 const RULES = {
@@ -57,8 +57,7 @@ function fuzzFixtures (labelOf, iters, part, fixtures = FIXTURES) {
     failures += fuzzSoundness(labelOf(name), {
       iters,
       draw: () => {
-        const inst = {}
-        part.setParams(inst, cells, width, height)
+        const inst = construct(part, 'fillomino', cells, width, height)
         return { truth, seed, parts: [{ mod: part, inst }] }
       }
     }).failures
@@ -139,9 +138,8 @@ const pinned = (p, c, d) => p.getCandidates(c).size === 1 && p.getCandidates(c).
 function directedFailures (m) {
   return DIRECTED.filter(([, seed, shows]) => {
     const p = makePuzzle(directed, seed)
-    const inst = {}
-    m.setParams(inst, CELLS, N, N)
-    Array.from(m.update(inst, p))
+    const inst = construct(m, 'fillomino', CELLS, N, N)
+    runUpdate(m, inst, p)
     return !shows(p)
   }).map(([name]) => name)
 }
@@ -165,6 +163,9 @@ const RULE_FUZZ = Math.ceil(FUZZ / 10)
 for (const rule of Object.keys(RULES)) {
   const solo = {
     setParams: mod.setParams,
+    // One rule is not the whole component; the setup-pass run below asks the
+    // component's own validate.
+    validate: undefined,
     * update (inst, p) {
       if (rule === 'smallPocketsRule') { yield * mod.smallPocketsRule(inst, p); return }
       for (const island of mod.findIslands(inst, p)) {
@@ -202,8 +203,7 @@ installGlobals(1, N)
 
 function judge (truth) {
   const p = makePuzzle(truth, (c, v) => [v])
-  const inst = {}
-  mod.setParams(inst, CELLS, N, N)
+  const inst = construct(mod, 'fillomino', CELLS, N, N)
   return mod.validate(inst, p)
 }
 if (!judge(directed)) { console.log('fillomino validate: rejected a real solution'); bad++ }
@@ -211,8 +211,7 @@ if (!judge(directed)) { console.log('fillomino validate: rejected a real solutio
 // now four cells for a digit of five.
 if (judge({ ...directed, 0: 1 })) { console.log('fillomino validate: accepted a broken grid'); bad++ }
 const partial = makePuzzle(directed, (c, v) => (c === 0 ? ALL : [v]))
-const partialInst = {}
-mod.setParams(partialInst, CELLS, N, N)
+const partialInst = construct(mod, 'fillomino', CELLS, N, N)
 if (!mod.validate(partialInst, partial)) { console.log('fillomino validate: judged an unfilled grid'); bad++ }
 
 console.log('fillomino soundness-harness:', bad, 'failures')

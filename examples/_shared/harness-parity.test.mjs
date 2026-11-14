@@ -8,13 +8,13 @@
 // helpers.naming (real createHelpers(spec).digits / .naming), and the read
 // methods of makePuzzleApi (real SolverPuzzleView over a real SolverState).
 // Skipped, with the reason:
-//   - makePuzzleApi's removeCandidate(s)From* / filterCandidatesIn* writes: the
-//     real view's writes return a change object to yield, the mock's edit the
-//     candidates in place, so there is no like-for-like result to compare.
+//   - makePuzzleApi's removeCandidate(s)From* / filterCandidatesIn* writes: both
+//     return a Change to yield, but the mock's builds every one in its plural
+//     shape (a cells list), so there is no like-for-like object to compare.
 //   - makePuzzleApi's getCellsCanHaveRepeats: the real answer comes from the
 //     board's regions, the mock's from the houses a test declares.
-//   - makePuzzle's stop() and getCellsOrthogonallyAdjacentToCell: harness-only
-//     conveniences (the real stop is a change; adjacency needs the geometry).
+//   - makePuzzle's stop() and getCellsOrthogonallyAdjacentToCell: the stop's
+//     Change carries the mock's own message, and adjacency needs the geometry.
 // Run: node examples/_shared/harness-parity.test.mjs
 
 import assert from 'assert'

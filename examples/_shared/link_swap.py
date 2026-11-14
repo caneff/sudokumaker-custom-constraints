@@ -150,30 +150,60 @@ def swap_build(board, component, out, backend=None):
     return check_and_write(base, doc, name, out)
 
 
-def swap_main(example_dir, parser=None, rebuild=None, rebuild_reads_backend=False):
+def swap_main(
+    example_dir, parser=None, rebuild=None, refresh=None, rebuild_reads_backend=False
+):
     """The command line every build_link.py shares.
 
     `--component FILE --out FILE [--board LINK] [--backend FILE]` runs
     `swap_build` against `--board`, or the example's PUZZLE_LINK.txt when it
-    is omitted. Without `--component`, `rebuild(args, parser)` runs instead --
-    the example's own from-source build -- and an example with none refuses.
-    A rebuild that builds its backend from a file named by --backend says so
-    with `rebuild_reads_backend`; every other rebuild refuses the flag.
+    is omitted. `--refresh` brings the example's committed links up to date
+    with the tree (the command check_layout's stale-backend violation names),
+    so every example takes it: `refresh(args, parser)` is the example's own
+    body, and an example with only a from-source `rebuild` (a hand-built
+    board with nothing to loop over) is refreshed by that. Without either
+    flag, `rebuild(args, parser)` runs instead -- the example's own
+    from-source build -- and an example with none refuses. A rebuild that
+    builds its backend from a file named by --backend says so with
+    `rebuild_reads_backend`; every other refuses the flag.
 
-    `parser` carries an example's own flags; the four above are added to it.
+    `parser` carries an example's own flags; the five above are added to it.
     A flag the chosen path cannot honour is refused, never ignored: an
-    example's own flag beside --component (it belongs to the rebuild), and
-    --board without --component (there is nothing to swap into it)."""
+    example's own flag beside --component (it belongs to the rebuild),
+    --board without --component (there is nothing to swap into it), and
+    --component beside --refresh (two commands). --refresh rewrites the
+    example's own links where they are committed, so it takes no other flag
+    at all -- not --out, --board or --backend, and not one of the example's
+    own -- whether `refresh` or the `rebuild` fallback answers it."""
     p = parser or argparse.ArgumentParser()
     own = [a.dest for a in p._actions if a.dest != "help"]
     p.add_argument("--component", help="component file to swap into the board")
     p.add_argument("--out", help="where to write the swapped link")
     p.add_argument("--board", help="committed link to swap into (PUZZLE_LINK.txt)")
     p.add_argument("--backend", help="backend file to swap in as well")
+    p.add_argument(
+        "--refresh",
+        action="store_true",
+        help="bring this example's committed links up to date with the tree",
+    )
     args = p.parse_args()
+    if args.refresh:
+        if args.component is not None:
+            p.error("--refresh and --component are two commands; give one")
+        run = refresh or rebuild
+        if run is None:
+            p.error("this example has nothing to refresh; give --component with --out")
+        for dest in [*own, "out", "board", "backend"]:
+            if getattr(args, dest) != p.get_default(dest):
+                p.error(
+                    "--refresh rewrites this example's own links; "
+                    f"drop --{dest.replace('_', '-')}"
+                )
+        run(args, p)
+        return
     if args.component is None:
         if rebuild is None:
-            p.error("give --component with --out")
+            p.error("give --component with --out, or --refresh")
         if args.board is not None:
             p.error("--board names the link a --component swaps into; give --component")
         if args.backend is not None and not rebuild_reads_backend:

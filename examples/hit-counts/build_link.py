@@ -4,6 +4,10 @@
 # `just time hit-counts --board PUZZLE_LINK_local.txt` reaches the local board.
 #
 #   uv run examples/hit-counts/build_link.py --component FILE --out FILE [--board LINK]
+#   uv run examples/hit-counts/build_link.py --refresh
+#
+# --refresh re-encodes every committed board against the tree, no search
+# (lanes.rebuild_all).
 #
 # --component names a file whose stem is a component registered on the board;
 # --board swaps into a committed link other than PUZZLE_LINK.txt; --backend
@@ -13,7 +17,8 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from link_swap import swap_main
+from build_size import SPEC
+from lanes import link_main
 
 if __name__ == "__main__":
-    swap_main(pathlib.Path(__file__).parent)
+    link_main(SPEC)

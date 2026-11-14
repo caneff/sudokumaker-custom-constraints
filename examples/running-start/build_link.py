@@ -7,8 +7,10 @@
 # component, so this path injects the current files and re-encodes.
 #
 #   uv run examples/running-start/build_link.py
+#   uv run examples/running-start/build_link.py --refresh
 #
-# Writes PUZZLE_LINK.txt next to this script.
+# Writes PUZZLE_LINK.txt next to this script. --refresh does that, then
+# re-encodes every carved board build_size.py ships (lanes.rebuild_all).
 #
 # --component/--out: build a same-board comparison link (the contract in
 # docs/real-app-timing.md; _shared/link_swap.swap_main): the committed
@@ -25,16 +27,17 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from build_size import rule_text
+from build_size import SPEC, rule_text
 from document import (
-    HOUSE_GAC_BACKEND_TITLE,
+    FRAME_ALWAYS_ON,
+    HOUSE_GAC,
     RULES_PREFIX,
-    frame_backend_code,
+    backend_code,
     house_gac_constraint,
     refresh_frame_backends,
 )
 from frame import cosmetics
-from link_swap import swap_main
+from lanes import link_main
 from manifest import load_manifest
 from minify import minify_file
 from sm_document import assert_round_trips, find_constraint
@@ -75,9 +78,7 @@ def build_from_template():
     # docs/research/421-frame-link-timing.md). The local, 4x4 and 6x6 lanes are
     # frame-builder-native and were not timed, so they do not carry it.
     cons[:] = [
-        c
-        for c in cons
-        if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+        c for c in cons if c.get("definition", {}).get("name") != HOUSE_GAC.title
     ]
     cons.append(house_gac_constraint(9))
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
@@ -95,12 +96,12 @@ def check(link, doc):
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
     assert rs["definition"]["backend"]["code"] == minify_file(HERE / "main-global.js")
     assert rs["input"] == {}, "the global board reads no drawn groups"
-    for title, code in frame_backend_code():
-        embedded = find_constraint(doc, title)["definition"]["backend"]["code"]
-        assert embedded == code, f"{title} is not the copy in the tree"
+    for b in FRAME_ALWAYS_ON:
+        embedded = find_constraint(doc, b.title)["definition"]["backend"]["code"]
+        assert embedded == backend_code(b), f"{b.title} is not the copy in the tree"
 
 
-def rebuild(_args, _parser):
+def write_board():
     link, doc = build_from_template()
     check(link, doc)
     (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
@@ -108,4 +109,5 @@ def rebuild(_args, _parser):
 
 
 if __name__ == "__main__":
-    swap_main(HERE, rebuild=rebuild)
+    # --refresh: every carved board build_size.py ships, then the hand-built one.
+    link_main(SPEC, write_board, rebuild=lambda *_: write_board())
