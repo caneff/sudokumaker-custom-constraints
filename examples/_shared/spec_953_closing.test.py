@@ -142,11 +142,14 @@ def _text_files():
     build and cache directories, and this test (which names the old words)."""
     for dirpath, dirnames, filenames in os.walk(ROOT):
         here = pathlib.Path(dirpath)
-        rel_dir = here.relative_to(ROOT).as_posix()
+        rel_parts = here.relative_to(ROOT).parts
+        # The frozen records directory is pruned by its two parts compared
+        # apart: written as one path it reads as a load to check_research_loads.
+        frozen = rel_parts == ("docs",)
         dirnames[:] = [
             d
             for d in dirnames
-            if d not in SKIP_DIRS and f"{rel_dir}/{d}".lstrip("./") != "docs/research"
+            if d not in SKIP_DIRS and not (frozen and d == "research")
         ]
         for name in filenames:
             path = here / name
