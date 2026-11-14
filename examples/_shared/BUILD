@@ -126,7 +126,7 @@ for file in ["whole-grid-backends.test.mjs", "whole-grid-mains.test.mjs"]:
 
 # Rewrites a skyscraper and an isofill board, which it reads by path.
 suite(
-    "probe_link.test.py",
+    "searchable_link.test.py",
     needs=[
         "examples/skyscraper/PUZZLE_LINK_6x6.txt:data",
         "examples/isofill/PUZZLE_LINK.txt:data",
@@ -183,6 +183,13 @@ suite("app_timing.test.py")
 # with the browser call faked, and reads pyproject.toml. Blind to the app: `just
 # time`'s real timing and app-strip.mjs in a browser (the test's own docstring).
 suite("spec_895_closing.test.py", needs=["//:tree"], tools=["git"])
+
+# Spec #953's closing check: copies the real up-to-n example into a git
+# repository of its own and times it (and its committed link) with the browser
+# call faked and busy reps in both modes; walks the tree for the old probe
+# names and for browser scripts that open a link themselves. Blind to the app:
+# `just time`'s real rows and openLink in a real Chromium (its docstring).
+suite("spec_953_closing.test.py", needs=["//:tree"], tools=["git"])
 
 # Row building and argument handling for `just time-link`; the browser call is
 # faked.

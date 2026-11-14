@@ -2,13 +2,13 @@
 # ring. empty_link_file wraps it as a file-to-file step (used by both this
 # module's own CLI and examples/_shared/time_example.py).
 #
-#   uv run examples/_shared/probe_link.test.py
+#   uv run examples/_shared/searchable_link.test.py
 
 import copy
 import pathlib
 import tempfile
 
-from probe_link import (
+from searchable_link import (
     check_searchable,
     empty_interior,
     empty_link_file,
@@ -24,9 +24,10 @@ ISO_SRC = HERE.parent / "isofill" / "PUZZLE_LINK.txt"
 def dirty(src, out):
     """Write `src` back with a value in every non-given cell.
 
-    Every shipped link is given-only — check_layout.py enforces it — so a probe
-    step has nothing to strip from one. These fixtures put the entered values
-    back, which is the board shape the probe steps exist to clean up.
+    Every shipped link is given-only — check_layout.py enforces it — so the
+    searchable-link steps have nothing to strip from one. These fixtures put
+    the entered values back, which is the board shape the searchable-link
+    steps exist to clean up.
     """
     doc = decode_puzzle(src.read_text().rstrip("\n"))
     for i, c in enumerate(doc["puzzle"]["cells"]):
@@ -82,7 +83,7 @@ if __name__ == "__main__":
     )
 
     with tempfile.TemporaryDirectory() as tmp:
-        out = pathlib.Path(tmp) / "probe.txt"
+        out = pathlib.Path(tmp) / "searchable.txt"
         empty_link_file(LINK_FILE, out)
         via_file = decode_puzzle(out.read_text().rstrip("\n"))
         assert via_file == doc, "empty_link_file did not match empty_interior"
@@ -114,7 +115,7 @@ if __name__ == "__main__":
     empty_interior(marked)
     assert marked["puzzle"]["cells"][inner] == {}, "empty left pencil marks"
 
-    # empty_link_file refuses to write a probe that is not searchable: an
+    # empty_link_file refuses to write a link that is not searchable: an
     # outer-ring cell holding a value AND pencil marks survives `empty` (the
     # ring is kept) but is not a bare clue, so the check must raise and leave
     # no output file behind.
@@ -128,13 +129,13 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         src = pathlib.Path(tmp) / "marked.txt"
         src.write_text(encode_link(ring_marked))
-        out = pathlib.Path(tmp) / "probe.txt"
+        out = pathlib.Path(tmp) / "searchable.txt"
         try:
             empty_link_file(src, out, "empty")
             raise AssertionError("empty_link_file wrote a link that is not searchable")
         except ValueError as e:
             assert "non-given cells" in str(e), str(e)
-        assert not out.exists(), "a refused probe must not leave an output file"
+        assert not out.exists(), "a refused link must not leave an output file"
 
         # while `strip` clears that same cell and writes a searchable link
         empty_link_file(src, out, "strip")

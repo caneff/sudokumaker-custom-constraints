@@ -211,6 +211,17 @@ export function marksRejected (text, marksExpected) {
   return text.toLowerCase().includes(ALREADY_ENTERED) && !marksExpected
 }
 
+// The one message every caller throws when marksRejected says so; `name` is
+// what the caller calls the link or cell it was solving. It names both ways
+// marks reach a search: a link that was never stripped (the timing driver),
+// and marks an earlier solve on the same page left behind (app-strip.mjs,
+// whose settleAfterSolve should have cleared them).
+export function marksRefusal (name) {
+  return `${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board ` +
+    'instead of searching: strip the link, or clear the marks an earlier solve on this page left ' +
+    '(app-strip.mjs: settleAfterSolve)'
+}
+
 // A cell's own digit -- given or entered -- renders as an <svg text> whose
 // closest ancestor <g> carrying a `transform` sits at that cell's center:
 // `translate(<25+50*col> <25+50*row>) scale(25)`, col and row non-negative

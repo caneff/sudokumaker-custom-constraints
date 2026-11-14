@@ -28,7 +28,7 @@ import tempfile
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from app_timing import app_solve
 from link_swap import swap_build
-from probe_link import empty_link_file
+from searchable_link import empty_link_file
 from time_example import board_link
 
 EXAMPLES = pathlib.Path(__file__).parent.parent

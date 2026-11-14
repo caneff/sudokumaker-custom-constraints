@@ -1,8 +1,8 @@
 // Open a puzzle in the real SudokuMaker app and read its verdict -- written
 // once, for the timing driver (app-solve.mjs), the probes that open a fresh
 // page per solve, and app-strip.mjs. app-strip.mjs solves many times on one
-// page, which solveInApp, reloading the link each call, cannot do: it runs
-// inside withApp and reads each verdict with readVerdict, the read solveInApp
+// page, which solveInApp, reloading the link each call, cannot do: it opens
+// with openLink and reads each verdict with readVerdict, the read solveOpen
 // makes too. What counts as a verdict is app-solve-lib.mjs's (ADR-0001: the
 // app's readout is the only verdict).
 //
@@ -17,7 +17,7 @@
 // nothing.
 
 import { chromium } from 'playwright'
-import { ALREADY_ENTERED, VERDICT_PATTERN, countEnteredValues, marksRejected, parseReadout, parseVersion } from './app-solve-lib.mjs'
+import { VERDICT_PATTERN, countEnteredValues, marksRefusal, marksRejected, parseReadout, parseVersion } from './app-solve-lib.mjs'
 import { clickIcon, makeDeterministic, readCells, solveLogically, useRecordedApp } from './app-dom.mjs'
 
 const VIEWPORT = { width: 1400, height: 900 }
@@ -65,34 +65,37 @@ async function checkSearchable (page, name) {
   const entered = countEnteredValues(cells)
   if (entered > 0) {
     throw new Error(`${name}: ${entered} entered values on the board; strip it first ` +
-      '(probe_link.py strip), or pass ringClues (--ring-clues) for an edge-clue puzzle')
+      '(searchable_link.py strip), or pass ringClues (--ring-clues) for an edge-clue puzzle')
   }
 }
 
-// Open `link` on `page`, run the solve button, wait for the VERDICT and read
-// the readout. Options:
+// Open `link` on `page`: the one open every browser script shares. Goes to
+// the link on networkidle, settles 1500 ms, then turns off "Non-deterministic
+// solve" (`deterministic: false` skips the clicks, for a probe that reads an
+// answer, not a time). A caller that reads the opening board does so after
+// this returns and before solveOpen.
+export async function openLink (page, link, { deterministic = true } = {}) {
+  await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
+  await page.waitForTimeout(1500)
+  if (deterministic) await makeDeterministic(page)
+}
+
+// On a page openLink opened, run the solve button, wait for the VERDICT and
+// read the readout. Options:
 //   iconName      the toolbar icon to click; the default is the full search
 //                 that proves uniqueness (see app-solve.mjs's header).
 //   afterLogical  run the app's logical solver to its fixpoint first.
 //   ringClues     the board may carry entered values (edge-clue puzzles).
-//   deterministic turn off "Non-deterministic solve" first (default true); a
-//                 probe that reads an answer, not a time, can skip the clicks.
 //   timeoutMs     how long to wait for a verdict; none read is verdict '?'
 //                 with null times, as parseReadout reports it.
 //   alsoWaitFor   a RegExp whose match also ends the wait, for a probe fed a
 //                 link the app rejects outright (no verdict is ever printed);
 //                 it does not change what counts as a verdict.
 //   name          what to call the link in an error message.
-//   afterOpen     `async page => {}`, run once the link has loaded and before
-//                 anything is clicked: for a probe that reads the opening board.
 // Returns parseReadout's { first, unique, sum, verdict } plus the app's
 // `version` and the page `text` the readout came from.
-export async function solveInApp (page, link, { iconName = 'ShowCandidates', afterLogical = false, ringClues = false, deterministic = true, alsoWaitFor = null, timeoutMs = 300000, name = 'link', afterOpen } = {}) {
-  await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
-  await page.waitForTimeout(1200)
-  if (afterOpen) await afterOpen(page)
+export async function solveOpen (page, { iconName = 'ShowCandidates', afterLogical = false, ringClues = false, alsoWaitFor = null, timeoutMs = 300000, name = 'link' } = {}) {
   if (!ringClues) await checkSearchable(page, name)
-  if (deterministic) await makeDeterministic(page)
   // The searchable-link check above already ran, so the only marks the search
   // can meet are the ones this pass makes.
   if (afterLogical) await solveLogically(page)
@@ -100,19 +103,26 @@ export async function solveInApp (page, link, { iconName = 'ShowCandidates', aft
   // Wait for the VERDICT, not the first "took": the solve phase prints its
   // "took" before the uniqueness search finishes, and reading then times only
   // the first phase.
-  const refusal = `${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it is no timing; strip the link first`
-  const { text, ...readout } = await readVerdict(page, { marksExpected: ringClues || afterLogical, alsoWaitFor, timeout: timeoutMs, refusal })
+  const { text, ...readout } = await readVerdict(page, { name, marksExpected: ringClues || afterLogical, alsoWaitFor, timeout: timeoutMs })
   return { ...readout, version: parseVersion(text), text }
+}
+
+// openLink then solveOpen, for a script that opens a fresh page per solve and
+// reads nothing between the two. `deterministic` goes to openLink; the rest to
+// solveOpen.
+export async function solveInApp (page, link, { deterministic = true, ...options } = {}) {
+  await openLink(page, link, { deterministic })
+  return solveOpen(page, options)
 }
 
 // Wait for the app's VERDICT on `page`, then read the readout. The wait ends
 // on the verdict pattern, or on `alsoWaitFor` (a RegExp) for a link the app
 // rejects outright; a wait that times out falls through, and the readout then
-// reports verdict '?' with null times. Throws `refusal`, the caller's own
-// message, when the app judged the verdict "based on already entered values"
+// reports verdict '?' with null times. Throws marksRefusal(`name`), the one
+// shared message, when the app judged the verdict "based on already entered values"
 // and `marksExpected` is false: that verifies a part-filled board instead of
 // searching. Returns parseReadout's record plus the page `text` it came from.
-export async function readVerdict (page, { refusal, marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300 }) {
+export async function readVerdict (page, { name = 'link', marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300 } = {}) {
   try {
     await page.waitForFunction(
       ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
@@ -122,7 +132,7 @@ export async function readVerdict (page, { refusal, marksExpected = false, alsoW
   await page.waitForTimeout(settleMs)
   const text = await page.evaluate(() => document.body.innerText)
   if (marksRejected(text, marksExpected)) {
-    throw new Error(refusal)
+    throw new Error(marksRefusal(name))
   }
   return { ...parseReadout(text), text }
 }

@@ -10,13 +10,13 @@
 # To compare two code variants, empty each half of a same-board pair -- the
 # "ours" link and the "original" link an example's build_original.py writes.
 #
-#   uv run examples/_shared/probe_link.py empty a.txt a_probe.txt
+#   uv run examples/_shared/searchable_link.py empty a.txt a_searchable.txt
 #
 # The interior is the grid minus its outer ring (row/col 0 and W-1). The ring
 # holds the outside clues (Numbered Rooms, Skyscraper), so it stays; only inner
 # non-given cells lose their stored value.
 #
-#   uv run examples/_shared/probe_link.py strip a.txt a_probe.txt
+#   uv run examples/_shared/searchable_link.py strip a.txt a_searchable.txt
 #
 # `strip` is the stricter mode: keep only given cells, drop every value and
 # pencil mark from the rest. Use it for any puzzle whose clues are all givens
@@ -79,7 +79,7 @@ def check_searchable(doc, ring_clues=False):
     if bad:
         raise ValueError(
             f"{len(bad)} non-given cells hold values or pencil marks "
-            f"(first: {bad[:5]}); strip the link first (probe_link.py strip)"
+            f"(first: {bad[:5]}); strip the link first (searchable_link.py strip)"
         )
 
 
@@ -92,7 +92,7 @@ def empty_link_file(src_path, out_path, mode="empty"):
 
 def main(argv):
     if len(argv) != 4 or argv[1] not in MODES:
-        raise SystemExit("usage: probe_link.py empty|strip <src_link> <out_link>")
+        raise SystemExit("usage: searchable_link.py empty|strip <src_link> <out_link>")
     _, mode, src, out = argv
     empty_link_file(src, out, mode)
     print(f"wrote {out}")

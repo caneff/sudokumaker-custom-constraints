@@ -83,6 +83,23 @@ if __name__ == "__main__":
             in rows[1]
         )
 
+        # a busy rep in either mode puts the note on that row: time_link's
+        # rows carry it as time_example's do (spec #953's user story)
+        hot = {
+            "loads": [{"before": 9.0, "after": 1.0}],
+            "busy": True,
+            "loadThreshold": 4,
+        }
+        with fake_solve(
+            {
+                "a.txt": [(1000, hot)] + [1000] * (R - 1) + [100] * R,
+                "b.txt": [500] * R + [(200, hot)] + [200] * (R - 1),
+            }
+        ):
+            busy_rows = time_link.run(a, b)
+        for row in busy_rows:
+            assert row.endswith("| — (BUSY load 9.0 > 4) |"), row
+
         # no row line carries the link's contents
         for row in rows:
             assert SECRET[:20] not in row and "\n" not in row
