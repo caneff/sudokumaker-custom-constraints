@@ -7,16 +7,17 @@ python_sources(
     overrides={
         "document.py": {
             "dependencies": [
-                # FRAME_BACKENDS, read in frame_backend_code.
+                # SHARED_BACKENDS, read in backend_code and component_code.
+                # FRAME_ROWCOL and FRAME_CORNERS.
                 "./frame-rowcol.js:js",
                 "./frame-corners.js:js",
-                # house_gac_backend_code.
+                # HOUSE_GAC.
                 "./house-gac.js:js",
                 "./HouseGacComponent.js:js",
+                # GRID_ROWCOL, the no-ring lane's.
+                "./grid-rowcol.js:js",
             ]
         },
-        # GRID_BACKEND, read in grid_backend_constraint.
-        "no_ring.py": {"dependencies": ["./grid-rowcol.js:js"]},
         "component_scan.py": {"dependencies": ["//:builtin-components"]},
     },
 )
@@ -103,6 +104,9 @@ for file in [
     "spec_897_closing.test.mjs",
     "spec_898_closing.test.py",
     "spec_951_closing.test.mjs",
+    # Copies the examples tree and docs/builtin-components.md, and runs every
+    # example's build_link.py --refresh and check_layout.py on the copy.
+    "spec_952_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 

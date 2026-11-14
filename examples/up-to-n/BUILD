@@ -1,6 +1,7 @@
 unit(
     suites=[
         "build_link.test.py",
+        "build_size.test.py",
         "end-to-end.test.mjs",
         "marker-contract.test.mjs",
         "update-strength.test.mjs",
