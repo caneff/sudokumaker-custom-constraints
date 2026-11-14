@@ -40,6 +40,7 @@ sys.path.insert(0, str(EXAMPLES / "count-digits-gac"))
 
 import check_layout
 from board_kit import draw_groups
+from gate_lib import runner_listing
 
 BUILDER_TESTS = [
     "count-digits-gac/build_count_digits_demo.test.py",
@@ -127,7 +128,9 @@ def the_digit_range_is_the_board_models():
     import build_link as isofill
     from isofill_model import Board
 
-    for gen in sorted((EXAMPLES / "isofill").glob("gen*.json")):
+    gens = sorted((EXAMPLES / "isofill").glob("gen*.json"))
+    assert gens, "no isofill gen*.json matched: the digit-range loop checked nothing"
+    for gen in gens:
         spec = json.loads(gen.read_text())
         board = Board.of_doc(spec)
         lo, hi, _ = isofill.digit_range(spec, len(spec["grid"][0]))
@@ -144,7 +147,9 @@ def the_dutch_flatmates_comment_and_counter():
 def the_wrapper_test_runs_in_the_gate():
     moved = EXAMPLES / "count-digits-gac" / "required-digits-wrapper.test.mjs"
     assert moved.exists()
-    assert "BY_HAND = set()" in (HERE / "gate.test.py").read_text()
+    assert "node examples/count-digits-gac/required-digits-wrapper.test.mjs" in (
+        runner_listing()
+    )
     assert (
         "required-digits-wrapper.test.mjs"
         in (EXAMPLES / "count-digits-gac" / "BUILD").read_text()

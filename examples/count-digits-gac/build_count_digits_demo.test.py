@@ -30,7 +30,11 @@ from count_board import (
 from count_board import (
     demo_backend_code as backend_code,
 )
-from count_test_kit import counter_for, full_givens
+from count_test_kit import (
+    assert_counter_is_count,
+    check_rule_is_enforced,
+    counter_for,
+)
 from minify import minify_file
 from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
@@ -41,16 +45,6 @@ count_solutions = counter_for(model)
 LINK = DEMO_DIR / "PUZZLE_LINK.txt"
 OUTSIDE_LINK = OUTSIDE_GEN.parent / "PUZZLE_LINK.txt"
 N = 9
-
-
-def count(gen, group):
-    """The rule, restated here rather than imported. `cells` is the whole
-    target list, the counter included on a self-counting board."""
-    return sum(
-        1
-        for r, c in (tuple(p) for p in group["cells"])
-        if gen["grid"][r][c] in group["values"]
-    )
 
 
 def connected(cells):
@@ -86,9 +80,7 @@ def check_board(gen, selfcount):
             assert counter not in set(cells), (
                 f"{g['name']}: the counter is one of its targets"
             )
-        assert gen["grid"][counter[0]][counter[1]] == count(gen, g), (
-            f"{g['name']}: the solution's counter digit is not the count"
-        )
+        assert_counter_is_count(gen, g)
         # a self-counting counter repeats inside its own group, never across
         used += dict.fromkeys([*cells, counter])
     assert len(set(used)) == len(used), (
@@ -97,19 +89,6 @@ def check_board(gen, selfcount):
     assert count_solutions(groups, givens_of(gen)) == 1, (
         "not unique under the CP-SAT model"
     )
-
-
-def check_uniqueness_detects_a_wrong_count(gen):
-    full = full_givens(gen)
-    g = gen["groups"][0]
-    assert count_solutions([g], full) == 1
-    other = next(
-        d
-        for d in range(1, N + 1)
-        if d not in g["values"]
-        and count(gen, {**g, "values": g["values"] + [d]}) != count(gen, g)
-    )
-    assert count_solutions([{**g, "values": sorted(g["values"] + [other])}], full) == 0
 
 
 def check_grow_group_is_connected_and_disjoint():
@@ -199,15 +178,12 @@ def check_link(gen, link, selfcount):
         "the built-in registers the app's own class: no code to ship"
     )
     assert [c["name"] for c in gac["components"]] == [CANDIDATE_NAME]
+    # comments first: a build that strips them also fails the equality below,
+    # without saying why
+    assert gac["components"][0]["code"] != minify_file(COMPONENT), (
+        "the shipped component lost its comments"
+    )
     assert gac["components"][0]["code"] == minify_file(COMPONENT, keep_comments=True)
-    for phrase in (
-        "HIT",
-        "puzzle.stop",
-        "removeCandidatesFromCell",
-        "the whole of arc consistency",
-        "validateDuringSolve",
-    ):
-        assert phrase in gac["components"][0]["code"], f"annotation lost: {phrase}"
     assert (
         gac["backend"]["code"].replace(CANDIDATE_NAME, BASELINE_NAME)
         == base["backend"]["code"]
@@ -263,8 +239,8 @@ if __name__ == "__main__":
     check_board(gen, selfcount=True)
     check_board(outside, selfcount=False)
     check_board(json.loads((DEMO_DIR / "gen_4x10.json").read_text()), selfcount=False)
-    check_uniqueness_detects_a_wrong_count(gen)
-    check_uniqueness_detects_a_wrong_count(outside)
+    check_rule_is_enforced(gen, count_solutions)
+    check_rule_is_enforced(outside, count_solutions)
     check_grow_group_is_connected_and_disjoint()
     check_palette_guard(gen)
     check_link(gen, LINK, selfcount=True)

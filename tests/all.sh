@@ -123,6 +123,9 @@ suites() {
   for f in examples/_shared/*.test.mjs examples/_shared/*.test.py; do
     run_file test "$f"
   done
+  for f in tools/*/*.test.mjs; do
+    run_file test "$f"
+  done
   run_file test examples/_shared/check_layout.py
   run_file test examples/_shared/check_research_loads.py
   for dir in examples/*/; do

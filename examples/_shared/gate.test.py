@@ -5,10 +5,11 @@
 # checks what each tier would have run against the files on disk:
 #
 #   - check-full runs every *.test.mjs, *.test.py and soundness-harness.mjs
-#     under examples/, lint, and the four plain scripts the gate runs, so a new
-#     or renamed test cannot drop out of both tiers -- and it runs nothing
-#     else: a suite or a lint step for a directory outside examples/ fails
-#     here, and so does a file `just fmt` rewrites outside it;
+#     under examples/, every *.test.mjs under tools/*/, lint, and the four
+#     plain scripts the gate runs, so a new or renamed test cannot drop out of
+#     both tiers -- and it runs nothing else: a suite or a lint step for a
+#     directory outside examples/ and tools/ fails here, and so does a file
+#     `just fmt` rewrites outside them;
 #   - the research .test.mjs files are run by hand, and BY_HAND names them: a
 #     new one fails here until it is wired into a recipe or added to BY_HAND;
 #   - what check-full adds over check is exactly the heavy tests HEAVY names
@@ -92,13 +93,16 @@ FMT = [
 def on_disk(root=ROOT):
     """The command the gate must run for every test and harness file."""
     want = set()
-    for pattern, runner in (
-        ("*.test.mjs", "node"),
-        ("*.test.py", "uv run"),
-        ("soundness-harness.mjs", "node"),
+    # tools/<name>/ holds the maintained dev tools (tools/humanify); only their
+    # *.test.mjs are in the seam, the one pattern tests/all.sh globs there.
+    for pattern, runner, places in (
+        ("*.test.mjs", "node", ("examples", "tools")),
+        ("*.test.py", "uv run", ("examples",)),
+        ("soundness-harness.mjs", "node", ("examples",)),
     ):
-        for f in root.glob(f"examples/*/{pattern}"):
-            want.add(f"{runner} {f.relative_to(root).as_posix()}")
+        for where in places:
+            for f in root.glob(f"{where}/*/{pattern}"):
+                want.add(f"{runner} {f.relative_to(root).as_posix()}")
     return want
 
 
@@ -111,8 +115,8 @@ def research_tests():
 
 def planted_example_is_run():
     """A planted example's tests and harness must be reached by check-full and
-    by the runner alike, and a test file planted outside examples/ by
-    neither: the gate's suites all live under examples/."""
+    by the runner alike, and a test file planted outside examples/ and
+    tools/ by neither: the gate's suites all live under those two."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = gate_tree(tmp)
         example = tree / "examples/zz_new"
@@ -128,7 +132,9 @@ def planted_example_is_run():
         assert "node examples/zz_new/soundness-harness.mjs" in demanded, demanded
         both_reach(demanded, root=tree)
         strays = [c for c in commands("check-full", root=tree) if "zz_outside" in c]
-        assert not strays, f"check-full runs a test outside examples/: {strays}"
+        assert not strays, (
+            f"check-full runs a test outside examples/ and tools/: {strays}"
+        )
 
 
 def both_reach(demanded, root=ROOT):
@@ -269,7 +275,7 @@ if __name__ == "__main__":
     assert not missing, f"check-full does not run: {sorted(missing)}"
     extra = set(full) - (on_disk() | LINT | SCRIPTS)
     assert not extra, (
-        f"check-full runs what is neither a test under examples/, a lint step "
+        f"check-full runs what is neither a test under examples/ or tools/, a lint step "
         f"nor a listed script: {sorted(extra)}"
     )
     both_reach(on_disk() | LINT | SCRIPTS)

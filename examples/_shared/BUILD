@@ -102,7 +102,7 @@ for file in [
     "spec_865_closing.test.py",
     "spec_896_closing.test.py",
     "spec_897_closing.test.mjs",
-    "spec_898_closing.test.py",
+    # spec_898_closing.test.py is below: it lists the seam, which needs RUNNER_TOOLS.
     "spec_951_closing.test.mjs",
     # Copies the examples tree and docs/builtin-components.md, and runs every
     # example's build_link.py --refresh and check_layout.py on the copy.
@@ -205,6 +205,18 @@ suite(
     "spec_748_closing.test.py",
     needs=["//:tree"],
     tools=RUNNER_TOOLS,
+)
+suite(
+    "spec_898_closing.test.py",
+    needs=["//:tree"],
+    tools=RUNNER_TOOLS,
+)
+# Rebuilds the sparse count-digits links and lists the seam; `git ls-files`
+# when the tree has a .git, a walk of the files when it has none.
+suite(
+    "spec_954_closing.test.py",
+    needs=["//:tree"],
+    tools=[*RUNNER_TOOLS, "git"],
 )
 
 # Each starts the real Pants, `bash tests/all.sh` or `just`, from the sandbox's
