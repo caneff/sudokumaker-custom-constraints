@@ -41,7 +41,7 @@ def _widget_doc(backend_code, component_code):
 
     It carries a 4x4 board too -- one ring clue, one interior given, one
     entered interior digit -- because the timing driver turns a link into a
-    searchable link before timing it (probe_link.py), and a doc with no
+    searchable link before timing it (searchable_link.py), and a doc with no
     `cells` never reaches that step.
     """
     cells = [{} for _ in range(16)]
@@ -544,7 +544,7 @@ if __name__ == "__main__":
     # driver arguments run() derives (which link, ring-clues, after-logical)
     # as well as on the rows it builds from the medians it gets back.
     R = app_timing.REPS
-    B, C = "baseline_probe.txt", "candidate_probe.txt"
+    B, C = "baseline_searchable.txt", "candidate_searchable.txt"
 
     def interleaved(after_logical):
         """The call order the protocol demands in one mode: one rep of each

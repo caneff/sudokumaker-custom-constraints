@@ -32,7 +32,7 @@
 //
 // The link must make the solver SEARCH. A finished link stores the full
 // solution, so the solver only verifies it and every code variant looks equally
-// fast. Empty the interior (probe_link.py) or ship a puzzle with few givens.
+// fast. Empty the interior (searchable_link.py) or ship a puzzle with few givens.
 //
 // The solve time is strongly nondeterministic -- the same board can swing more
 // than 10x run to run -- so read the MEDIAN over many reps, not any one number.

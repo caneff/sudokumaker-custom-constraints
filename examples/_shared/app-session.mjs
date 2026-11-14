@@ -65,7 +65,7 @@ async function checkSearchable (page, name) {
   const entered = countEnteredValues(cells)
   if (entered > 0) {
     throw new Error(`${name}: ${entered} entered values on the board; strip it first ` +
-      '(probe_link.py strip), or pass ringClues (--ring-clues) for an edge-clue puzzle')
+      '(searchable_link.py strip), or pass ringClues (--ring-clues) for an edge-clue puzzle')
   }
 }
 

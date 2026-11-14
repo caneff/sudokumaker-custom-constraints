@@ -10,7 +10,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 from build_link import build, check
-from probe_link import check_searchable, strip_to_givens
+from searchable_link import check_searchable, strip_to_givens
 from sudoku_kit.link_codec import encode_link
 
 FIXTURES = {

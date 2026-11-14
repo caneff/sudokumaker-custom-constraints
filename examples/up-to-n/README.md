@@ -215,7 +215,7 @@ The minimal 13-clue board was a DNF under the bounds-only component, recorded
 verbatim on 2026-09-26 (not re-measured: a result on record is not re-run):
 
 ```
-RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_searchable.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
 ```
 
 With the subset DP, the ticket's benchmark, `node
@@ -257,7 +257,7 @@ the prune stripped from the working-tree component (the committed link, with
 the prune, as baseline) refused on its cold row, 2026-09-14:
 
 ```
-RuntimeError: app-solve.mjs: /tmp/tmpuz1_9pfc/candidate_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+RuntimeError: app-solve.mjs: /tmp/tmpuz1_9pfc/candidate_searchable.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
 ```
 
 Without the prune the shipped board does not solve inside 300 s; with it, it

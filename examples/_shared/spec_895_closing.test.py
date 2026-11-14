@@ -109,7 +109,7 @@ def the_rows_keep_their_format(example_dir):
     """`run()` on the edited example: two rows and a SHIP verdict, each row in
     the seven-column format docs/real-app-timing.md pins."""
     r = app_timing.REPS
-    b, c = "baseline_probe.txt", "candidate_probe.txt"
+    b, c = "baseline_searchable.txt", "candidate_searchable.txt"
     with fake_solve({b: [1000] * r + [800] * r, c: [500] * r + [400] * r}) as calls:
         rows, ship = time_example.run(example_dir)
     assert len(calls) == 4 * r, calls

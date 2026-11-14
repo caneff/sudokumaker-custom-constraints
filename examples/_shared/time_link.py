@@ -4,7 +4,7 @@
 # non-deterministic solve off. Two links are interleaved one rep per link per
 # round, the lead alternating (app_timing.run_app_solve), and each row carries
 # both medians and the b/a ratio. The link is timed as given: nothing is
-# stripped (probe_link.py is the tool for that), and a link that carries entered
+# stripped (searchable_link.py is the tool for that), and a link that carries entered
 # digits in the ring needs --ring-clues, as for app-solve.mjs. No ship verdict
 # is printed -- see docs/real-app-timing.md.
 #
