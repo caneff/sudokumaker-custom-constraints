@@ -211,6 +211,13 @@ suite(
     needs=["//:tree"],
     tools=RUNNER_TOOLS,
 )
+# Rebuilds the sparse count-digits links and lists the seam; `git ls-files`
+# when the tree has a .git, a walk of the files when it has none.
+suite(
+    "spec_954_closing.test.py",
+    needs=["//:tree"],
+    tools=[*RUNNER_TOOLS, "git"],
+)
 
 # Each starts the real Pants, `bash tests/all.sh` or `just`, from the sandbox's
 # root, so they need `pants`, `just` and what the runner calls by name on the
