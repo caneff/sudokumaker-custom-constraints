@@ -9,34 +9,31 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 
 from board_kit import givens_of
 from build_sparse_count_digits import (
+    BACKEND,
     BOARD_DIR,
     GEN,
-    backend_code,
     build,
 )
-from count_board import BASELINE_NAME, CANDIDATE_NAME, COMPONENT, model
-from count_test_kit import counter_for, full_givens
+from count_board import (
+    BASELINE_NAME,
+    CANDIDATE_NAME,
+    COMPONENT,
+    model,
+    sparse_backend_code,
+)
+from count_test_kit import (
+    assert_counter_is_count,
+    check_rule_is_enforced,
+    check_sparse_pair,
+    counter_for,
+)
 from minify import minify_file
 from sudoku_kit.link_codec import decode_puzzle
-from untouched import leaves_untouched
 
-NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
 ANNOTATED = "PUZZLE_LINK_annotated.txt"
-N = 9
 
 
 count_solutions = counter_for(model)
-
-
-def count(gen, group):
-    """The group's own count in the solution grid: target cells holding a
-    listed digit. The rule, restated here rather than imported, so a change to
-    the model has to agree with a second statement of it."""
-    return sum(
-        1
-        for r, c in (tuple(p) for p in group["cells"])
-        if gen["grid"][r][c] in group["values"]
-    )
 
 
 def check_board(gen):
@@ -53,33 +50,12 @@ def check_board(gen):
         assert counter not in set(cells), (
             f"{g['name']}: the counter is one of its targets"
         )
-        assert gen["grid"][counter[0]][counter[1]] == count(gen, g), (
-            f"{g['name']}: the solution's counter digit is not the count"
-        )
+        assert_counter_is_count(gen, g)
     carve_order = [tuple(p) for p in gen["carve_order"]]
     assert len(set(carve_order)) == len(carve_order), "a cell is carved twice"
     assert 0 <= gen["carved"] <= len(carve_order), "carved is outside the carve order"
     assert count_solutions(groups, givens_of(gen)) == 1, (
         "not unique under the CP-SAT model"
-    )
-
-
-def check_rule_is_enforced(gen):
-    full = full_givens(gen)
-    g = gen["groups"][0]
-    assert count_solutions([g], full) == 1, (
-        "the solution does not satisfy its own group"
-    )
-    wrong = [
-        d
-        for d in range(1, N + 1)
-        if d not in g["values"]
-        and count(gen, {**g, "values": g["values"] + [d]}) != count(gen, g)
-    ]
-    assert wrong, "fixture: no digit changes this group's count"
-    moved = {**g, "values": sorted(g["values"] + [wrong[0]])}
-    assert count_solutions([moved], full) == 0, (
-        "a group with the wrong count is still feasible"
     )
 
 
@@ -98,7 +74,9 @@ def check_annotated(gen, plain_doc):
     constraint = doc["puzzle"]["constraints"][-1]["definition"]
     component = constraint["components"][0]["code"]
     assert component == minify_file(COMPONENT, keep_comments=True)
-    assert constraint["backend"]["code"] == backend_code(gen, CANDIDATE_NAME, True)
+    assert constraint["backend"]["code"] == sparse_backend_code(
+        BACKEND, gen, CANDIDATE_NAME, True
+    )
     plain_doc = json.loads(json.dumps(plain_doc))
     plain_c = plain_doc["puzzle"]["constraints"][-1]["definition"]
     plain_c["components"][0]["code"] = component
@@ -109,47 +87,16 @@ def check_annotated(gen, plain_doc):
 if __name__ == "__main__":
     gen = json.loads(GEN.read_text())
     check_board(gen)
-    check_rule_is_enforced(gen)
+    check_rule_is_enforced(gen, count_solutions)
 
-    cand = backend_code(gen, CANDIDATE_NAME)
-    base = backend_code(gen, BASELINE_NAME)
-    assert cand.replace(CANDIDATE_NAME, BASELINE_NAME) == base
-    assert cand != base and BASELINE_NAME in base
-
-    with (
-        leaves_untouched([BOARD_DIR / n for n in NAMES]) as before,
-        tempfile.TemporaryDirectory() as tmp,
-    ):
-        out = pathlib.Path(tmp)
-        build(out)
-        for n in NAMES:
-            assert (out / n).read_bytes() == before[BOARD_DIR / n], (
-                f"{n} does not reproduce"
-            )
-
-    docs = [decode_puzzle(before[BOARD_DIR / n].decode().strip()) for n in NAMES]
-    cand_doc, base_doc = docs
-    cand_doc_full = json.loads(json.dumps(cand_doc))
-    for d in docs:
-        # a plain 9x9 is a sudoku document: rows and columns come from
-        # the app's own rules, so no "Rows & Columns" backend rides along
-        assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
-        names = [
-            (c.get("definition") or {}).get("name") for c in d["puzzle"]["constraints"]
-        ]
-        assert "Rows & Columns" not in names, "a row/column backend is still carried"
-    cand_c = cand_doc["puzzle"]["constraints"][-1]["definition"]
-    base_c = base_doc["puzzle"]["constraints"][-1]["definition"]
-    assert [c["name"] for c in cand_c["components"]] == [CANDIDATE_NAME]
-    # the shipped component is the committed file, so an edit to it that is not
-    # rebuilt into the link fails here rather than being timed as the old code
-    assert cand_c["components"][0]["code"] == minify_file(COMPONENT)
-    assert base_c["components"] == [], "the baseline link ships no component code"
-    cand_doc["puzzle"]["constraints"][-1]["definition"]["components"] = []
-    cand_doc["puzzle"]["constraints"][-1]["definition"]["backend"]["code"] = base_c[
-        "backend"
-    ]["code"]
-    assert cand_doc == base_doc, "the two links differ beyond the component code"
-
+    cand_doc_full = check_sparse_pair(
+        gen,
+        board_dir=BOARD_DIR,
+        build=build,
+        backend_code=lambda g, name: sparse_backend_code(BACKEND, g, name),
+        candidate=CANDIDATE_NAME,
+        baseline=BASELINE_NAME,
+        component=COMPONENT,
+    )
     check_annotated(gen, cand_doc_full)
     print("ok")

@@ -43,8 +43,9 @@ from count_board import (
     COMPONENT,
     finish_group,
     model,
+    sparse_backend_code,
 )
-from minify import minify_file, minify_js
+from minify import minify_file
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
@@ -86,12 +87,6 @@ def search(seed, n_groups=20, n_targets=14, n_digits=3):
     )
 
 
-def backend_code(gen, name, keep_comments=False):
-    table = "const GROUPS = " + json.dumps(gen["groups"], separators=(",", ":")) + "\n"
-    src = BACKEND.read_text().replace(CANDIDATE_NAME, name)
-    return minify_js(table + src, base_dir=BACKEND.parent, keep_comments=keep_comments)
-
-
 def build_doc(gen, name, keep_comments=False):
     components = (
         [(CANDIDATE_NAME, minify_file(COMPONENT, keep_comments))]
@@ -105,7 +100,7 @@ def build_doc(gen, name, keep_comments=False):
         [
             code_constraint(
                 CONSTRAINT_NAME,
-                backend_code(gen, name, keep_comments),
+                sparse_backend_code(BACKEND, gen, name, keep_comments),
                 components,
                 named=True,
             )
