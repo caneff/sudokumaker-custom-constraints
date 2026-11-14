@@ -52,9 +52,9 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { ALREADY_ENTERED, isBlack } from './app-solve-lib.mjs'
-import { withApp, readVerdict } from './app-session.mjs'
-import { clickText, clickIcon, makeDeterministic, openWidePad, enterDigit, readCells, cellScreenPoint } from './app-dom.mjs'
+import { isBlack } from './app-solve-lib.mjs'
+import { withApp, openLink, readVerdict } from './app-session.mjs'
+import { clickText, clickIcon, openWidePad, enterDigit, readCells, cellScreenPoint } from './app-dom.mjs'
 import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
 
 // The cell the app draws a digit in at (row, col), as readCells returns it,
@@ -110,8 +110,7 @@ export function readTrialVerdict (page, row, col) {
   return readVerdict(page, {
     timeout: 30000,
     settleMs: 200,
-    refusal: `(${row},${col}): verdict was judged "${ALREADY_ENTERED} and pencil marks" -- ` +
-      'the board was not clean before this solve; settleAfterSolve should have caught this'
+    name: `(${row},${col})`
   })
 }
 
@@ -138,9 +137,7 @@ async function main () {
 
   await withApp({ live: false }, async app => {
     const page = await app.newPage()
-    await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
-    await page.waitForTimeout(1500)
-    await makeDeterministic(page)
+    await openLink(page, link)
     if (grid.some(row => row.some(v => v > 9))) await openWidePad(page)
 
     for (let i = 0; i < kept.length;) {

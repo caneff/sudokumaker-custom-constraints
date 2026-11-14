@@ -211,6 +211,12 @@ export function marksRejected (text, marksExpected) {
   return text.toLowerCase().includes(ALREADY_ENTERED) && !marksExpected
 }
 
+// The one message every caller throws when marksRejected says so; `name` is
+// what the caller calls the link or cell it was solving.
+export function marksRefusal (name) {
+  return `${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it is no timing; strip the link first`
+}
+
 // A cell's own digit -- given or entered -- renders as an <svg text> whose
 // closest ancestor <g> carrying a `transform` sits at that cell's center:
 // `translate(<25+50*col> <25+50*row>) scale(25)`, col and row non-negative
