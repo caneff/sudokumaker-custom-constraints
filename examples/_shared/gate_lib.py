@@ -153,7 +153,7 @@ def run_logged(
     unreported="",
     runs_log=None,
     pants_status="",
-    extra=None,
+    env=None,
 ):
     """Run `argv` from `root` with node, npx, uv, uvx and pants replaced by
     stubs that log their argv and exit 0, except the names in `real`; a name in
@@ -163,7 +163,7 @@ def run_logged(
     told to run as passed, except `unreported`. The runner's own run log
     (`SEAM_RUNS_LOG`) is `runs_log`, or a file in the scratch directory, so a
     test run never writes the developer's real one. `pants_status` makes the
-    Pants stub's `test` call exit with it after reporting every target; `extra`
+    Pants stub's `test` call exit with it after reporting every target; `env`
     adds to the environment, a value of None removing the name. Returns the finished
     process and the log, one line per stubbed call, in order."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -184,7 +184,7 @@ def run_logged(
             stub.chmod(0o755)
         log = pathlib.Path(tmp) / "log"
         log.touch()
-        env = {
+        run_env = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{path_without(absent, tmp)}",
             "GATE_LOG": str(log),
@@ -194,12 +194,12 @@ def run_logged(
             "GATE_PANTS_TEST_STATUS": str(pants_status or 0),
             "SEAM_RUNS_LOG": str(runs_log or pathlib.Path(tmp) / "seam-runs.jsonl"),
         }
-        for name, value in (extra or {}).items():
+        for name, value in (env or {}).items():
             if value is None:
-                env.pop(name, None)
+                run_env.pop(name, None)
             else:
-                env[name] = value
-        r = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True)
+                run_env[name] = value
+        r = subprocess.run(argv, cwd=root, env=run_env, capture_output=True, text=True)
         return r, log.read_text().splitlines()
 
 
