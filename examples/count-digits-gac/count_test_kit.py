@@ -1,6 +1,6 @@
 # Helpers the count-digits builders' tests share: the solution grid as an
 # all-givens board, `count_solutions` bound to a builder's own model, the count
-# oracle and its checks, and the sparse boards' A/B link-pair check.
+# oracle and its checks, and the sparse boards' same-board pair check.
 
 import functools
 import json
@@ -10,6 +10,7 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from board_kit import count_solutions
+from count_board import sparse_backend_code
 from minify import minify_file
 from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
@@ -68,15 +69,15 @@ def check_rule_is_enforced(gen, count_solutions):
     )
 
 
-def check_sparse_pair(
-    gen, *, board_dir, build, backend_code, candidate, baseline, component
+def check_same_board_pair(
+    gen, *, board_dir, build, backend, candidate, baseline, component
 ):
-    """A sparse board's candidate/baseline link pair: the backends differ only
+    """A sparse board's same-board pair (GLOSSARY.md): the backends differ only
     in the class name, a rebuild reproduces the committed links, the pair
     differs only in the component code, and the shipped component is the
     committed file. Returns the candidate's decoded document, whole."""
-    cand = backend_code(gen, candidate)
-    base = backend_code(gen, baseline)
+    cand = sparse_backend_code(backend, gen, candidate, candidate=candidate)
+    base = sparse_backend_code(backend, gen, baseline, candidate=candidate)
     assert cand.replace(candidate, baseline) == base
     assert cand != base and baseline in base
 

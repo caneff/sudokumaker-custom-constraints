@@ -178,10 +178,12 @@ def check_link(gen, link, selfcount):
         "the built-in registers the app's own class: no code to ship"
     )
     assert [c["name"] for c in gac["components"]] == [CANDIDATE_NAME]
-    assert gac["components"][0]["code"] == minify_file(COMPONENT, keep_comments=True)
+    # comments first: a build that strips them also fails the equality below,
+    # without saying why
     assert gac["components"][0]["code"] != minify_file(COMPONENT), (
         "the shipped component lost its comments"
     )
+    assert gac["components"][0]["code"] == minify_file(COMPONENT, keep_comments=True)
     assert (
         gac["backend"]["code"].replace(CANDIDATE_NAME, BASELINE_NAME)
         == base["backend"]["code"]

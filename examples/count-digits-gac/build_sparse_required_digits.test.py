@@ -18,8 +18,7 @@ from build_sparse_required_digits import (
     is_house,
     model,
 )
-from count_board import sparse_backend_code
-from count_test_kit import check_sparse_pair, counter_for, full_givens
+from count_test_kit import check_same_board_pair, counter_for, full_givens
 
 count_solutions = counter_for(model)
 
@@ -59,13 +58,11 @@ if __name__ == "__main__":
     check_board(gen)
     check_rule_is_enforced(gen)
 
-    check_sparse_pair(
+    check_same_board_pair(
         gen,
         board_dir=BOARD_DIR,
         build=build,
-        backend_code=lambda g, name: sparse_backend_code(
-            BACKEND, g, name, candidate=CANDIDATE_NAME
-        ),
+        backend=BACKEND,
         candidate=CANDIDATE_NAME,
         baseline=BASELINE_NAME,
         component=COMPONENT,

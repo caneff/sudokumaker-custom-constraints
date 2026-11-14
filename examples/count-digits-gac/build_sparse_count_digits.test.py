@@ -24,7 +24,7 @@ from count_board import (
 from count_test_kit import (
     assert_counter_is_count,
     check_rule_is_enforced,
-    check_sparse_pair,
+    check_same_board_pair,
     counter_for,
 )
 from minify import minify_file
@@ -89,11 +89,11 @@ if __name__ == "__main__":
     check_board(gen)
     check_rule_is_enforced(gen, count_solutions)
 
-    cand_doc_full = check_sparse_pair(
+    cand_doc_full = check_same_board_pair(
         gen,
         board_dir=BOARD_DIR,
         build=build,
-        backend_code=lambda g, name: sparse_backend_code(BACKEND, g, name),
+        backend=BACKEND,
         candidate=CANDIDATE_NAME,
         baseline=BASELINE_NAME,
         component=COMPONENT,
