@@ -34,7 +34,7 @@ import { readTrialVerdict } from './app-strip.mjs'
   assert.match(page.waits[0].arg[0], /\|rejected$/)
 
   const marked = stub(ok + ' (based on already entered values and pencil marks.)')
-  const refused = /^Error: cell \(1,2\): the app judged "based on already entered values" -- .*so it is no timing; strip the link first$/
+  const refused = /^Error: cell \(1,2\): the app judged "based on already entered values" -- .*instead of searching: strip the link, or clear the marks an earlier solve on this page left \(app-strip\.mjs: settleAfterSolve\)$/
   await assert.rejects(readVerdict(marked, { name: 'cell (1,2)' }), refused)
   assert.strictEqual((await readVerdict(marked, { marksExpected: true })).verdict, 'unique')
   await assert.rejects(readTrialVerdict(marked, 1, 2), /^Error: \(1,2\): the app judged "based on already entered values" -- /)
@@ -57,6 +57,44 @@ import { readTrialVerdict } from './app-strip.mjs'
   assert.deepStrictEqual(calls, [['goto', 'https://example.invalid/p', 'networkidle'], ['wait', 1500]])
 }
 
+// The deterministic-solve clicks are part of every default open, and
+// solveInApp forwards `deterministic` to openLink: a stub page that answers
+// makeDeterministic's DOM calls records the path it clicked. Without these
+// clicks every timing would run with "Non-deterministic solve" on and no
+// test would notice (spec #953 review, C1).
+{
+  const deterministicPage = () => {
+    const calls = []
+    return {
+      calls,
+      goto: async url => { calls.push('goto') },
+      waitForTimeout: async () => {},
+      // clickText/clickIcon pass the text or icon as the argument and get a
+      // click back; the toggle read passes none and gets 'off'. Anything
+      // else (solveOpen's board read) ends the stub's run.
+      evaluate: async (fn, arg) => {
+        if (typeof arg === 'string') { calls.push(arg); return true }
+        if (arg === undefined && String(fn).includes('Non-deterministic')) { calls.push('toggle'); return 'off' }
+        throw new Error('stub: no board')
+      },
+      keyboard: { press: async key => { calls.push(key) } }
+    }
+  }
+  const clicks = ['Tools', 'CogWheel', 'Solver settings', 'Solutions finder', 'Advanced settings', 'toggle', 'Escape']
+
+  const opened = deterministicPage()
+  await openLink(opened, 'https://example.invalid/p')
+  assert.deepStrictEqual(opened.calls, ['goto', ...clicks])
+
+  const whole = deterministicPage()
+  await assert.rejects(solveInApp(whole, 'https://example.invalid/p'), /stub: no board/)
+  assert.deepStrictEqual(whole.calls, ['goto', ...clicks])
+
+  const loose = deterministicPage()
+  await assert.rejects(solveInApp(loose, 'https://example.invalid/p', { deterministic: false }), /stub: no board/)
+  assert.deepStrictEqual(loose.calls, ['goto'])
+}
+
 const link = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8').trim()
 
 await withApp({ live: false }, async app => {
@@ -72,14 +110,17 @@ await withApp({ live: false }, async app => {
   assert.match(r.version, /^v\d{4}\.\d{2}\.\d{2}-[0-9a-f]+$/)
   assert.match(r.text, /unique solution/i)
 
-  // The split reads the same as the one-call form on the same link.
+  // The split form reads the readout the one-call form always has on this
+  // link: a unique verdict, both times read, the recorded app's version.
+  // Fixed values, not a second solveInApp call: solveInApp is now this same
+  // pair, so comparing the two could never fail.
   const split = await app.newPage()
   await openLink(split, link('up-to-n/PUZZLE_LINK_4x4.txt'))
   const s = await solveOpen(split)
-  const whole = await solveInApp(await app.newPage(), link('up-to-n/PUZZLE_LINK_4x4.txt'))
-  assert.strictEqual(s.verdict, whole.verdict)
-  assert.strictEqual(s.version, whole.version)
-  assert.strictEqual(s.unique > 0, whole.unique > 0)
+  assert.strictEqual(s.verdict, 'unique')
+  assert.ok(Number.isFinite(s.unique) && Number.isFinite(s.first), `both readouts read, got ${s.first}, ${s.unique}`)
+  assert.strictEqual(s.version, r.version, 'the recorded app pins one version')
+  assert.match(s.text, /unique solution/i)
 
   // A board holding entered values is refused before it is solved: the
   // solver would verify, not search, and the time would mean nothing.
@@ -102,7 +143,7 @@ await withApp({ live: false }, async app => {
     }, 50)
   })
   await assert.rejects(solveInApp(marked, link('up-to-n/PUZZLE_LINK_4x4.txt'), { name: '4x4' }),
-    /^Error: 4x4: the app judged "based on already entered values" -- .*so it is no timing; strip the link first$/)
+    /^Error: 4x4: the app judged "based on already entered values" -- .*instead of searching: strip the link, or clear the marks an earlier solve on this page left \(app-strip\.mjs: settleAfterSolve\)$/)
 })
 
 console.log('app-session.test.mjs: all seams pass')

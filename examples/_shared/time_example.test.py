@@ -620,6 +620,35 @@ if __name__ == "__main__":
         assert rows[0][0].endswith("| PASS (BUSY load 27.7 > 16) |"), rows[0][0]
         assert rows[1][0].endswith("| PASS |"), rows[1][0]
 
+        # Busy reps on both modes: the note survives on both rows of a
+        # candidate run, and the ship verdict still reads both ratios (spec
+        # #953: the note is built into the row, never patched onto it).
+        with fake_solve(
+            {
+                B: [1000] * R + [(800, hot)] + [800] * (R - 1),
+                C: [(500, hot)] + [500] * (R - 1) + [400] * R,
+            }
+        ):
+            rows, ship = run(example_dir)
+        for row, verdict in rows:
+            assert verdict == "PASS", rows
+            assert row.endswith("| PASS (BUSY load 27.7 > 16) |"), row
+        assert ship == "SHIP"
+
+    # The same for a baseline-only run (byte-equal code): one path builds its
+    # rows too, so the note is on both and there is no ship verdict.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "busy-baseline"
+        _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        with fake_solve({B: [(1000, hot)] + [1000] * (R - 1) + [(900, hot)] * R}):
+            rows, ship = run(example_dir)
+        for row, verdict in rows:
+            assert verdict == "BASELINE", rows
+            assert row.endswith("| BASELINE (BUSY load 27.7 > 16) |"), row
+        assert ship is None
+
     # a houses-only example has no component to swap: its rows are the
     # baseline alone, built from its committed link, with no candidate and no
     # ship verdict

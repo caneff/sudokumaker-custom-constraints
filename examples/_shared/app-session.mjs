@@ -122,7 +122,7 @@ export async function solveInApp (page, link, { deterministic = true, ...options
 // shared message, when the app judged the verdict "based on already entered values"
 // and `marksExpected` is false: that verifies a part-filled board instead of
 // searching. Returns parseReadout's record plus the page `text` it came from.
-export async function readVerdict (page, { name = 'link', marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300 }) {
+export async function readVerdict (page, { name = 'link', marksExpected = false, alsoWaitFor = null, timeout = 300000, settleMs = 300 } = {}) {
   try {
     await page.waitForFunction(
       ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),

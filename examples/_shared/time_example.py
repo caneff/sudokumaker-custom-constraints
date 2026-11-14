@@ -347,14 +347,11 @@ def run(example_dir, ring_clues=False, board=None, component=None):
             baseline_searchable,
             None if baseline_only else candidate_searchable,
             ring_clues,
-            date,
-            lambda after_logical: (
-                board_label + (" after-logical" if after_logical else "")
-            ),
-            app_timing.build_row,
+            (board_label, board_label + " after-logical"),
+            functools.partial(app_timing.build_row, date),
         )
         rows = [(row, verdict) for row, verdict, _ratio in timed]
-        ratios = [ratio for _row, _verdict, ratio in timed if not baseline_only]
+        ratios = [] if baseline_only else [ratio for _row, _verdict, ratio in timed]
 
         return rows, (app_timing.ship_verdict(ratios) if ratios else None)
 

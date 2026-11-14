@@ -33,7 +33,7 @@ def check_app_solve_result(link_path, data):
     timeout verdict: combine_reps's aggregate of interleaved one-rep calls,
     and the one-rep caller path."""
     if data["median"] is None:
-        # Name app-solve.mjs's fixed 300s per-rep wait (solveInApp's default
+        # Name app-solve.mjs's fixed 300s per-rep wait (solveOpen's default
         # timeoutMs in app-session.mjs) and the rep counts, so a reader learns
         # the app never finished a solve without opening the harness.
         raise RuntimeError(
@@ -154,22 +154,24 @@ def ratio_cell(ratio):
 
 
 def build_row(date, version, board, baseline_ms, candidate_ms=None, note=""):
-    """The paste-ready row and its verdict. candidate_ms=None means
-    byte-equal code: baseline-only row, verdict BASELINE. PASS means
-    candidate_ms <= 0.9 x baseline_ms on this row alone; the two-row ship
-    rule is ship_verdict's job. A 0ms baseline has no ratio: NO TIME when the
-    candidate is 0ms too, FAIL when it is not. `note` (busy_note, "" when the
-    box was quiet) follows the verdict cell, the verdict word unchanged."""
+    """The paste-ready row, its verdict and its ratio. candidate_ms=None means
+    byte-equal code: baseline-only row, verdict BASELINE, ratio None. PASS
+    means candidate_ms <= 0.9 x baseline_ms on this row alone; the two-row
+    ship rule is ship_verdict's job, and it reads the ratio returned here. A
+    0ms baseline has no ratio: NO TIME when the candidate is 0ms too, FAIL
+    when it is not. `note` (busy_note, "" when the box was quiet) follows the
+    verdict cell, the verdict word unchanged."""
     if candidate_ms is None:
-        verdict, candidate_cell, cell = "BASELINE", "—", "—"
+        verdict, candidate_cell, ratio = "BASELINE", "—", None
     else:
         ratio = row_ratio(baseline_ms, candidate_ms)
         verdict = "NO TIME" if ratio is None else "PASS" if ratio <= 0.9 else "FAIL"
-        candidate_cell, cell = f"{candidate_ms}ms", ratio_cell(ratio)
+        candidate_cell = f"{candidate_ms}ms"
+    shown = "—" if candidate_ms is None else ratio_cell(ratio)
     row = _row(
-        date, version, board, f"{baseline_ms}ms", candidate_cell, cell, verdict + note
+        date, version, board, f"{baseline_ms}ms", candidate_cell, shown, verdict + note
     )
-    return row, verdict
+    return row, verdict, ratio
 
 
 def build_link_row(date, version, board, a_ms, b_ms, note):
@@ -180,38 +182,35 @@ def build_link_row(date, version, board, a_ms, b_ms, note):
     (row_ratio: a 0ms `a` has none, or INF). `note` (busy_note, "" when the
     box was quiet) follows the verdict cell."""
     if b_ms is None:
-        b_cell, cell = "—", "—"
+        b_cell, shown = "—", "—"
     else:
-        b_cell, cell = f"{b_ms}ms", ratio_cell(row_ratio(a_ms, b_ms))
-    return _row(date, version, board, f"{a_ms}ms", b_cell, cell, f"—{note}")
+        b_cell, shown = f"{b_ms}ms", ratio_cell(row_ratio(a_ms, b_ms))
+    return _row(date, version, board, f"{a_ms}ms", b_cell, shown, f"—{note}")
 
 
-def time_modes(baseline_link, candidate_link, ring_clues, date, label_for, make_row):
+def time_modes(baseline_link, candidate_link, ring_clues, labels, make_row):
     """Both modes timed, the cold row then the after-logical row
-    (docs/real-app-timing.md): [(row, verdict, ratio), ...]. Every row gets the
-    busy note, whatever the builder. `label_for(after_logical)` is the board
-    cell; `make_row(date, version, label, baseline_ms, candidate_ms, note)`
-    returns (row, verdict) (build_row, or build_link_row with a "—" verdict).
-    `ratio` is the row's candidate/baseline (row_ratio), None with no
-    candidate. The one place the two modes are looped, shared by `just time`
-    and `just time-link`."""
-    rows = []
-    for after_logical in (False, True):
+    (docs/real-app-timing.md), and what `make_row` built for each, in that
+    order. `labels` is the (cold, after-logical) board-cell pair;
+    `make_row(version, label, baseline_ms, candidate_ms, note)` is a row
+    builder with its date bound (build_row or build_link_row), and every row
+    gets the busy note through it. The one place the two modes are looped,
+    shared by `just time` and `just time-link`."""
+    built = []
+    for after_logical, label in zip((False, True), labels, strict=True):
         base, cand = run_app_solve(
             baseline_link, candidate_link, ring_clues, after_logical
         )
-        cand_ms = cand["median"] if cand else None
-        row, verdict = make_row(
-            date,
-            base["version"],
-            label_for(after_logical),
-            base["median"],
-            cand_ms,
-            busy_note(base, cand),
+        built.append(
+            make_row(
+                base["version"],
+                label,
+                base["median"],
+                cand["median"] if cand else None,
+                busy_note(base, cand),
+            )
         )
-        ratio = row_ratio(base["median"], cand_ms) if cand else None
-        rows.append((row, verdict, ratio))
-    return rows
+    return built
 
 
 def row_ratio(baseline_ms, candidate_ms):

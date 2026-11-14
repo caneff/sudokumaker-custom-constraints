@@ -12,6 +12,7 @@
 
 import argparse
 import datetime
+import functools
 import pathlib
 import sys
 
@@ -38,18 +39,13 @@ def run(link_a, link_b=None, ring_clues=False):
     board = f"{links[0].name} (a) vs {links[1].name} (b)" if link_b else links[0].name
     date = datetime.date.today().isoformat()
 
-    def make_row(date, version, label, a_ms, b_ms, note):
-        return build_link_row(date, version, label, a_ms, b_ms, note), "—"
-
-    timed = time_modes(
+    return time_modes(
         links[0],
         links[1] if link_b else None,
         ring_clues,
-        date,
-        lambda after_logical: f"{board} {'after-logical' if after_logical else 'cold'}",
-        make_row,
+        (f"{board} cold", f"{board} after-logical"),
+        functools.partial(build_link_row, date),
     )
-    return [row for row, _verdict, _ratio in timed]
 
 
 def main(argv):
