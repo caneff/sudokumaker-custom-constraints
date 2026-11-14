@@ -17,7 +17,7 @@ Driven here on the real tree, in the order the spec states its decisions:
      tree, and check_layout no longer carries it;
   6. each link is classified once (ARCH-8): every committed link decodes to
      a `LinkFacts` with a `LinkKind`, and the layout gate passes on the tree;
-  7. the ring verifiers share one stale-grid check (DUP-3).
+  7. each ring verifier flags a recorded clue its grid disagrees with (DUP-3).
 
 WHAT A GREEN RUN DOES NOT COVER (this seam, `just check-full`, is blind to it):
   - the app: whether a rebuilt link opens, renders and solves in
@@ -119,7 +119,7 @@ def each_link_is_classified_once():
     assert violations == [], violations
 
 
-def the_ring_verifiers_share_one_stale_check():
+def each_ring_verifier_flags_a_stale_grid():
     # Drive each verifier with a board whose recorded clue disagrees with its
     # grid: the stale-grid problem must come out of the verifier itself.
     for verifier in ("skyscraper", "isofill-skyscraper"):
@@ -149,5 +149,5 @@ if __name__ == "__main__":
     geometry_is_one_type()
     the_research_scan_is_its_own_script()
     each_link_is_classified_once()
-    the_ring_verifiers_share_one_stale_check()
+    each_ring_verifier_flags_a_stale_grid()
     print("spec #896 closing check: ok")
