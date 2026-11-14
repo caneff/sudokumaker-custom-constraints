@@ -27,7 +27,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from board_kit import N, board_doc, box, search_parser, write_gen
 from board_kit import search as search_board
-from minify import minify_file, minify_js
+from count_board import sparse_backend_code
+from minify import minify_file
 from sm_document import code_constraint, write_link
 from sudoku_kit.cpsat import boxes, sudoku_model
 
@@ -127,12 +128,6 @@ def search(seed, n_groups=20, n_required=5, overlap=True):
     )
 
 
-def backend_code(gen, name):
-    table = "const GROUPS = " + json.dumps(gen["groups"], separators=(",", ":")) + "\n"
-    src = BACKEND.read_text().replace(CANDIDATE_NAME, name)
-    return minify_js(table + src, base_dir=BACKEND.parent)
-
-
 def build_doc(gen, name):
     components = (
         [(CANDIDATE_NAME, minify_file(COMPONENT))] if name == CANDIDATE_NAME else []
@@ -143,7 +138,10 @@ def build_doc(gen, name):
         gen,
         [
             code_constraint(
-                CONSTRAINT_NAME, backend_code(gen, name), components, named=True
+                CONSTRAINT_NAME,
+                sparse_backend_code(BACKEND, gen, name, candidate=CANDIDATE_NAME),
+                components,
+                named=True,
             )
         ],
     )
