@@ -23,14 +23,10 @@ function boardFor (W, H) {
   }
 }
 
-for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'FillominoComponent']]) {
+for (const name of ['isofill', 'fillomino']) {
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
 
-  // What the backend hands the app, read from the puzzle's side.
-  const square = boardFor(4, 4)
-  runBackend(src, square)
-  const { registered } = square.puzzle
-  assert.deepStrictEqual(registered.map(c => c.ctor), [ctor], `${name}: a square board registers one ${ctor}`)
+  // The square-board registration is whole-grid-backends.test.mjs's.
 
   // Any rectangle: the component gets the row-major cells, then width and height.
   for (const [W, H] of [[4, 3], [3, 4]]) {

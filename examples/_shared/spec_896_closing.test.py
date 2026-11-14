@@ -17,7 +17,7 @@ Driven here on the real tree, in the order the spec states its decisions:
      tree, and check_layout no longer carries it;
   6. each link is classified once (ARCH-8): every committed link decodes to
      a `LinkFacts` with a `LinkKind`, and the layout gate passes on the tree;
-  7. the ring verifiers share one stale-grid check (DUP-3).
+  7. each ring verifier flags a recorded clue its grid disagrees with (DUP-3).
 
 WHAT A GREEN RUN DOES NOT COVER (this seam, `just check-full`, is blind to it):
   - the app: whether a rebuilt link opens, renders and solves in
@@ -30,6 +30,7 @@ WHAT A GREEN RUN DOES NOT COVER (this seam, `just check-full`, is blind to it):
     uv run examples/_shared/spec_896_closing.test.py
 """
 
+import dataclasses
 import importlib
 import pathlib
 import re
@@ -43,7 +44,7 @@ sys.path.insert(0, str(HERE))
 import check_layout
 import check_research_loads
 import sm_document
-from board import Geometry
+from board import Geometry, load_board
 from link_checks import LinkFacts, LinkKind
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -118,10 +119,27 @@ def each_link_is_classified_once():
     assert violations == [], violations
 
 
-def the_ring_verifiers_share_one_stale_check():
+def each_ring_verifier_flags_a_stale_grid():
+    # Drive each verifier with a board whose recorded clue disagrees with its
+    # grid: the stale-grid problem must come out of the verifier itself.
     for verifier in ("skyscraper", "isofill-skyscraper"):
-        text = (EXAMPLES / verifier / "verify.py").read_text()
-        assert "stale_against_grid" in text, verifier
+        sys.path.insert(0, str(EXAMPLES / verifier))
+        for name in ("build_size", "verify"):
+            sys.modules.pop(name, None)
+        try:
+            verify = importlib.import_module("verify")
+        finally:
+            sys.path.remove(str(EXAMPLES / verifier))
+        board = load_board(EXAMPLES / verifier / "gen.json")
+        assert verify.grid_problems(board) == [], verifier
+        key = sorted(board.clue)[0]
+        bent = dict(board.clue)
+        bent[key] = bent[key] % board.n + 1
+        out = verify.grid_problems(dataclasses.replace(board, clue=bent))
+        assert any(m.startswith(f"clue {key[0]}{key[1]}: gen says") for m in out), (
+            verifier,
+            out,
+        )
 
 
 if __name__ == "__main__":
@@ -131,5 +149,5 @@ if __name__ == "__main__":
     geometry_is_one_type()
     the_research_scan_is_its_own_script()
     each_link_is_classified_once()
-    the_ring_verifiers_share_one_stale_check()
+    each_ring_verifier_flags_a_stale_grid()
     print("spec #896 closing check: ok")

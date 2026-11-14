@@ -52,7 +52,7 @@ about, because `frame-corners.js` pins them instead of a given.
 - `main-global.js` — the global backend segment: reads all 4n frame lines off
   the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,
   `docs/example-layout.md`), then registers the same line component plus the
-  opposite-pair component below (it needs both ends of a line, which
+  pair component below (it needs both ends of a line, which
   only a full frame has). `PUZZLE_LINK.txt` and the sized variants ship this
   file.
 - `RunningStartComponent.js` — the per-line component. Both directions of

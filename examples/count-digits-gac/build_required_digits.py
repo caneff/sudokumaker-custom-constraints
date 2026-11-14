@@ -44,13 +44,12 @@ CONSTRAINT_NAME = "Custom Outside Sudoku"
 TIMED_COMPONENT = "RequiredDigitsWrapperComponent"
 
 
-def _backend_code():
-    return minify_file(BOARD_DIR / "main-required-digits-global.js")
-
-
 def _build(base, components):
     doc = replace_constraint_code(
-        base, CONSTRAINT_NAME, backend_code=_backend_code(), components=components
+        base,
+        CONSTRAINT_NAME,
+        backend_code=minify_file(BOARD_DIR / "main-required-digits-global.js"),
+        components=components,
     )
     assert frame_only(base, CONSTRAINT_NAME) == frame_only(doc, CONSTRAINT_NAME), (
         "frames differ beyond the constraint's own code and input"

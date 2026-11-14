@@ -159,8 +159,6 @@ def a_rectangular_isofill_skyscraper_builds_and_proves():
     assert (p["width"], p["height"], p["maxDigit"]) == (6, 5, 3)
     shown = {k: board.clue[k] for k in board.active}
     assert mismatches(p, board.givens, shown) == []
-    main = (EXAMPLES / "isofill-skyscraper" / "main-global.js").read_text()
-    assert "new IsofillComponent('ISOFILL', interior, nw, nh)" in main
 
 
 def the_readable_fillomino_matches_and_reads():

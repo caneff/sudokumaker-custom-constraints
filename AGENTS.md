@@ -166,7 +166,7 @@ the gate (2026-11-04).
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
 - The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`
-- The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
+- The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle → `docs/research/humanify-pedagogy/README.md`; its tools (rename pipeline, reference-page builder, probes) → `tools/humanify/`
 - Testing + generation → `docs/testing-and-generation.md`
 - Before you install the pre-commit hooks or push docs straight to main: the layout gate and its install caveat → `docs/testing-and-generation.md` § Layout gate on commit and push
 - Pants behind the seam runner: wiring an example or a new test file, the exception list, the measurements → `docs/pants.md`

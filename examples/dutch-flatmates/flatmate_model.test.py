@@ -8,7 +8,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_link import read_board
+from build_link import read_gen
 from flatmate_model import N, build_model, count_plain_completions
 from sudoku_kit.cpsat import SOLVED, solver
 
@@ -93,7 +93,7 @@ def edge_only_violations(grid, rng):
 
 
 if __name__ == "__main__":
-    grid_rows, givens = read_board(HERE / "gen.json")
+    grid_rows, givens, _extras, _spec = read_gen(HERE / "gen.json")
     grid = {(r, c): int(grid_rows[r][c]) for r in range(N) for c in range(N)}
     assert rule_holds(grid) and model_accepts(grid, True), "the shipped solution fails"
 

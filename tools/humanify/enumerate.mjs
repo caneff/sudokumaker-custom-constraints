@@ -40,7 +40,11 @@ while (body.length === 1 && body[0].type === 'ExpressionStatement' &&
   body = body[0].expression.callee.body.body
 }
 const units = body.map((stmt, i) => ({
-  index: i, type: stmt.type, start: stmt.start, end: stmt.end, size: stmt.end - stmt.start,
+  index: i,
+  type: stmt.type,
+  start: stmt.start,
+  end: stmt.end,
+  size: stmt.end - stmt.start,
   bindings: bindings.filter(b => b.declStart >= stmt.start && b.declEnd <= stmt.end).map(b => b.id)
 }))
 writeFileSync('bindings.json', JSON.stringify(bindings))

@@ -82,11 +82,6 @@ def read_gen(puzzle_path):
     return spec["grid"], givens, extras, spec
 
 
-def read_board(puzzle_path):
-    grid, givens, _extras, _spec = read_gen(puzzle_path)
-    return grid, givens
-
-
 def circles_constraints(circles, keep_comments=False):
     no_five = f"puzzle.addConstraintComponent(new {NO_FIVE_COMPONENT}('no 5 in a circle', {json.dumps(list(circles))}))"
     return [

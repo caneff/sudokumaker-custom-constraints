@@ -13,11 +13,12 @@ import random
 from unittest import mock
 
 import carve
-from board import Board, Geometry, make_lines
+from board import Geometry, make_lines
 from carve import SOLVE_LIMIT, generate, make_grid, make_paths, repeating_lines, unique
 from frame_fixtures import (
     TOY,
     first_digit,
+    make_board,
     post_first_digit,
     striped_grid,
     temp_spec,
@@ -67,20 +68,9 @@ def test_make_paths_draws_one_bent_l_per_ring_key():
 
 def test_unique_is_the_cp_sat_double_solve():
     n, bh, bw = 4, 2, 2
-    lines = make_lines(n)
     grid = make_grid(random.Random(11), n, bh, bw)
-    bare = Board(
-        n=n,
-        bh=bh,
-        bw=bw,
-        grid=grid,
-        clue=dict.fromkeys(lines, 0),
-        givens={},
-        active=set(),
-        lines=lines,
-        height=n,
-        digits=n,
-    )
+    bare = make_board(n, bh, bw, grid=grid, active=set())
+    lines = bare.lines
     # a bare 4x4 with no givens and no clues has many solutions
     assert unique(post_first_digit, bare) is False
     # every cell given: exactly one solution
@@ -95,9 +85,10 @@ def test_unique_is_the_cp_sat_double_solve():
     # given, and dropping every clue on the same givens loses uniqueness
     clue = {k: grid[cells[0][0]][cells[0][1]] for k, cells in lines.items()}
     clued = dataclasses.replace(bare, clue=clue)
-    assert unique(
-        post_first_digit, dataclasses.replace(clued, active=set(lines))
-    ) != unique(post_first_digit, clued), "the active clue set must change the answer"
+    assert (
+        unique(post_first_digit, dataclasses.replace(clued, active=set(lines))) is True
+    )
+    assert unique(post_first_digit, clued) is False
 
 
 def test_generate_carves_a_unique_and_minimal_board():

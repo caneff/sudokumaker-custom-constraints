@@ -41,11 +41,9 @@ cross-unit edges (known_edges.test.py).
     uv run examples/_shared/spec_809_closing.test.py
 """
 
-import os
 import pathlib
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 
@@ -53,7 +51,14 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from gate_lib import pants, pants_suites, run_logged, run_stubbed, runner_listing
+from gate_lib import (
+    fixture_git,
+    pants,
+    pants_suites,
+    run_logged,
+    run_stubbed,
+    runner_listing,
+)
 
 RUNNER = ["bash", "tests/all.sh"]
 
@@ -83,37 +88,25 @@ STILL_IMPORTS = "node examples/_shared/recovery-lib.test.mjs"
 SANDBOXED, UNDECLARED = "examples/up-to-n:marker-contract.test.mjs", "main.js"
 
 
-def git(tree, *args):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    for who in ("AUTHOR", "COMMITTER"):
-        env[f"GIT_{who}_NAME"] = "fixture"
-        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
-    r = subprocess.run(
-        ["git", *args], cwd=tree, env=env, capture_output=True, text=True
-    )
-    assert r.returncode == 0, f"git {args} failed in the copy:\n{r.stderr}"
-    return r.stdout
-
-
 def copy_of_the_tree(tmp):
     """The tracked files of this tree as they are on disk, committed as `base`
     in a repository of their own: the real `BUILD` files and the real runner,
     and nothing a diff made here can reach."""
     tree = pathlib.Path(tmp) / "tree"
-    for rel in git(ROOT, "ls-files", "-z").split("\0"):
+    for rel in fixture_git(ROOT, "ls-files", "-z").split("\0"):
         if rel and (ROOT / rel).is_file():
             (tree / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / rel, tree / rel)
-    git(tree, "init", "-q")
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "-m", "base")
-    git(tree, "tag", "base")
+    fixture_git(tree, "init", "-q")
+    fixture_git(tree, "add", "-A")
+    fixture_git(tree, "commit", "-q", "-m", "base")
+    fixture_git(tree, "tag", "base")
     return tree
 
 
 def with_diff(tree, changed=(), deleted=(), added=()):
-    git(tree, "reset", "-q", "--hard", "base")
-    git(tree, "clean", "-qfd")
+    fixture_git(tree, "reset", "-q", "--hard", "base")
+    fixture_git(tree, "clean", "-qfd")
     for rel in changed:
         with (tree / rel).open("a") as f:
             f.write("\n")
@@ -122,8 +115,8 @@ def with_diff(tree, changed=(), deleted=(), added=()):
     for rel in added:
         (tree / rel).parent.mkdir(parents=True, exist_ok=True)
         (tree / rel).write_text("")
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "-m", "change")
+    fixture_git(tree, "add", "-A")
+    fixture_git(tree, "commit", "-q", "-m", "change")
 
 
 def narrowed(tree):
@@ -215,7 +208,7 @@ def the_last_line_keeps_its_format(tree, whole):
 def an_undeclared_read_is_loud(tree):
     """The real Pants on a real suite: green with the unit declared, and red
     on the file itself once the unit stops declaring its code."""
-    git(tree, "reset", "-q", "--hard", "base")
+    fixture_git(tree, "reset", "-q", "--hard", "base")
     r = pants("test", SANDBOXED, root=tree)
     assert r.returncode == 0, f"{SANDBOXED} fails in its sandbox:\n{r.stderr}"
 
@@ -238,7 +231,7 @@ def an_undeclared_read_is_loud(tree):
 
 
 def no_pants_runs_nothing(tree):
-    git(tree, "reset", "-q", "--hard", "base")
+    fixture_git(tree, "reset", "-q", "--hard", "base")
     r, log = run_logged(RUNNER, root=tree, absent=("pants",))
     assert r.returncode == 2, f"exit {r.returncode}, not 2:\n{r.stdout}{r.stderr}"
     assert "Install the Pants launcher" in r.stderr, r.stderr

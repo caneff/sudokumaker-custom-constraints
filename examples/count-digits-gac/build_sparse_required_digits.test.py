@@ -1,7 +1,6 @@
 import json
 import pathlib
 import sys
-import tempfile
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
@@ -9,23 +8,19 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 
 from board_kit import box, givens_of
 from build_sparse_required_digits import (
+    BACKEND,
     BASELINE_NAME,
     BOARD_DIR,
     CANDIDATE_NAME,
+    COMPONENT,
     GEN,
-    backend_code,
     build,
     is_house,
     model,
 )
-from count_test_kit import counter_for, full_givens
-from sudoku_kit.link_codec import decode_puzzle
-from untouched import leaves_untouched
+from count_test_kit import check_same_board_pair, counter_for, full_givens
 
 count_solutions = counter_for(model)
-
-
-NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
 
 
 def check_board(gen):
@@ -63,39 +58,13 @@ if __name__ == "__main__":
     check_board(gen)
     check_rule_is_enforced(gen)
 
-    cand = backend_code(gen, CANDIDATE_NAME)
-    base = backend_code(gen, BASELINE_NAME)
-    assert cand.replace(CANDIDATE_NAME, BASELINE_NAME) == base
-    assert cand != base and BASELINE_NAME in base
-
-    with (
-        leaves_untouched([BOARD_DIR / n for n in NAMES]) as before,
-        tempfile.TemporaryDirectory() as tmp,
-    ):
-        out = pathlib.Path(tmp)
-        build(out)
-        for n in NAMES:
-            assert (out / n).read_bytes() == before[BOARD_DIR / n], (
-                f"{n} does not reproduce"
-            )
-
-    docs = [decode_puzzle(before[BOARD_DIR / n].decode().strip()) for n in NAMES]
-    cand_doc, base_doc = docs
-    for d in docs:
-        # a plain 9x9 is a sudoku document: rows and columns come from
-        # the app's own rules, so no "Rows & Columns" backend rides along
-        assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
-        names = [
-            (c.get("definition") or {}).get("name") for c in d["puzzle"]["constraints"]
-        ]
-        assert "Rows & Columns" not in names, "a row/column backend is still carried"
-    cand_c = cand_doc["puzzle"]["constraints"][-1]["definition"]
-    base_c = base_doc["puzzle"]["constraints"][-1]["definition"]
-    assert [c["name"] for c in cand_c["components"]] == [CANDIDATE_NAME]
-    assert base_c["components"] == []
-    cand_doc["puzzle"]["constraints"][-1]["definition"]["components"] = []
-    cand_doc["puzzle"]["constraints"][-1]["definition"]["backend"]["code"] = base_c[
-        "backend"
-    ]["code"]
-    assert cand_doc == base_doc, "the two links differ beyond the component code"
+    check_same_board_pair(
+        gen,
+        board_dir=BOARD_DIR,
+        build=build,
+        backend=BACKEND,
+        candidate=CANDIDATE_NAME,
+        baseline=BASELINE_NAME,
+        component=COMPONENT,
+    )
     print("ok")

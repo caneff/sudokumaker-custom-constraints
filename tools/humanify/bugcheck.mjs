@@ -1,4 +1,4 @@
-import { loadBundle } from '../../../../examples/_shared/bundle-load.mjs'
+import { loadBundle } from '../../examples/_shared/bundle-load.mjs'
 const P = loadBundle({ expose: ['createHelpers', 'OuterPosition', 'groupsArePolarityPair', 'describeDigitGroupKind', 'SudokuDigitSet', 'DigitsHelper'] }).exposed
 const spec = { size: { width: 9, height: 9 }, minDigit: 1, maxDigit: 9, type: 'sudoku' }
 const h = P.createHelpers(spec)
@@ -10,9 +10,9 @@ for (const [name, coords] of [['TopLeft', { x: -1, y: -1 }], ['TopRight', { x: 9
   console.log(`${name.padEnd(12)} outerId=${id} side=${side.padEnd(12)} ray starts ${ray}`)
 }
 console.log('== polarity pair on 1..9: groups low={1..4}, high={6..9}')
-const low = +P.SudokuDigitSet.from([1, 2, 3, 4]), high = +P.SudokuDigitSet.from([6, 7, 8, 9])
+const low = +P.SudokuDigitSet.from([1, 2, 3, 4]); const high = +P.SudokuDigitSet.from([6, 7, 8, 9])
 console.log('groupsArePolarityPair([low, high]) =', P.groupsArePolarityPair([low, high], spec))
-const five = +P.SudokuDigitSet.from([5]), one = +P.SudokuDigitSet.from([1])
+const five = +P.SudokuDigitSet.from([5]); const one = +P.SudokuDigitSet.from([1])
 for (const [label, g] of [['[low, low]', [low, low]], ['[high, high]', [high, high]], ['[low, {5}]', [low, five]], ['[high, {1}]', [high, one]], ['[{5}, low]', [five, low]]]) {
   console.log(`groupsArePolarityPair(${label.padEnd(12)}) = ${P.groupsArePolarityPair(g, spec)}`)
 }

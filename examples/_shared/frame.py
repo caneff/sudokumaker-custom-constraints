@@ -46,6 +46,7 @@ def corner_cells(W, H=None):
 
 
 def rect(x, y):
+    """One cell's corner points, column first."""
     return [
         {"x": x, "y": y},
         {"x": x + 1, "y": y},

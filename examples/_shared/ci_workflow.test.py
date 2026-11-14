@@ -12,7 +12,6 @@
 #   uv run examples/_shared/ci_workflow.test.py
 
 import json
-import os
 import pathlib
 import re
 import subprocess
@@ -22,7 +21,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands
+from gate_lib import commands, fixture_git_env
 
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
@@ -117,7 +116,7 @@ def run_narrowed(script, event, base_ref, before):
     """Run the Narrowed seam script against a stub `tests/all.sh`; the stub
     prints its argv, so what the script chose to call is the output."""
     with tempfile.TemporaryDirectory() as d:
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = fixture_git_env()
 
         def git(*a):
             return subprocess.run(

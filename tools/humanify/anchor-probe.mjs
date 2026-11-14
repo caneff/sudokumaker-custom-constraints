@@ -43,7 +43,7 @@ async function waitForServer (p, deadlineMs = 5000) {
       await res.arrayBuffer()
       return
     } catch {
-      await new Promise((r) => setTimeout(r, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
     }
   }
   server.kill()

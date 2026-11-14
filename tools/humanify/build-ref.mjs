@@ -337,7 +337,7 @@ function scrub (md, names) {
   const indent = (l) => /^\s*/.exec(l)[0].length
   const isItem = (l) => /^\s*[-*] /.test(l)
   let i = 0; let fence = false
-  const sentences = (text) => text.split(/(?<=[.!?])\s+(?=[A-Z`(\[*_"'])/)
+  const sentences = (text) => text.split(/(?<=[.!?])\s+(?=[A-Z`([*_"'])/)
   while (i < lines.length) {
     const l = lines[i]
     if (/^```/.test(l)) { fence = !fence; out.push(l); i++; continue }
@@ -352,7 +352,7 @@ function scrub (md, names) {
       for (const b of block) (kids.length || (b !== l && isItem(b) && indent(b) > base) ? kids : own).push(b)
       if (own.some(b => spanHits(b, re))) continue
       out.push(...own)
-      if (kids.length) { lines.splice(i, 0, ...kids); }
+      if (kids.length) { lines.splice(i, 0, ...kids) }
       continue
     }
     const para = [l]; i++
@@ -472,8 +472,9 @@ function autolink (html) {
     })
   }).join('')
 }
-let body = autolink(guideHtml) + '<hr class="part">' + autolink(refHtml) + (publicOnly ? '' :
-  '<details class="hood" id="under-the-hood"><summary><h2>Under the hood<a class="anchor" href="#under-the-hood" aria-label="Link to this section" title="Copy link">#</a></h2><p>The solver machinery a custom constraint never calls: internal component pieces, state and change application, the app\'s own logic steps, the free functions behind the utility globals, and the built-in constraint handlers. Described so behaviour can be understood, not for calling.</p></summary>' + autolink(hoodHtml) + '</details>')
+let body = autolink(guideHtml) + '<hr class="part">' + autolink(refHtml) + (publicOnly
+  ? ''
+  : '<details class="hood" id="under-the-hood"><summary><h2>Under the hood<a class="anchor" href="#under-the-hood" aria-label="Link to this section" title="Copy link">#</a></h2><p>The solver machinery a custom constraint never calls: internal component pieces, state and change application, the app\'s own logic steps, the free functions behind the utility globals, and the built-in constraint handlers. Described so behaviour can be understood, not for calling.</p></summary>' + autolink(hoodHtml) + '</details>')
 
 // The task table names each target by its heading, with the class for a method.
 const headById = new Map(headings.map(h => [h.id, h]))
@@ -511,7 +512,7 @@ for (const m of body.matchAll(/<section class="entry" data-tier="([^"]+)">\s*<h3
 function navTree (heads) {
   // Build the h2 › h3 › h4 tree first so an h3 without members can be marked a leaf.
   const roots = []
-  let h2 = null, h3 = null
+  let h2 = null; let h3 = null
   for (const h of heads) {
     const node = { ...h, kids: [] }
     if (h.level === 2) { roots.push(node); h2 = node; h3 = null } else if (h.level === 3) { (h2 ? h2.kids : roots).push(node); h3 = node } else { (h3 || h2 ? (h3 || h2).kids : roots).push(node) }

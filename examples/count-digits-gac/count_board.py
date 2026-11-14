@@ -3,6 +3,7 @@
 # digits. `model()` is the CP-SAT side; CountDigitsGacComponent.js is the JS
 # side.
 
+import json
 import pathlib
 import sys
 
@@ -90,6 +91,17 @@ def finish_group(rng, grid, cells, values, blocked, index):
 def demo_backend_code(class_name):
     src = DEMO_BACKEND.read_text().replace(CANDIDATE_NAME, class_name)
     return minify_js(src, base_dir=DEMO_BACKEND.parent, keep_comments=True)
+
+
+def sparse_backend_code(
+    backend, gen, name, keep_comments=False, candidate=CANDIDATE_NAME
+):
+    """A sparse board's backend: the drawn groups as a `GROUPS` table ahead of
+    the `backend` source, with the `candidate` class name (count-digits's unless a
+    board names its own) swapped for `name`."""
+    table = "const GROUPS = " + json.dumps(gen["groups"], separators=(",", ":")) + "\n"
+    src = backend.read_text().replace(candidate, name)
+    return minify_js(table + src, base_dir=backend.parent, keep_comments=keep_comments)
 
 
 def groups_input(gen):
