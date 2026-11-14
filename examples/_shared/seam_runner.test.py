@@ -20,7 +20,7 @@ from gate_lib import (
     ROOT_BUILD,
     by_mechanism,
     commands,
-    fixture_git_env,
+    fixture_git,
     gate_tree,
     pants,
     pants_suites,
@@ -230,28 +230,19 @@ def agents_md_names_both_commands():
     assert len(narrowed) == 1, section
 
 
-def git(tree, *args):
-    env = fixture_git_env()
-    r = subprocess.run(
-        ["git", *args], cwd=tree, env=env, capture_output=True, text=True
-    )
-    assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
-    return r.stdout.strip()
-
-
 def with_diff(tree, changed, deleted=()):
     """Commit an edit to each of `changed`, and the removal of each of
     `deleted`, on top of the fixture's base."""
-    git(tree, "reset", "-q", "--hard", "base")
-    git(tree, "clean", "-qfd")
+    fixture_git(tree, "reset", "-q", "--hard", "base")
+    fixture_git(tree, "clean", "-qfd")
     for rel in changed:
         (tree / rel).parent.mkdir(parents=True, exist_ok=True)
         with (tree / rel).open("a") as f:
             f.write("# changed\n")
     for rel in deleted:
         (tree / rel).unlink()
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "--allow-empty", "-m", "change")
+    fixture_git(tree, "add", "-A")
+    fixture_git(tree, "commit", "-q", "--allow-empty", "-m", "change")
 
 
 def no_pants_toml_widens():
@@ -260,10 +251,10 @@ def no_pants_toml_widens():
     line says why. A base git does not know is refused."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
-        git(tree, "init", "-q")
-        git(tree, "add", "-A")
-        git(tree, "commit", "-q", "-m", "base")
-        git(tree, "tag", "base")
+        fixture_git(tree, "init", "-q")
+        fixture_git(tree, "add", "-A")
+        fixture_git(tree, "commit", "-q", "-m", "base")
+        fixture_git(tree, "tag", "base")
         assert sorted(listing(root=tree)) == sorted(WHOLE), listing(root=tree)
         m = len(WHOLE)
         for changed in (["examples/aa/README.md"], ["docs/notes.md"], []):
@@ -625,10 +616,10 @@ def selection_tree(tmp):
     for rel in WIRED_UNIT:
         if rel.startswith("examples/aa/") and rel not in SELECTION_TREE:
             (tree / rel).unlink()
-    git(tree, "init", "-q")
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "-m", "base")
-    git(tree, "tag", "base")
+    fixture_git(tree, "init", "-q")
+    fixture_git(tree, "add", "-A")
+    fixture_git(tree, "commit", "-q", "-m", "base")
+    fixture_git(tree, "tag", "base")
     return tree
 
 
@@ -787,10 +778,10 @@ def subdir(tmp, name):
 def logged_tree(tmp, name):
     """A scratch tree of the fixture, committed and tagged `base`."""
     tree = scratch_tree(subdir(tmp, name), dict.fromkeys(FIXTURE, ""))
-    git(tree, "init", "-q")
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "-m", "base")
-    git(tree, "tag", "base")
+    fixture_git(tree, "init", "-q")
+    fixture_git(tree, "add", "-A")
+    fixture_git(tree, "commit", "-q", "-m", "base")
+    fixture_git(tree, "tag", "base")
     return tree
 
 
@@ -830,7 +821,7 @@ def a_run_appends_one_row_to_the_log():
         full, group, widened, narrowed, failed = rows
         assert full["mode"] == "full" and group["mode"] == "group", (full, group)
         assert (full["passed"], full["total"], full["ok"]) == (m, m, True), full
-        assert full["sha"] == git(flat, "rev-parse", "HEAD"), full
+        assert full["sha"] == fixture_git(flat, "rev-parse", "HEAD"), full
         assert full["base"] is None and full["reason"] is None, full
         assert group["group"] == "soundness" and group["ok"] is True, group
         assert (group["passed"], group["total"]) == (3, 3), group
@@ -840,7 +831,7 @@ def a_run_appends_one_row_to_the_log():
             "no pants.toml, so nothing says what the diff affects"
         ), widened
         assert narrowed["mode"] == "narrowed" and narrowed["reason"] is None, narrowed
-        assert narrowed["sha"] == git(sel, "rev-parse", "HEAD"), narrowed
+        assert narrowed["sha"] == fixture_git(sel, "rev-parse", "HEAD"), narrowed
         assert narrowed["ok"] is True, narrowed
         assert failed["ok"] is False and failed["passed"] < failed["total"], failed
         for row in rows:

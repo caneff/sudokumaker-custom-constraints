@@ -144,6 +144,21 @@ def fixture_git_env():
     return env
 
 
+def fixture_git(tree, *args):
+    """Run `git *args` in the fixture repo `tree` under `fixture_git_env`, and
+    return its stripped stdout; a failing call fails the test with git's
+    stderr."""
+    r = subprocess.run(
+        ["git", *args],
+        cwd=tree,
+        env=fixture_git_env(),
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
+    return r.stdout.strip()
+
+
 def run_logged(
     argv,
     root=ROOT,
