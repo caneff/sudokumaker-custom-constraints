@@ -189,7 +189,7 @@ page.
 
 ## `just time` on a ringless board
 
-Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
+Read from the source (`examples/_shared/time_example.py`, `searchable_link.py`):
 
 - `time_example.run` takes `mode = "empty" if ring_clues else "strip"`, so with
   no `--ring-clues` the board is stripped to its givens (`strip_to_givens`: every

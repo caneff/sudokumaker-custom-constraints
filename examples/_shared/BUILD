@@ -121,7 +121,7 @@ for file in ["whole-grid-backends.test.mjs", "whole-grid-mains.test.mjs"]:
 
 # Rewrites a skyscraper and an isofill board, which it reads by path.
 suite(
-    "probe_link.test.py",
+    "searchable_link.test.py",
     needs=[
         "examples/skyscraper/PUZZLE_LINK_6x6.txt:data",
         "examples/isofill/PUZZLE_LINK.txt:data",

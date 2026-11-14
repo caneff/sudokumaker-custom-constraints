@@ -2,7 +2,7 @@
 # same-board pair (docs/real-app-timing.md): the committed PUZZLE_LINK.txt is
 # the baseline, and the candidate is that link with the working-tree component
 # and backend swapped in, in-process (link_swap.swap_build). Both become
-# searchable links (probe_link.py) and are timed through app_timing
+# searchable links (searchable_link.py) and are timed through app_timing
 # (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
 # paste-ready row per mode -- cold, then after the app's own logical pass --
 # with date, app version, board, baseline median, candidate median, ratio and
@@ -35,7 +35,7 @@ import app_timing
 from link_swap import swap_build
 from manifest import load_manifest
 from minify import minify_file
-from probe_link import empty_link_file
+from searchable_link import empty_link_file
 from sm_document import find_constraint, registering_constraint_name
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -278,7 +278,7 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     byte-equal and there is nothing to judge. Raises
     FileNotFoundError naming the board link when it is missing. Links become
     searchable links before timing; ring_clues
-    keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
+    keeps the outer ring for edge-clue puzzles (searchable_link.py `empty`).
     `board` names a link file (relative to example_dir) other than
     PUZZLE_LINK.txt to time; the printed row's board label then names it.
     `component` names the registered component to follow, over the manifest's
@@ -331,19 +331,19 @@ def run(example_dir, ring_clues=False, board=None, component=None):
             example_dir, component_file, candidate_link, base_doc, board=board
         )
 
-        baseline_probe = tmp / "baseline_probe.txt"
-        empty_link_file(baseline_link, baseline_probe, mode)
-        candidate_probe = tmp / "candidate_probe.txt"
+        baseline_searchable = tmp / "baseline_searchable.txt"
+        empty_link_file(baseline_link, baseline_searchable, mode)
+        candidate_searchable = tmp / "candidate_searchable.txt"
         if not baseline_only:
-            empty_link_file(candidate_link, candidate_probe, mode)
+            empty_link_file(candidate_link, candidate_searchable, mode)
 
         date = datetime.date.today().isoformat()
         # Every fixture gets both rows (docs/real-app-timing.md): cold, from an
         # empty board, then from the state a player reaches after the app's
         # own logical pass.
         timed = app_timing.time_modes(
-            baseline_probe,
-            None if baseline_only else candidate_probe,
+            baseline_searchable,
+            None if baseline_only else candidate_searchable,
             ring_clues,
             date,
             lambda after_logical: (

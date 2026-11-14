@@ -293,7 +293,7 @@ the next section and `../../docs/real-app-timing.md`.
 
 The shipped link stores the full solution as entered values (35 black givens,
 65 blue entries). Strip it before you time or play it:
-`uv run examples/_shared/probe_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
+`uv run examples/_shared/searchable_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
 
 On the stripped grid the app's "Find all solutions" reads **"This is a unique
 solution" in 0.2 s** (live app v2026.08.14-d47fc4b, 2026-08-27, `app-solve.mjs`,

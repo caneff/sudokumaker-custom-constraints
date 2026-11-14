@@ -28,7 +28,7 @@ from app_timing import (
 from app_timing_fake import fake_solve
 
 R = app_timing.REPS
-B, C = "baseline_probe.txt", "candidate_probe.txt"
+B, C = "baseline_searchable.txt", "candidate_searchable.txt"
 
 
 if __name__ == "__main__":

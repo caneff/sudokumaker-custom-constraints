@@ -58,7 +58,7 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   (3 reps each, non-deterministic solve off). `just time-link <a> <b>`
   interleaves one rep per link per round, the lead alternating, and prints
   both medians and the b/a ratio on each row. The link is timed as given:
-  nothing is stripped (`probe_link.py` does that), so a link with entered
+  nothing is stripped (`searchable_link.py` does that), so a link with entered
   ring clues needs `--ring-clues`. The verdict cell is `—`: no candidate
   component is involved, so the two-row rule does not apply. A link whose
   every rep times out ends in the same refusal as `just time`. It drives
@@ -152,16 +152,16 @@ every heavier technique off.
 The link must make the solver **search**. A finished link stores the whole
 solution in its cells, so the solver only verifies a filled grid — fast, and
 equally fast for every code variant. **Strip the link first, every time.**
-`probe_link.py strip` keeps only given cells and drops every value and pencil
-mark; `probe_link.py empty` keeps the outer ring too, for puzzles whose clues
+`searchable_link.py strip` keeps only given cells and drops every value and pencil
+mark; `searchable_link.py empty` keeps the outer ring too, for puzzles whose clues
 sit there as non-given values (Numbered Rooms, Skyscraper). Pick the mode by
 where the clues live, never by habit: `empty` on ISOFILL left 36 solution
 values in the ring and produced a false "unique in 2 s". The app tells you when
 you got it wrong — its verdict reads "based on already entered values and pencil
 marks". A number read off such a run is not a timing — and the tools refuse
 it: `app-solve.mjs` counts the blue (entered) digits on the loaded board and
-exits with an error unless you pass `--ring-clues`; `probe_link.py` refuses to
-write a probe that is not stripped; `time_example.py` strips by default.
+exits with an error unless you pass `--ring-clues`; `searchable_link.py` refuses to
+write a link that is not stripped; `time_example.py` strips by default.
 
 To compare two code variants you need one board solved by each. Both examples
 ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
@@ -250,7 +250,7 @@ failures, mixing digits 1-9 and 10-12 throughout the run.
 
 ## Reproduce
 
-Install the browser once, build the probe links, then run:
+Install the browser once, build the searchable links, then run:
 
 ```sh
 npm i && npx playwright install chromium
@@ -261,9 +261,9 @@ node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK.txt 3
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original.txt 3
 
 # Skyscraper: the shipped same-board pairs, emptied first so the solver searches.
-uv run examples/_shared/probe_link.py empty \
+uv run examples/_shared/searchable_link.py empty \
   examples/skyscraper/PUZZLE_LINK.txt /tmp/sky_ours.txt
-uv run examples/_shared/probe_link.py empty \
+uv run examples/_shared/searchable_link.py empty \
   examples/skyscraper/PUZZLE_LINK_original.txt /tmp/sky_orig.txt
 node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3 --ring-clues
 node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
@@ -271,9 +271,9 @@ node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
 # ISOFILL: no ring clues, so STRIP (givens only), never `empty`. "Original" is
 # the count-floor-only component before #79; take its link from history.
 git show c5569cd~1:examples/isofill/PUZZLE_LINK.txt > /tmp/iso_orig_full.txt
-uv run examples/_shared/probe_link.py strip \
+uv run examples/_shared/searchable_link.py strip \
   examples/isofill/PUZZLE_LINK.txt /tmp/iso_strip.txt
-uv run examples/_shared/probe_link.py strip \
+uv run examples/_shared/searchable_link.py strip \
   /tmp/iso_orig_full.txt /tmp/iso_orig_strip.txt
 node examples/_shared/app-solve.mjs /tmp/iso_strip.txt 3
 node examples/_shared/app-solve.mjs /tmp/iso_orig_strip.txt 3
