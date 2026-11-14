@@ -30,6 +30,7 @@
 // pass, so the real original is slower still and the comparison is conservative.
 
 import { makeFrameProbe } from '../_shared/frame-probe.mjs'
+import { construct } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 
@@ -90,12 +91,7 @@ const gatedLine = {
   }
 }
 function buildOriginal ({ groups }) {
-  return groups.map(g => {
-    const inst = { name: g.key }
-    gatedLine.setParams(inst, g.cells[0], g.cells.slice(1))
-    inst.__mod = gatedLine
-    return inst
-  })
+  return groups.map(g => ({ mod: gatedLine, inst: construct(gatedLine, g.key, g.cells[0], g.cells.slice(1)) }))
 }
 
 function validLeaf ({ st, groups }) {
@@ -116,7 +112,7 @@ makeFrameProbe({
   here: HERE,
   clueRange: n => [1, n],
   files: [
-    { file: 'SkyscraperPairComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperPairComponent' }
+    { file: 'SkyscraperPairComponent.js', ctorName: 'SkyscraperPairComponent' }
   ],
   blankWord: 'blank',
   modes: [

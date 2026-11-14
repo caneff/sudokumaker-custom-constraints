@@ -115,7 +115,7 @@ new HouseComponent(`row ${i + 1}`, cells.map(c => c | 0), 'Row')
 ```
 
 Read the next gotcha before copying that line: the `| 0` is load-bearing.
-A cage still works, and `check_layout.check_houses` accepts either form.
+A cage still works, and `link_checks.check_houses` accepts either form.
 
 This cost three tickets of quad-rank work (#324, #328, #335). Every board went
 to the app box-only, so the app searched a wildly under-constrained puzzle: a

@@ -29,7 +29,7 @@ call (`unit` is in `tests/pants_prelude.py`). A new example needs one, or
 
 A file in another unit is named one by one, never by its whole directory. This
 holds for the shared directory's own suites too: `examples/_shared/BUILD`
-names each board and component `link_swap.test.py`, `probe_link.test.py`,
+names each board and component `link_swap.test.py`, `searchable_link.test.py`,
 `bundle-solve.test.mjs` and the two whole-grid tests read, and keeps
 `//:tree` for the suites that scan every example (`check_layout.py`, `check_research_loads.py`,
 `size_builders.test.py`, `global-backends.test.mjs` and the like). A file in

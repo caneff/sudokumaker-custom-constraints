@@ -7,16 +7,17 @@ python_sources(
     overrides={
         "document.py": {
             "dependencies": [
-                # FRAME_BACKENDS, read in frame_backend_code.
+                # SHARED_BACKENDS, read in backend_code and component_code.
+                # FRAME_ROWCOL and FRAME_CORNERS.
                 "./frame-rowcol.js:js",
                 "./frame-corners.js:js",
-                # house_gac_backend_code.
+                # HOUSE_GAC.
                 "./house-gac.js:js",
                 "./HouseGacComponent.js:js",
+                # GRID_ROWCOL, the no-ring lane's.
+                "./grid-rowcol.js:js",
             ]
         },
-        # GRID_BACKEND, read in grid_backend_constraint.
-        "no_ring.py": {"dependencies": ["./grid-rowcol.js:js"]},
         "component_scan.py": {"dependencies": ["//:builtin-components"]},
     },
 )
@@ -102,6 +103,10 @@ for file in [
     "spec_896_closing.test.py",
     "spec_897_closing.test.mjs",
     # spec_898_closing.test.py is below: it lists the seam, which needs RUNNER_TOOLS.
+    "spec_951_closing.test.mjs",
+    # Copies the examples tree and docs/builtin-components.md, and runs every
+    # example's build_link.py --refresh and check_layout.py on the copy.
+    "spec_952_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 
@@ -121,7 +126,7 @@ for file in ["whole-grid-backends.test.mjs", "whole-grid-mains.test.mjs"]:
 
 # Rewrites a skyscraper and an isofill board, which it reads by path.
 suite(
-    "probe_link.test.py",
+    "searchable_link.test.py",
     needs=[
         "examples/skyscraper/PUZZLE_LINK_6x6.txt:data",
         "examples/isofill/PUZZLE_LINK.txt:data",
@@ -178,6 +183,13 @@ suite("app_timing.test.py")
 # with the browser call faked, and reads pyproject.toml. Blind to the app: `just
 # time`'s real timing and app-strip.mjs in a browser (the test's own docstring).
 suite("spec_895_closing.test.py", needs=["//:tree"], tools=["git"])
+
+# Spec #953's closing check: copies the real up-to-n example into a git
+# repository of its own and times it (and its committed link) with the browser
+# call faked and busy reps in both modes; walks the tree for the old probe
+# names and for browser scripts that open a link themselves. Blind to the app:
+# `just time`'s real rows and openLink in a real Chromium (its docstring).
+suite("spec_953_closing.test.py", needs=["//:tree"], tools=["git"])
 
 # Row building and argument handling for `just time-link`; the browser call is
 # faked.

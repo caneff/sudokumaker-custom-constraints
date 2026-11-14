@@ -54,7 +54,7 @@ sys.path.insert(0, str(EXAMPLE))
 from board import load_board
 from build_size import SPEC
 from check_layout import check_example
-from document import FRAME_BACKENDS, RULES_PREFIX
+from document import FRAME_CORNERS, RULES_PREFIX
 from lanes import RingGlobal
 from manifest import load_manifest
 from ring_link import mismatches
@@ -73,7 +73,7 @@ def the_link_is_an_isofill_ring_board():
     assert (doc["minDigit"], doc["maxDigit"]) == (1, 9)
     assert house_problems(doc) == [], house_problems(doc)
     names = [c.get("definition", {}).get("name") for c in doc["constraints"]]
-    assert dict(FRAME_BACKENDS)["frame-corners"] in names, "the corners are pinned"
+    assert FRAME_CORNERS.title in names, "the corners are pinned"
     comment = doc["comment"]
     assert comment.startswith("ISOFILL"), comment[:60]
     assert not comment.startswith(RULES_PREFIX.strip())

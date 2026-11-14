@@ -2,6 +2,10 @@
 #   uv run examples/dutch-flatmates/build_link.py --component FILE --out FILE [--board LINK]
 #   uv run examples/dutch-flatmates/build_link.py --puzzle examples/dutch-flatmates/gen_0g.json \
 #       --keep-comments --out examples/dutch-flatmates/PUZZLE_LINK_0g_annotated.txt
+#   uv run examples/dutch-flatmates/build_link.py --refresh
+#
+# --refresh rebuilds every committed link: each gen*.json's PUZZLE_LINK*.txt,
+# and the annotated twin of any that has one.
 #
 # --keep-comments builds the annotated link: same board, but the code embedded
 # in it keeps every comment, so a puzzle setter can read it in the app's code
@@ -28,7 +32,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from document import NO_RING_RULES_PREFIX
+from document import NO_RING_RULES_PREFIX, link_suffix
 from flatmate_model import Extras, N, prove_recorded
 from link_swap import swap_main
 from manifest import load_manifest
@@ -175,13 +179,26 @@ def check(link, doc, n_givens):
 
 
 def rebuild(args, _parser):
-    out = args.out or HERE / "PUZZLE_LINK.txt"
-    link, doc, n_givens = build(
-        puzzle_path=args.puzzle, keep_comments=args.keep_comments
-    )
+    write(args.puzzle, args.out or HERE / "PUZZLE_LINK.txt", args.keep_comments)
+
+
+def write(puzzle_path, out, keep_comments=False):
+    link, doc, n_givens = build(puzzle_path=puzzle_path, keep_comments=keep_comments)
     check(link, doc, n_givens)
     pathlib.Path(out).write_text(link + "\n")
     print(f"wrote {out} ({len(link)} chars, {n_givens} givens)")
+
+
+def refresh(_args, _parser):
+    """Every committed link: each gen JSON's own, and its annotated twin
+    where one is committed -- they all embed the grid backend."""
+    for gen in sorted(HERE.glob("gen*.json")):
+        tag = link_suffix(gen.name, "gen", ".json")
+        out = HERE / (f"PUZZLE_LINK_{tag}.txt" if tag else "PUZZLE_LINK.txt")
+        write(gen, out)
+        annotated = out.with_name(f"{out.stem}_annotated.txt")
+        if annotated.exists():
+            write(gen, annotated, keep_comments=True)
 
 
 if __name__ == "__main__":
@@ -192,4 +209,4 @@ if __name__ == "__main__":
         action="store_true",
         help="build the annotated link: embedded code keeps every comment (#693)",
     )
-    swap_main(HERE, p, rebuild)
+    swap_main(HERE, p, rebuild, refresh)

@@ -15,7 +15,7 @@
 // keeps exactly the clue gen.json recorded, the one `visible` read.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, fixpointAll, fuzzSoundness } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, fixpointAll, fuzzSoundness, patchSource } from '../_shared/harness-lib.mjs'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { combinedBoard } from './combined-board.mjs'
@@ -24,11 +24,18 @@ const HERE = import.meta.dirname
 const { read, load } = makeIo(HERE)
 const { rnd } = makeRng(858)
 
-const NAMES = ['setParams', 'update']
+// Every lifecycle function each file defines, so the fuzz also asks both
+// components' `validate` to accept the true solution.
 const MODS = {
-  IsofillComponent: load('IsofillComponent.js', NAMES),
-  SkyscraperOneSidedComponent: load('SkyscraperOneSidedComponent.js', NAMES)
+  IsofillComponent: load('IsofillComponent.js'),
+  SkyscraperOneSidedComponent: load('SkyscraperOneSidedComponent.js')
 }
+
+// Each component with a planted `validate` that rejects every filled board,
+// the other left as shipped: the fuzz must go red on either, or it never
+// asked that component's validate.
+const rejecting = file => load(file, [], src => patchSource(src, 'function validate (instance, puzzle) {\n', 'function validate (instance, puzzle) {\n  return false\n'))
+const PLANTED = Object.keys(MODS).map(ctor => ({ ...MODS, [ctor]: rejecting(`${ctor}.js`) }))
 
 // build_size.py's `visible`: the buildings strictly taller than every one
 // before them, a tie hidden.
@@ -92,6 +99,16 @@ function checkBoard (label, gen) {
   })
   assert.strictEqual(r.failures, 0, `${label}: ${r.failures} soundness failures`)
   assert.ok(r.fired > 0, `${label}: the combined backend never removed a candidate: the fuzz checked nothing`)
+
+  for (const mods of PLANTED) {
+    const planted = fuzzSoundness(`${label}, planted rejecting validate`, {
+      iters: 5,
+      log: () => {},
+      draw: () => ({ truth, seed: seeder, parts: parts(mods) })
+    })
+    assert.ok(planted.validateRejects > 0, `${label}: a validate that rejects the truth went unasked`)
+  }
+  console.log(`${label}: a planted rejecting validate on either component goes red`)
 }
 
 checkBoard('shipped 9x9', JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')))

@@ -2,7 +2,10 @@
 // example's components. Run: node examples/_shared/recovery-lib.test.mjs
 
 import assert from 'assert'
-import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, reportLine } from './recovery-lib.mjs'
+import { mkdtempSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { loadComponents, makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, reportLine } from './recovery-lib.mjs'
 
 // the GAC floor prunes a group to only values some perfect matching allows
 // A 3-cell all-different group with values 1..3: cell 0 is pinned to 1, cell
@@ -15,8 +18,7 @@ import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, repor
   state.cand.set(0, new Set([1]))
   state.cand.set(1, new Set([1, 2]))
   state.cand.set(2, new Set([1, 2, 3]))
-  const floor = makeAllDifferentFloor(state, { kind: 'regin', maxDigit: 3 })
-  floor([0, 1, 2])
+  makeAllDifferentFloor(state, [[0, 1, 2]], { kind: 'regin', maxDigit: 3 }).prune()
   assert.deepStrictEqual([...state.cand.get(0)], [1])
   assert.deepStrictEqual([...state.cand.get(1)], [2], 'cell 1 loses the taken value 1')
   assert.deepStrictEqual([...state.cand.get(2)], [3], 'cell 2 loses the taken values 1 and 2')
@@ -27,8 +29,7 @@ import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, repor
   const state = makeCandidateState()
   state.cand.set(0, new Set([1, 2]))
   state.cand.set(1, new Set([1, 2]))
-  const floor = makeAllDifferentFloor(state, { kind: 'regin', maxDigit: 2 })
-  floor([0, 1])
+  makeAllDifferentFloor(state, [[0, 1]], { kind: 'regin', maxDigit: 2 }).prune()
   assert.deepStrictEqual([...state.cand.get(0)].sort(), [1, 2])
   assert.deepStrictEqual([...state.cand.get(1)].sort(), [1, 2])
 }
@@ -40,8 +41,8 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
   const state = makeCandidateState()
   cands.forEach((s, c) => state.cand.set(c, new Set(s)))
   const cells = cands.map((_, c) => c)
-  const floor = makeAllDifferentFloor(state, { kind: 'regin', maxDigit })
-  return search(state, { interior: cells, comps: [], alldiffGroups: [cells], floorGroup: floor, validLeaf, nodeCap })
+  const floor = makeAllDifferentFloor(state, [cells], { kind: 'regin', maxDigit })
+  return search(state, { interior: cells, parts: [], floor, validLeaf, nodeCap })
 }
 {
   // (1,2) and (2,1) are both legal: two solutions.
@@ -77,12 +78,34 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
   state.cand.set(0, new Set([1]))
   state.cand.set(1, new Set([1, 2]))
   state.cand.set(2, new Set([2, 3]))
-  const floor = makeAllDifferentFloor(state, { kind: 'regin', maxDigit: 3 })
-  const passes = runToFixpoint(state, [], [[1, 2], [0, 1]], floor, { init: false })
+  const floor = makeAllDifferentFloor(state, [[1, 2], [0, 1]], { kind: 'regin', maxDigit: 3 })
+  const passes = runToFixpoint(state, [], floor, { init: false })
   assert.deepStrictEqual([0, 1, 2].map(c => [...state.cand.get(c)]), [[1], [2], [3]], 'the chain is not propagated to its fixpoint')
   assert.strictEqual(passes, 3, 'two passes that remove something, then one that removes nothing')
   // Already at the fixpoint: one pass that removes nothing, and it stops there.
-  assert.strictEqual(runToFixpoint(state, [], [[1, 2], [0, 1]], floor, { init: false }), 1)
+  assert.strictEqual(runToFixpoint(state, [], floor, { init: false }), 1)
+}
+
+// runToFixpoint drains each update as the app does: a change a component
+// builds and never yields prunes nothing in the app, so it goes red here.
+{
+  const state = makeCandidateState()
+  state.cand.set(0, new Set([1, 2, 3]))
+  const forgets = { mod: { * update (inst, p) { if (p.getCandidates(0).size > 1) p.removeCandidateFromCell(3, 0) } }, inst: {} }
+  assert.throws(() => runToFixpoint(state, [forgets], makeAllDifferentFloor(state, []), { init: false }),
+    /built 1 change it never yielded/, 'runToFixpoint goes red on a change built and never yielded')
+}
+
+// runToFixpoint keeps its own stop rule: a pass stops on a stop(), read once
+// every part has run, so a part after the stopping one still runs that pass.
+{
+  const state = makeCandidateState()
+  state.cand.set(0, new Set([1, 2]))
+  state.cand.set(1, new Set([1, 2]))
+  const stops = { mod: { * update (inst, p) { yield p.stop('dead') } }, inst: {} }
+  const prunes = { mod: { * update (inst, p) { if (p.getCandidates(1).size > 1) yield p.removeCandidateFromCell(2, 1) } }, inst: {} }
+  assert.strictEqual(runToFixpoint(state, [stops, prunes], makeAllDifferentFloor(state, []), { init: false }), 1)
+  assert.deepStrictEqual([...state.cand.get(1)], [1], 'the part after the stop still ran its pass')
 }
 
 // reportLine prints settled / NEVER SETTLED, not a pass count
@@ -114,7 +137,7 @@ console.log('recovery-lib.test.mjs: all seams pass')
   const state = makeCandidateState()
   state.cand.set(0, new Set([1, 2]))
   assert.strictEqual(state.puzzle.isDead(), false)
-  state.puzzle.stop('no room')
+  state.puzzle.applyChange(state.puzzle.stop('no room'))
   assert.strictEqual(state.puzzle.stopMessage(), 'no room')
   assert.strictEqual(state.puzzle.isDead(), true)
   state.puzzle.reset()
@@ -125,7 +148,31 @@ console.log('recovery-lib.test.mjs: all seams pass')
   // backtracks over, or the second value of the guess is read dead too.
   const s = makeCandidateState()
   s.cand.set(0, new Set([1, 2]))
-  const stopsOnOne = { __mod: { * update (inst, p) { if (p.getValue(0) === 1) yield p.stop('one') } } }
-  const r = search(s, { interior: [0], comps: [stopsOnOne], alldiffGroups: [], floorGroup: () => {}, validLeaf: () => true })
+  const stopsOnOne = { mod: { * update (inst, p) { if (p.getValue(0) === 1) yield p.stop('one') } }, inst: {} }
+  const r = search(s, { interior: [0], parts: [stopsOnOne], floor: makeAllDifferentFloor(s, []), validLeaf: () => true })
   assert.strictEqual(r.solutions, 1, 'the branch after a stopped one still counts')
+}
+
+// loadComponents builds each instance as the app's constructor does
+// The instance gets `cells` from getAffectedCells before setParams runs
+// (harness-lib's construct), and comes back as a `{ mod, inst }` part.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'recovery-'))
+  writeFileSync(join(dir, 'Clue.js'), [
+    'function getAffectedCells (clue, line) { return [clue, ...line] }',
+    'function setParams (inst, clue, line) { inst.sawCells = inst.cells; inst.clue = clue }',
+    'function * update () {}'
+  ].join('\n'))
+  const mainSrc = 'puzzle.addConstraintComponent(new ClueComponent(\'c\', 0, [1, 2]))'
+  const [{ mod, inst }] = loadComponents({
+    here: dir,
+    files: [{ file: 'Clue.js', ctorName: 'ClueComponent' }],
+    mainSrc,
+    input: {},
+    frame: { W: 3, H: 1, idx: (r, c) => c + 3 * r }
+  })
+  assert.deepStrictEqual(inst.cells, [0, 1, 2], 'instance.cells is getAffectedCells\'s result')
+  assert.strictEqual(inst.sawCells, inst.cells, 'setParams runs after cells is set')
+  assert.strictEqual(inst.name, 'c')
+  assert.strictEqual(typeof mod.update, 'function', 'a file needs no names list for its lifecycle functions')
 }

@@ -21,32 +21,32 @@
 
 import { join } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { construct, compareStrength, drainChanges, fixpoint, installGlobals, makeIo, makePuzzle, makeRng, randomCandidates } from '../_shared/harness-lib.mjs'
 import { FIXTURES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const BASELINE = join(HERE, 'original')
 
 const io = makeIo(HERE)
-const cur = io.load('FillominoComponent.js', ['setParams', 'update'])
-const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'update'])
+const cur = io.load('FillominoComponent.js')
+const ref = makeIo(BASELINE).load('FillominoComponent.js')
 
 const { rnd } = makeRng(9001)
 const REPS = 300
 
 const apply = (mod, p, CELLS, width, height) => {
-  const inst = { cells: CELLS }
+  const inst = construct(mod, 'fillomino', CELLS, width, height)
   if (mod.setParams) {
-    mod.setParams(inst, CELLS, width, height)
     fixpoint(mod, inst, p)
     return
   }
-  Array.from(mod.initialize(inst, p))
+  drainChanges(mod.initialize(inst, p), p)
   for (let call = 0; call < 4000; call++) {
     const before = p.total()
     const changes = mod.update(inst, p)
-    changes.next()
+    const first = changes.next()
     changes.return()
+    if (!first.done) p.applyChange(first.value)
     if (p.total() === before) return
   }
   throw new Error('the reference did not settle in 4000 calls')
@@ -102,7 +102,7 @@ assert.ok(stronger > 0, 'the component must remove a candidate the baseline keep
 // lists, after its own setParams, with the board's real ones; the copy itself
 // stays as it shipped.
 const SHIPPED = 'ac20771'
-const golden = io.load(`.golden/FillominoComponent.${SHIPPED}.js`, ['setParams', 'update'])
+const golden = io.load(`.golden/FillominoComponent.${SHIPPED}.js`)
 const gridNeighbours = (width, height) => Array.from({ length: width * height }, (_, i) => {
   const x = i % width
   const y = Math.floor(i / width)
@@ -158,13 +158,11 @@ let reuseStates = 0
 for (const [, { truth, width, height, cap }] of FIXTURES) {
   installGlobals(1, cap)
   const CELLS = Array.from({ length: width * height }, (_, i) => i)
-  const reused = { cells: CELLS }
-  cur.setParams(reused, CELLS, width, height)
+  const reused = construct(cur, 'fillomino', CELLS, width, height)
   for (let rep = 0; rep < 200; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, cap, truth[c]))
-    const fresh = { cells: CELLS }
-    cur.setParams(fresh, CELLS, width, height)
+    const fresh = construct(cur, 'fillomino', CELLS, width, height)
     assert.deepStrictEqual(settle(reused, start, CELLS, width), settle(fresh, start, CELLS, width),
       'a reused instance settled a state somewhere a fresh one does not')
     reuseStates++

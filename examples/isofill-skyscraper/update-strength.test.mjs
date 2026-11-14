@@ -17,15 +17,14 @@ const { read, load } = makeIo(HERE)
 const { rnd } = makeRng(8580)
 
 installGlobals(1, 9)
-const NAMES = ['setParams', 'update']
 const cur = {
-  IsofillComponent: load('IsofillComponent.js', NAMES),
-  SkyscraperOneSidedComponent: load('SkyscraperOneSidedComponent.js', NAMES)
+  IsofillComponent: load('IsofillComponent.js'),
+  SkyscraperOneSidedComponent: load('SkyscraperOneSidedComponent.js')
 }
 // The floors each component's own example pins (their update-strength tests).
 const ref = {
-  IsofillComponent: load('../isofill/.golden/IsofillComponent.db93523.js', NAMES),
-  SkyscraperOneSidedComponent: load('../skyscraper/.golden/SkyscraperRunningCapComponent.c776ab7.js', NAMES)
+  IsofillComponent: load('../isofill/.golden/IsofillComponent.db93523.js'),
+  SkyscraperOneSidedComponent: load('../skyscraper/.golden/SkyscraperRunningCapComponent.c776ab7.js')
 }
 
 const { n, truth, parts } = combinedBoard(HERE, read)

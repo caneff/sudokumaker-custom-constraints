@@ -13,8 +13,12 @@
 #   --rebuild n [--paths|--local] [--height H]
 #
 # Writes PUZZLE_LINK*.txt and gen*.json next to the caller's script.
+#
+# `link_main(spec, *also)` is what a laned example's `build_link.py` ends with:
+# its `--refresh` is `rebuild_all` and then the example's own extra steps.
 
 import argparse
+import json
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -25,17 +29,19 @@ from board import Geometry, Spec, load_board, make_lines, ring_name, save_board
 from carve import generate
 from component_scan import describe_mismatch, mismatch
 from document import (
-    FRAME_BACKENDS,
-    HOUSE_GAC_BACKEND_TITLE,
+    FRAME_ALWAYS_ON,
+    FRAME_ROWCOL,
+    HOUSE_GAC,
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
+    backend_code,
     board_document,
-    frame_backend_code,
     frame_groups,
     house_gac_constraint,
+    link_suffix,
 )
 from frame import corner_cells, cosmetics, ring_cell
-from link_swap import frame_and_comment_only
+from link_swap import frame_and_comment_only, swap_main
 from minify import minify_file
 from sm_document import assert_round_trips, code_constraint, find_constraint
 from sudoku_kit import link_codec
@@ -149,6 +155,15 @@ class Lane:
         )
         assert doc["puzzle"]["minDigit"] == spec.min_digit
 
+    def encode(self, board):
+        """`board`'s document and its encoded link, checked: `build_doc`,
+        `encode_link` and `check` in one call, so no script can write a link
+        that skipped the check. Returns `(link, doc)`."""
+        doc = self.build_doc(board)
+        link = link_codec.encode_link(doc)
+        self.check(link, doc, board)
+        return link, doc
+
     def run(self, geo, seeds):
         """Search `seeds` for a board of geometry `geo` on this lane, build its
         link, and write both files. A rectangle's box is the builder's grammar
@@ -157,9 +172,7 @@ class Lane:
             "box_height * box_width must equal n"
         )
         board = generate(self.spec, geo, seeds, paths=self.paths)
-        doc = self.build_doc(board)
-        link = link_codec.encode_link(doc)
-        self.check(link, doc, board)
+        link, _ = self.encode(board)
         link_path, gen_path = self.files(
             geo.n, height=geo.height if geo.is_rect else None
         )
@@ -188,9 +201,7 @@ class Lane:
             "not carved here is rebuilt by its own build_link.py."
         )
         board = load_board(gen_path)
-        doc = self.build_doc(board)
-        link = link_codec.encode_link(doc)
-        self.check(link, doc, board)
+        link, doc = self.encode(board)
         assert link_path.exists(), (
             f"{link_path.name} does not exist: there is no committed link for "
             "this board to rebuild"
@@ -219,7 +230,7 @@ class Lane:
             d["puzzle"]["constraints"] = [
                 c
                 for c in d["puzzle"]["constraints"]
-                if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+                if c.get("definition", {}).get("name") != HOUSE_GAC.title
                 and c.get("type") not in self.derived
             ]
             return d
@@ -247,13 +258,12 @@ class _RingLane(Lane):
         return tuple(title for title, _ in self._frame_backends())
 
     def _frame_backends(self):
-        """`frame_backend_code()` less frame-rowcol when the Spec's interior
-        has no row/column houses."""
-        code = dict(frame_backend_code())
+        """`(title, code)` for each always-on frame backend, less frame-rowcol
+        when the Spec's interior has no row/column houses."""
         return [
-            (title, code[title])
-            for stem, title in FRAME_BACKENDS
-            if stem != "frame-rowcol" or self.spec.rowcol_houses
+            (b.title, backend_code(b))
+            for b in FRAME_ALWAYS_ON
+            if b is not FRAME_ROWCOL or self.spec.rowcol_houses
         ]
 
     @property
@@ -441,6 +451,57 @@ def lane_kinds(spec):
     from no_ring import NoRing
 
     return (NoRing,)
+
+
+def rebuild_all(spec, write=True):
+    """Re-encode every committed carved board of `spec`'s example against the
+    code in the tree right now, with no CP-SAT search. Returns
+    `{link path: link}`; with `write`, each link is also written back.
+
+    A carved board is a `gen*.json` that records a board. The lane that owns
+    it is the one whose default `files(n)` name it; a board of a size that
+    lane does not name by default (a second board of one size) goes through
+    `pair=`, which only a one-lane example can resolve without guessing. A
+    gen JSON that holds a whole `puzzle` document is a hand-built board's
+    (running-start's) and is rebuilt by that example's own build_link.py."""
+    lanes = [kind(spec) for kind in lane_kinds(spec)]
+    rebuilt = {}
+    for gen in sorted(spec.dir.glob("gen*.json")):
+        if "puzzle" in json.loads(gen.read_text()):
+            continue
+        n = load_board(gen).n
+        for lane in lanes:
+            link_path, owned = lane.files(n)
+            if owned == gen:
+                rebuilt[link_path] = lane.rebuild(n)
+                break
+        else:
+            assert len(lanes) == 1, (
+                f"{gen} is no lane's board: name it in its lane's files()"
+            )
+            pair = named_files(spec, link_suffix(gen.name, "gen", ".json"))
+            rebuilt[pair[0]] = lanes[0].rebuild(n, pair=pair)
+    if write:
+        for link_path, link in rebuilt.items():
+            link_path.write_text(link + "\n")
+            print(f"wrote {link_path.name} ({len(link)} chars)")
+    return rebuilt
+
+
+def link_main(spec, *also, rebuild=None):
+    """The command line a laned example's `build_link.py` ends with:
+    `link_swap.swap_main`, whose `--refresh` re-encodes every carved board
+    (`rebuild_all`) and then runs each of `also` -- the example's links that
+    no gen JSON records (a hand-built board, a `_clued` or `_original` twin),
+    each a callable taking no arguments that rewrites its own. `rebuild` is
+    the example's no-flag build, for one that has a hand-built board."""
+
+    def refresh(_args, _parser):
+        rebuild_all(spec)
+        for step in also:
+            step()
+
+    swap_main(spec.dir, rebuild=rebuild, refresh=refresh)
 
 
 def main(spec, argv=None):

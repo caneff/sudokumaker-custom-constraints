@@ -26,7 +26,7 @@
 #   (move the plain pair to PUZZLE_LINK_9x9.txt / gen_9x9.json)
 #   uv run examples/up-to-n/build_size.py --derive-shipped-9x9
 #   uv run examples/up-to-n/build_size.py --rebuild 9 --local
-#   uv run examples/up-to-n/build_size.py --rebuild-minimal-9x9
+#   uv run examples/up-to-n/build_link.py --refresh   # re-encodes both 9x9 boards
 
 import pathlib
 import random
@@ -38,7 +38,6 @@ from board import Spec, load_board, save_board
 from carve import unique
 from lanes import main
 from no_ring import NoRing
-from sudoku_kit import link_codec
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Up to N"
@@ -143,9 +142,7 @@ def derive_shipped_9x9():
     board = shipped_9x9(load_board(MINIMAL_9X9[1]))
     assert unique(SPEC.cp_sat_clue_fn, board) is True
     lane = NoRing(SPEC)
-    doc = lane.build_doc(board)
-    link = link_codec.encode_link(doc)
-    lane.check(link, doc, board)
+    link, _ = lane.encode(board)
     link_path, gen_path = lane.files(9)
     link_path.write_text(link + "\n")
     save_board(board, gen_path)
@@ -155,9 +152,5 @@ def derive_shipped_9x9():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--derive-shipped-9x9"]:
         derive_shipped_9x9()
-    elif sys.argv[1:] == ["--rebuild-minimal-9x9"]:
-        link = NoRing(SPEC).rebuild(9, pair=MINIMAL_9X9)
-        MINIMAL_9X9[0].write_text(link + "\n")
-        print(f"wrote {MINIMAL_9X9[0].name} -- current component code, same board")
     else:
         main(SPEC)

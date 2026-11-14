@@ -161,8 +161,10 @@ def check_board_doc():
 
 
 def check_no_builder_imports_a_builder():
+    # build_link.py is the example's `--refresh` command line (link_swap), not
+    # a board builder: it calls build_required_digits' bodies by design.
     for path in sorted(HERE.glob("build_*.py")):
-        if path.name.endswith(".test.py"):
+        if path.name.endswith(".test.py") or path.name == "build_link.py":
             continue
         for line in path.read_text().splitlines():
             m = re.match(r"\s*(?:from|import)\s+(build_\w+)", line)

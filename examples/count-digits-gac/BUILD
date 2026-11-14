@@ -1,6 +1,7 @@
 unit(
     suites=[
         "board_kit.test.py",
+        "build_link.test.py",
         "build_count_digits_demo.test.py",
         "build_count_digits_selfcount.test.py",
         "build_required_digits.test.py",

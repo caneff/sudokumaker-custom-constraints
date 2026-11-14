@@ -7,15 +7,14 @@
 // copy in the same commit as the stronger component.
 
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { construct, installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 import { upToN } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
-const NAMES = ['setParams', 'update']
-const cur = load('UpToNComponent.js', NAMES)
-const ref = load('.golden/UpToNComponent.floor.js', NAMES)
+const cur = load('UpToNComponent.js')
+const ref = load('.golden/UpToNComponent.floor.js')
 
 const { rnd } = makeRng(3680)
 const REPS = 5000
@@ -33,8 +32,7 @@ for (const D of [4, 6, 9]) {
       cur,
       ref,
       apply: (mod, p, { target, clue }) => {
-        const inst = {}
-        mod.setParams(inst, LINE, target, clue)
+        const inst = construct(mod, 'up-to-n', LINE, target, clue)
         fixpoint(mod, inst, p)
       },
       opts: { houses: housesOf(kind, LINE) },
@@ -56,8 +54,7 @@ function settle (target, clue, opts) {
   installGlobals(1, 4)
   const LINE = [0, 1, 2, 3]
   const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4], opts)
-  const inst = {}
-  cur.setParams(inst, LINE, target, clue)
+  const inst = construct(cur, 'up-to-n', LINE, target, clue)
   fixpoint(cur, inst, p)
   return LINE.map(c => [...p._cand.get(c)].sort())
 }

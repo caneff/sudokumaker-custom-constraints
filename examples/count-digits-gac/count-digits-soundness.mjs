@@ -18,15 +18,15 @@
 //      supported digits off them. The component must remove no more than the
 //      oracle (sound); on `exact` shapes it must remove no less either.
 
-import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
+import { construct, fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
 installGlobals(1, 9)
 
-const gac = load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
-const builtin = load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
+const gac = load('CountDigitsGacComponent.js')
+const builtin = load('BuiltinCountDigitsComponent.js')
 
 const { rnd } = makeRng(4242)
 function maskOf (digits) { let m = 0; for (const d of digits) m |= 1 << d; return m }
@@ -61,12 +61,6 @@ function makeState ({ targetCount, digitCount, digitRange, counterIsTarget }) {
 
 const puzzleOf = state => makePuzzle(state.truth, cell => state.seed.get(cell))
 const candidatesOf = p => new Map([...p._cand].map(([cell, set]) => [cell, new Set(set)]))
-
-function runComponent (mod, state) {
-  const instance = { name: 'count digits' }
-  mod.setParams(instance, state.digitMask, state.counter, state.targets)
-  return instance
-}
 
 // Independent of the component: it enumerates digits and counts hits, rather
 // than reasoning about bounds. Returns cell -> Set of supported digits, or null
@@ -108,7 +102,7 @@ function run (label, shape) {
       return {
         truth: state.truth,
         seed: cell => state.seed.get(cell),
-        parts: [{ mod: gac, inst: runComponent(gac, state) }],
+        parts: [{ mod: gac, inst: construct(gac, 'count digits', state.digitMask, state.counter, state.targets) }],
         note: `digits ${state.digitMask.toString(2)} truth ${JSON.stringify(state.truth)}`,
         inspect: p => records.push({ state, p, start: candidatesOf(p) })
       }
@@ -125,7 +119,7 @@ function run (label, shape) {
     if (pruned || p.stopMessage() !== null) {
       const q = puzzleOf(state)
       for (const [cell, set] of start) q._cand.set(cell, new Set(set))
-      if (builtin.validate(runComponent(builtin, state), q)) builtinBlind++
+      if (builtin.validate(construct(builtin, 'count digits', state.digitMask, state.counter, state.targets), q)) builtinBlind++
     }
 
     if (!oracle) continue

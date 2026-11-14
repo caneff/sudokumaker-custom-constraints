@@ -4,7 +4,7 @@
 # non-deterministic solve off. Two links are interleaved one rep per link per
 # round, the lead alternating (app_timing.run_app_solve), and each row carries
 # both medians and the b/a ratio. The link is timed as given: nothing is
-# stripped (probe_link.py is the tool for that), and a link that carries entered
+# stripped (searchable_link.py is the tool for that), and a link that carries entered
 # digits in the ring needs --ring-clues, as for app-solve.mjs. No ship verdict
 # is printed -- see docs/real-app-timing.md.
 #
@@ -12,13 +12,14 @@
 
 import argparse
 import datetime
+import functools
 import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from app_timing import build_link_row, busy_note, run_app_solve
+from app_timing import build_link_row, time_modes
 
 
 def run(link_a, link_b=None, ring_clues=False):
@@ -37,23 +38,14 @@ def run(link_a, link_b=None, ring_clues=False):
     # the same name (a link before and after a change) stay distinguishable.
     board = f"{links[0].name} (a) vs {links[1].name} (b)" if link_b else links[0].name
     date = datetime.date.today().isoformat()
-    rows = []
-    for after_logical in (False, True):
-        a, b = run_app_solve(
-            links[0], links[1] if link_b else None, ring_clues, after_logical
-        )
-        label = f"{board} {'after-logical' if after_logical else 'cold'}"
-        rows.append(
-            build_link_row(
-                date,
-                a["version"],
-                label,
-                a["median"],
-                b["median"] if b else None,
-                busy_note(a, b),
-            )
-        )
-    return rows
+
+    return time_modes(
+        links[0],
+        links[1] if link_b else None,
+        ring_clues,
+        (f"{board} cold", f"{board} after-logical"),
+        functools.partial(build_link_row, date),
+    )
 
 
 def main(argv):

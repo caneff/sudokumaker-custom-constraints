@@ -52,7 +52,7 @@ author builds a grid one ring larger than the puzzle (an 11×11 board around a
   with `| 0` (see `docs/puzzle-api.md`, `helpers.geometry`). A line shorter
   than the digit range gets a `DifferentDigitsComponent` instead: Hit Counts
   runs `minDigit: 0`, so "every digit exactly once" is false there.
-  `check_layout.check_houses` sweeps every committed link and accepts either
+  `link_checks.check_houses` sweeps every committed link and accepts either
   form.
 - **Conflict checking for the ring**, at publish time: the same file's
   `postprocessJSON` sets `norowcol` -- a ring clue shares a physical row with

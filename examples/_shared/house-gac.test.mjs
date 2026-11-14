@@ -19,12 +19,11 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, housesOf, shuffle } from './harness-lib.mjs'
+import { construct, housesOf, interleaveAtFirstYield, installGlobals, makeIo, makePuzzle, makeRng, runUpdate, shuffle } from './harness-lib.mjs'
 import { mockBoard, runBackend } from './backend-runner.mjs'
 
 const here = import.meta.dirname
-const NAMES = ['getAffectedCells', 'setParams', 'update']
-const ref = makeIo(here).load('AllDiffGacComponent.js', NAMES)
+const ref = makeIo(here).load('AllDiffGacComponent.js')
 
 // The component sizes its digit table from helpers.digits when its code loads,
 // as the app loads it once per puzzle, so each board's globals are installed
@@ -32,19 +31,10 @@ const ref = makeIo(here).load('AllDiffGacComponent.js', NAMES)
 let gac
 function board (minDigit, maxDigit) {
   installGlobals(minDigit, maxDigit)
-  gac = makeIo(here).load('HouseGacComponent.js', NAMES)
+  gac = makeIo(here).load('HouseGacComponent.js')
 }
 
 const CELLS = [11, 12, 13, 14, 15, 16, 17, 18, 19]
-
-// An instance as the app's compiled constructor builds one: it stores
-// `getAffectedCells`'s list as `instance.cells`, then calls `setParams`
-// (docs/research/bundle-api-reference.md, the custom component wrapper).
-function appInstance (mod, name, cells) {
-  const inst = { name, cells: mod.getAffectedCells(cells) }
-  mod.setParams(inst, cells)
-  return inst
-}
 
 // One update call of `mod` on a house seeded with `cands` (one candidate array
 // per cell). Returns each cell's surviving candidates, sorted, or 'stop'.
@@ -52,8 +42,8 @@ function runOnce (mod, cands, kind = 'fullHouse') {
   const cells = CELLS.slice(0, cands.length)
   const truth = Object.fromEntries(cells.map(c => [c, 0]))
   const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { houses: housesOf(kind, cells) })
-  const inst = appInstance(mod, 'row 1', cells)
-  Array.from(mod.update(inst, p))
+  const inst = construct(mod, 'row 1', cells)
+  runUpdate(mod, inst, p)
   if (p.stopMessage() !== null) return 'stop'
   return cells.map(c => [...p._cand.get(c)].sort((a, b) => a - b))
 }
@@ -219,7 +209,7 @@ for (let size = 1; size <= 8; size++) {
 // is slower than the matching filter from n=12-13
 // (docs/research/all-different-gac.md, "Larger houses"). Registering one on a
 // larger house is a mistake the author must see at setup.
-assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, (_, i) => i)), /9 cells/)
+assert.throws(() => construct(gac, 'row 1', Array.from({ length: 10 }, (_, i) => i)), /9 cells/)
 
 // refuses a board with digits above 16, loudly
 // Its digit table holds an entry per digit set, 2^(maxDigit+1) of them: 131 KB
@@ -227,7 +217,7 @@ assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, 
 // still work, since the app loads the code before any house is registered.
 for (const maxDigit of [17, 30]) {
   board(1, maxDigit)
-  assert.throws(() => gac.setParams({ name: 'row 1' }, CELLS), /digits up to 16/, `digits 1..${maxDigit}`)
+  assert.throws(() => construct(gac, 'row 1', CELLS), /digits up to 16/, `digits 1..${maxDigit}`)
 }
 board(1, 9)
 
@@ -247,12 +237,10 @@ board(1, 9)
   const truth = Object.fromEntries(CELLS.map(c => [c, 0]))
   const pa = makePuzzle(truth, c => aCands[CELLS.indexOf(c)], { houses: [CELLS] })
   const pb = makePuzzle(truth, c => bCands[CELLS.indexOf(c)], { houses: [CELLS] })
-  const a = appInstance(gac, 'A', CELLS)
-  const b = appInstance(gac, 'B', CELLS)
-  const genA = gac.update(a, pa)
-  assert.strictEqual(genA.next().done, false, 'house A yields no removal to suspend at')
-  Array.from(gac.update(b, pb))
-  Array.from(genA)
+  const a = construct(gac, 'A', CELLS)
+  const b = construct(gac, 'B', CELLS)
+  const suspended = interleaveAtFirstYield(gac, a, pa, () => runUpdate(gac, b, pb))
+  assert.strictEqual(suspended, true, 'house A yields no removal to suspend at')
   const got = CELLS.map(c => [...pa._cand.get(c)].sort((x, y) => x - y))
   assert.deepStrictEqual(got, runOnce(gac, aCands), 'house A changed because house B ran at its yield')
 }
@@ -325,9 +313,9 @@ for (const kind of ['bare', 'fullHouse']) {
   const real = p.getCellsCanHaveRepeats
   let asked = 0
   p.getCellsCanHaveRepeats = cs => { asked++; return real(cs) }
-  const inst = appInstance(gac, 'row 1', cells)
-  Array.from(gac.update(inst, p))
-  Array.from(gac.update(inst, p))
+  const inst = construct(gac, 'row 1', cells)
+  runUpdate(gac, inst, p)
+  runUpdate(gac, inst, p)
   assert.strictEqual(asked, 1, `${kind}: asked once, not per update`)
 }
 
@@ -337,6 +325,8 @@ for (const kind of ['bare', 'fullHouse']) {
 // would desynchronise the cells the app watches from the ones update filters).
 // Other fields it may add are its own business.
 {
+  // Built by hand, not by construct: the test plants a cells array it holds
+  // so it can tell whether setParams kept that very array.
   const mine = [...CELLS]
   const inst = { name: 'row 1', cells: mine }
   gac.setParams(inst, CELLS)
