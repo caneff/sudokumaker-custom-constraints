@@ -36,11 +36,12 @@ function analyse (ast) {
 }
 const A = analyse(pa); const B = analyse(pb)
 console.log('bindings:', A.vars.length, B.vars.length)
-console.log('unresolved refs equal:', JSON.stringify([...new Set(A.through)]) === JSON.stringify([...new Set(B.through)]), '|', [...new Set(B.through)].join(' '))
+const throughEqual = JSON.stringify([...new Set(A.through)]) === JSON.stringify([...new Set(B.through)])
+console.log('unresolved refs equal:', throughEqual, '|', [...new Set(B.through)].join(' '))
 let refMismatch = 0
 for (let i = 0; i < A.vars.length; i++) {
   if (A.vars[i].references.length !== B.vars[i].references.length || A.vars[i].defs[0].name.start === undefined) refMismatch++
 }
 console.log('per-binding reference-count mismatches:', refMismatch)
 // clash: two distinct bindings in the same scope with the same name is a parse error for let/const/class, but a var/function would silently merge -> count check above catches it.
-process.exit(A.vars.length === B.vars.length && refMismatch === 0 ? 0 : 1)
+process.exit(A.vars.length === B.vars.length && refMismatch === 0 && throughEqual ? 0 : 1)

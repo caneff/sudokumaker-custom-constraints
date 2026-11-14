@@ -37,6 +37,15 @@ assert.strictEqual(r.status, 1, 'a rename that changes a binding\'s resolution m
 assert.match(r.out, /AST skeleton equal: true/, 'the shadowing fixture has the same skeleton, so the scope check is what refuses it')
 assert.doesNotMatch(r.out, /per-binding reference-count mismatches: 0/, 'the refusal comes from the reference-count check')
 
+// A rename that turns one global reference into another changes what the name
+// resolves to while every binding's count holds: the unresolved-refs check
+// refuses it.
+const GLOBAL_SRC = 'function top (x, y) { return Math.max(x, y) }\nexport { top }\n'
+r = run(GLOBAL_SRC, 'function top (a, b) { return JSON.max(a, b) }\nexport { top }\n')
+assert.strictEqual(r.status, 1, 'a rename that swaps one global for another must be refused: ' + r.out)
+assert.match(r.out, /per-binding reference-count mismatches: 0/, 'the counts hold, so the unresolved-refs check is what refuses it')
+assert.match(r.out, /unresolved refs equal: false/)
+
 // A change beyond names is refused by the skeleton check.
 r = run(SRC, 'const a = 1\nfunction add (c) { return c - a }\nexport { add }\n')
 assert.strictEqual(r.status, 1, 'an operator change must be refused')
