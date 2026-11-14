@@ -20,6 +20,7 @@ from gate_lib import (
     ROOT_BUILD,
     by_mechanism,
     commands,
+    fixture_git_env,
     gate_tree,
     pants,
     pants_suites,
@@ -230,10 +231,7 @@ def agents_md_names_both_commands():
 
 
 def git(tree, *args):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    for who in ("AUTHOR", "COMMITTER"):
-        env[f"GIT_{who}_NAME"] = "fixture"
-        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
+    env = fixture_git_env()
     r = subprocess.run(
         ["git", *args], cwd=tree, env=env, capture_output=True, text=True
     )

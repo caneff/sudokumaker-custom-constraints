@@ -133,6 +133,17 @@ def path_without(names, scratch):
     return os.pathsep.join(dirs)
 
 
+def fixture_git_env():
+    """The environment for a git call in a fixture repo: the caller's `GIT_*`
+    variables dropped, so an outer hook's repo never leaks in, and a fixed
+    author and committer identity."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    for who in ("AUTHOR", "COMMITTER"):
+        env[f"GIT_{who}_NAME"] = "fixture"
+        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
+    return env
+
+
 def run_logged(
     argv,
     root=ROOT,
@@ -152,7 +163,7 @@ def run_logged(
     told to run as passed, except `unreported`. The runner's own run log
     (`SEAM_RUNS_LOG`) is `runs_log`, or a file in the scratch directory, so a
     test run never writes the developer's real one. `pants_status` makes the
-    Pants stub's `test` call exit with it after reporting every target; `env`
+    Pants stub's `test` call exit with it after reporting every target; `extra`
     adds to the environment, a value of None removing the name. Returns the finished
     process and the log, one line per stubbed call, in order."""
     with tempfile.TemporaryDirectory() as tmp:
