@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 // The directory holding `marked`, which Node resolves from the script's own folder.
-const nodeModules = dirname(dirname(fileURLToPath(import.meta.resolve('marked'))).replace(/(node_modules\/marked).*/, '$1'))
+const nodeModules = fileURLToPath(import.meta.resolve('marked')).replace(/(\/node_modules)\/marked\/.*/, '$1')
 
 const PREAMBLE = `# Fixture reference
 
@@ -114,7 +114,8 @@ writeFileSync(join(tool, 'page.json'), JSON.stringify(PAGE))
 writeFileSync(join(tool, 'guide.md'), GUIDE)
 
 let n = 0
-// Build a reference; returns {ok, html (the page's visible text), stderr}.
+// Build a reference; returns {ok: true, text (the page's visible text), html}
+// or {ok: false, stderr}.
 function build (ref, publicOnly = true) {
   const src = join(root, `ref-${n}.md`); const out = join(root, `out-${n++}.html`)
   writeFileSync(src, ref)
@@ -163,10 +164,10 @@ const ruleRef = (pubProse, hood) => build(
 const hoodEntry = (heading, methods = []) => `### ${heading}\n\nAccess: **internal** — a helper.\n\n` + methods.map(m => `#### \`${m}()\`\n\nBody.\n`).join('\n')
 
 // classes of 5+ characters are redacted; a 4-character class is not
-let r = ruleRef('A line naming `Tiny`. A line naming `Larger`.', hoodEntry('Tiny (class Tiny)') + '\n' + hoodEntry('Larger (class Larger)'))
+let r = ruleRef('A line naming `Tiny`. A line naming `Quint`.', hoodEntry('Tiny (class Tiny)') + '\n' + hoodEntry('Quint (class Quint)'))
 assert.ok(r.ok, r.stderr)
 assert.ok(r.text.includes('A line naming Tiny.'), 'a class under 5 characters is not redacted')
-assert.ok(!r.text.includes('Larger'), 'a class of 5 characters is redacted')
+assert.ok(!r.text.includes('Quint'), 'a class of 5 characters is redacted')
 // aliases of a non-public class are redacted like the class
 r = ruleRef('A line naming `LegacyAlias`. A kept line.', hoodEntry('Hidden (class Hidden, global LegacyAlias)'))
 assert.ok(r.ok, r.stderr)
