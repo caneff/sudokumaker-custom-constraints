@@ -5,7 +5,7 @@
 # checks what each tier would have run against the files on disk:
 #
 #   - check-full runs every *.test.mjs, *.test.py and soundness-harness.mjs
-#     under examples/, lint, and the four plain scripts the gate runs, so a new
+#     under examples/ and tools/*/, lint, and the four plain scripts the gate runs, so a new
 #     or renamed test cannot drop out of both tiers -- and it runs nothing
 #     else: a suite or a lint step for a directory outside examples/ fails
 #     here, and so does a file `just fmt` rewrites outside it;
@@ -97,8 +97,11 @@ def on_disk(root=ROOT):
         ("*.test.py", "uv run"),
         ("soundness-harness.mjs", "node"),
     ):
-        for f in root.glob(f"examples/*/{pattern}"):
-            want.add(f"{runner} {f.relative_to(root).as_posix()}")
+        # tools/<name>/ holds the maintained dev tools (tools/humanify); their
+        # *.test.mjs are in the seam like an example's.
+        for where in ("examples", "tools"):
+            for f in root.glob(f"{where}/*/{pattern}"):
+                want.add(f"{runner} {f.relative_to(root).as_posix()}")
     return want
 
 
@@ -269,7 +272,7 @@ if __name__ == "__main__":
     assert not missing, f"check-full does not run: {sorted(missing)}"
     extra = set(full) - (on_disk() | LINT | SCRIPTS)
     assert not extra, (
-        f"check-full runs what is neither a test under examples/, a lint step "
+        f"check-full runs what is neither a test under examples/ or tools/, a lint step "
         f"nor a listed script: {sorted(extra)}"
     )
     both_reach(on_disk() | LINT | SCRIPTS)

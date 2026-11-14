@@ -117,9 +117,9 @@ def the_seam_runs_examples_only():
         command
         for command in listed
         if command not in WHOLE_REPO_LINT
-        and command.split()[-1].split("/")[0] != "examples"
+        and command.split()[-1].split("/")[0] not in ("examples", "tools")
     ]
-    assert not stray, f"the seam runs a suite outside examples/: {stray}"
+    assert not stray, f"the seam runs a suite outside examples/ and tools/: {stray}"
 
 
 def agents_md_carries_the_split():

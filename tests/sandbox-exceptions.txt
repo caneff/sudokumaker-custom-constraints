@@ -13,6 +13,8 @@
 examples/_shared/app-session.test.mjs the Chromium session never starts: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright' imported from examples/_shared/app-session.mjs`
 examples/_shared/app-solve-lib.test.mjs it starts app-solve.mjs, which stops on the same import: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright' imported from examples/_shared/app-session.mjs`
 examples/_shared/bundle-index.test.mjs `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'acorn' imported from examples/_shared/bundle-index.mjs`
+tools/humanify/build-ref.test.mjs it builds with a copy of build-ref.mjs, which imports `marked`: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'marked' imported from tools/humanify/build-ref.test.mjs`
+tools/humanify/verify.test.mjs it starts verify.mjs, which imports `acorn`: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'acorn' imported from tools/humanify/verify.mjs`
 examples/_shared/spec_649_closing.test.py it copies the nearest node_modules directory and finds none: `StopIteration` from `next(d / "node_modules" for d in (ROOT, *ROOT.parents) if (d / "node_modules").is_dir())`
 #
 # git: `//:tree` leaves `.git` out of every sandbox, so a suite that asks git
