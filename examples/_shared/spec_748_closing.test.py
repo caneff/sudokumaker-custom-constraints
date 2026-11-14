@@ -11,7 +11,7 @@ What this repo owes after the split, driven in the order an agent meets it:
      check -- never unique and never infeasible;
   3. nothing the cut moved to `caneff/grid-hunts` is left in the tree, and
      there is no `finders/`;
-  4. the seam runs lint and suites under examples/ and nothing else;
+  4. the seam runs lint and suites under examples/ and tools/ and nothing else;
   5. AGENTS.md states the worktree rule, points at `caneff/grid-hunts`, and
      no longer carries the machine-load rule.
 
@@ -110,7 +110,7 @@ def nothing_the_cut_moved_is_left():
 WHOLE_REPO_LINT = {"npx standard", "uv lock --check"}
 
 
-def the_seam_runs_examples_only():
+def the_seam_runs_examples_and_tools_only():
     listed = runner_listing()
     assert len(listed) > 50, f"the seam lists {len(listed)} suites"
     stray = [
@@ -135,6 +135,6 @@ if __name__ == "__main__":
     a_link_goes_through_the_library()
     a_board_is_proved_through_the_library()
     nothing_the_cut_moved_is_left()
-    the_seam_runs_examples_only()
+    the_seam_runs_examples_and_tools_only()
     agents_md_carries_the_split()
     print("spec_748_closing.test.py: ok")
