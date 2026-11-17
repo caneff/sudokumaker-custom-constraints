@@ -126,9 +126,13 @@ others. If no step is forced from that state, say so.
 - **Seam**: `just check-full`
 - **Blind to**: the app — solve time (`just time`), how a link renders and solves in sudokumaker.app, and anything a browser probe checks rather than a Node or Python test asserts
 
-The controller re-runs it on a PR merged into current `main` before every
-merge, whether or not `main` has moved past the PR's merge base (Chris's
-ruling 6a, agent-skills #1496, confirmed for this repo 2026-10-11). A run
+The full seam is the backstop, not the merge gate: CI runs it nightly and
+on `workflow_dispatch`. Before every merge the controller re-runs the
+**Narrowed** command below on the PR merged into current `main`, whether or
+not `main` has moved past the PR's merge base (Chris's ruling 6a,
+agent-skills #1496, confirmed for this repo 2026-10-11; narrowed from the
+full seam by Chris's ruling of 2026-11-17, agent-skills
+`docs/research/2026-11-17-pr-test-cost-survey.md`). A full run
 takes about 3½ min on 1 core, measured before fillomino's 12x12 board. The
 gate pins its fillomino fixtures to a 9x9 grid, so the shipped board adds
 only a small fuzz; that board's proof is `just verify-fillomino`, outside
@@ -140,7 +144,9 @@ the gate (2026-11-04).
 
 - **Build loop:** `just check` — lint and every test but the heavy ones, about
   1¾ min on one core (104 s measured 2026-10-12). Run it before each commit.
-- **Full gate — run before opening a PR or calling a task done:**
+- **Before opening a PR or calling a task done:** the narrowed seam,
+  `bash tests/all.sh --changed origin/main`.
+- **Full gate — the nightly backstop, and by hand:**
   `just check-full` — `check` plus the heavy tests (the fillomino 7x5 pipeline and
   generator tests, the skyscraper and hit-counts recovery probes, the embedded
   squishdoku house proof) and the soundness fuzz. CI runs it nightly and on `workflow_dispatch`; a push or pull request runs the narrowed seam.
