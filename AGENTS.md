@@ -146,7 +146,7 @@ gate pins its fillomino fixtures to a 9x9 grid, so the shipped board adds
 only a small fuzz; that board's proof is `just verify-fillomino`, outside
 the gate (2026-11-04).
 
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the tests on `tests/sandbox-exceptions.txt`, and each suite Pants lists among the dependents of a file the diff changed, shared tests included; no directory decides, and a changed path Pants cannot place widens the run to the whole seam; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, and each suite Pants lists among the dependents of a file the diff changed, shared tests included, a sandbox-exception test through its selector; the gate's own five tests only when a gate file changed (`//:gate` in the root `BUILD`), not for an example's code or data; a changed path Pants cannot place, a deleted file or no answer from Pants widens the run to the whole seam; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules (selectors: `docs/pants.md`)
 
 ## Commands
 

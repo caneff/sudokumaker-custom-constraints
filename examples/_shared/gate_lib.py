@@ -114,6 +114,23 @@ def pants_suites(root=ROOT):
     return suites
 
 
+@functools.cache
+def pants_selectors(root=ROOT):
+    """The selector targets under `root` (`<directory>:<file>.selects`,
+    tests/pants_prelude.py), read from the real Pants: what the runner asks
+    beside the test targets, to know which suite a diff selects by a selector
+    and which has none. A tree with no pants.toml has none."""
+    if not (root / "pants.toml").exists():
+        return ()
+    r = pants("--filter-target-type=target", "list", "::", root=root)
+    assert r.returncode == 0, f"pants list failed in {root}:\n{r.stderr}"
+    found = tuple(r.stdout.splitlines())
+    assert all(a.endswith(".selects") for a in found), (
+        f"a generic target that is no selector: {found}"
+    )
+    return found
+
+
 def path_without(names, scratch):
     """PATH with `names` not on it. A directory that holds one of them is
     replaced by a copy in `scratch` of its other entries, as symlinks: in
@@ -193,7 +210,11 @@ def run_logged(
             if name in real or name in absent:
                 continue
             if name == "pants":
-                targets.write_text("".join(f"{a}\n" for a in pants_suites(root)))
+                targets.write_text(
+                    "".join(
+                        f"{a}\n" for a in (*pants_suites(root), *pants_selectors(root))
+                    )
+                )
             stub = bin_dir / name
             stub.write_text(PANTS_STUB if name == "pants" else STUB)
             stub.chmod(0o755)

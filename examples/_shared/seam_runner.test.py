@@ -505,25 +505,36 @@ def no_pants_runs_no_suite():
 # suite only; every suite of aa declares aa's board, and so does cc's, which
 # is the one read across units. `t.test.py` declares the whole tree, which
 # here is everything but outside/. `e.test.py` has no target: the stand-in
-# for a test on the exception list.
+# for a test with no target and no selector, which always runs. `x.test.py`
+# is a test on the exception list: it has no target, only a selector that
+# names the file it reads. `g.test.py` is a gate test: it declares the whole
+# tree to run, and the gate's files (`tests/`) are what select it.
 SELECTION_TREE = {
     "pyproject.toml": "",
     "uv.lock": "",
+    "package.json": "",
+    "tests/gate-note.txt": "",
     "docs/notes.md": "",
     "outside/x.txt": "",
     "outside/gone.txt": "",
     "BUILD": ROOT_BUILD
-    + 'files(name="tree", sources=["*", "docs/**", "examples/**", "tests/**"])\n',
+    + 'files(name="tree", sources=["*", "docs/**", "examples/**", "tests/**"])\n'
+    + 'files(name="npm", sources=["package.json"])\n'
+    + 'files(name="gate", sources=["tests/gate-note.txt"])\n',
     "examples/_shared/BUILD": (
         'python_sources(name="py", sources=["*.py"])\n'
         'suite("s.test.py")\n'
         'suite("t.test.py", needs=["//:tree"])\n'
+        'suite("g.test.py", needs=["//:tree"], selected_by=["//:gate", "//:uvproject"])\n'
+        'excepted("x.test.py", needs=["examples/aa/board.txt:data"])\n'
     ),
     "examples/_shared/lib.py": "",
     "examples/_shared/other.py": "",
     "examples/_shared/s.test.py": "import lib\n",
     "examples/_shared/t.test.py": "",
     "examples/_shared/e.test.py": "",
+    "examples/_shared/g.test.py": "",
+    "examples/_shared/x.test.py": "",
     "examples/aa/BUILD": (
         'python_sources(name="py", sources=["*.py"])\n'
         'javascript_sources(name="js", sources=["*.mjs"])\n'
@@ -546,9 +557,9 @@ SELECTION_TREE = {
     ),
     "examples/cc/c.test.mjs": "",
 }
-# What every narrowed run keeps: lint and the suites Pants has no target for.
-# On the real tree those are the exception list's; here they are e.test.py and
-# the suites the runner names by path.
+# What every narrowed run keeps: lint and the suites with neither a Pants target
+# nor a selector. Here they are e.test.py and the suites the runner names by
+# path; an excepted test (x.test.py) has a selector and is not among them.
 S_ALWAYS = [
     *LINT,
     "uv run examples/_shared/e.test.py",
@@ -564,6 +575,11 @@ S_ALWAYS = [
 S_LIB = ["uv run examples/_shared/s.test.py"]
 # The whole-tree check: any change Pants can place selects it.
 S_TREE = ["uv run examples/_shared/t.test.py"]
+# Declares the whole tree to run, and is selected by the gate's files alone.
+S_GATE = ["uv run examples/_shared/g.test.py"]
+# On the exception list: no target, and a selector naming board.txt and the
+# lockfile and manifest it reads.
+S_EXCEPT = ["uv run examples/_shared/x.test.py"]
 S_AA = [
     "uv run examples/aa/a.test.py",
     "node examples/aa/a2.test.mjs",
@@ -571,7 +587,7 @@ S_AA = [
 ]
 S_BB = ["uv run examples/bb/b.test.py"]
 S_CC = ["node examples/cc/c.test.mjs"]
-S_WHOLE = S_ALWAYS + S_LIB + S_TREE + S_AA + S_BB + S_CC
+S_WHOLE = S_ALWAYS + S_LIB + S_TREE + S_GATE + S_EXCEPT + S_AA + S_BB + S_CC
 
 # A diff of the selection tree (files edited, files deleted) and the suites
 # Pants selects for it, beside lint and the suites it has no target for.
@@ -581,7 +597,8 @@ SELECTED = [
     (["examples/_shared/lib.py"], [], S_LIB + S_TREE + S_AA[:1]),
     # A unit's fixture: that unit's suites, its harness among them, and the
     # suite of another unit that declares the file.
-    (["examples/aa/board.txt"], [], S_TREE + S_AA + S_CC),
+    # The excepted test that reads it is selected too, by its selector.
+    (["examples/aa/board.txt"], [], S_TREE + S_AA + S_CC + S_EXCEPT),
     # The edge runs one way: cc reads aa, and nothing reads bb or cc.
     (["examples/bb/b.test.py"], [], S_TREE + S_BB),
     (["examples/cc/c.test.mjs"], [], S_TREE + S_CC),
@@ -589,6 +606,15 @@ SELECTED = [
     (["docs/notes.md"], [], S_TREE),
     # A changed shared test selects itself.
     (["examples/_shared/s.test.py"], [], S_LIB + S_TREE),
+    # The gate's files select the gate test and not the excepted one; an
+    # example's file selects neither the gate test (above) nor an excepted
+    # test that does not read it (`examples/bb/b.test.py` above).
+    (["tests/gate-note.txt"], [], S_TREE + S_GATE),
+    # The lockfile and the manifest of the npm packages select an excepted
+    # test, which resolves them outside any sandbox.
+    (["package.json"], [], S_TREE + S_EXCEPT),
+    # The gate test's own file selects it, with the whole-tree check.
+    (["examples/_shared/g.test.py"], [], S_TREE + S_GATE),
     # What every wired suite runs under selects every one of them.
     (["uv.lock"], [], S_WHOLE[len(S_ALWAYS) :]),
     (["tests/all.sh"], [], S_WHOLE[len(S_ALWAYS) :]),
@@ -733,11 +759,14 @@ def a_narrowed_run_says_so():
             "examples/_shared:t.test.py",
             "examples/aa:a2.test.mjs",
             "examples/aa:soundness-harness.mjs",
+            # An excepted test is reached through its selector.
+            "examples/_shared:x.test.py.selects",
         ]
-        r = run(board, answer, S_ALWAYS + S_TREE + S_AA[1:])
+        want = S_ALWAYS + S_TREE + S_EXCEPT + S_AA[1:]
+        r = run(board, answer, want)
         assert r.returncode == 0, f"{r.stdout}{r.stderr}"
         assert r.stdout.splitlines()[-1] == (
-            f"{len(S_ALWAYS) + 3} of {m} suites passed "
+            f"{len(S_ALWAYS) + 4} of {m} suites passed "
             "(narrowed: examples/_shared examples/aa)"
         ), r.stdout.splitlines()[-1]
 
@@ -752,12 +781,12 @@ def a_narrowed_run_says_so():
         r = run(
             board,
             answer,
-            S_ALWAYS + S_TREE + S_AA[1:],
+            want,
             unreported="examples/aa:a2.test.mjs",
         )
         assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}"
         assert r.stdout.splitlines()[-1] == (
-            f"{len(S_ALWAYS) + 2} of {m} suites passed before {silent} failed "
+            f"{len(S_ALWAYS) + 3} of {m} suites passed before {silent} failed "
             "(narrowed: examples/_shared examples/aa)"
         ), r.stdout.splitlines()[-1]
 

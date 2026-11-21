@@ -38,6 +38,34 @@ files(name="data", sources=["*.toml", "*.har"])
 
 # A shared test not wired here is on tests/sandbox-exceptions.txt, with what
 # the sandbox said; gate.test.py fails on one that is in neither or in both.
+# Each entry has a selector below (`excepted`), so a narrowed run selects it by
+# what it reads like any suite; a test that scans a whole class of files names
+# that class.
+
+# The Chromium session and the verdict probe: the playwright package, the app
+# session's code and the boards it opens.
+excepted(
+    "app-session.test.mjs",
+    needs=[
+        ":js",
+        ":py",
+        ":data",
+        "examples/up-to-n/PUZZLE_LINK_9x9.txt:data",
+        "examples/up-to-n/PUZZLE_LINK_4x4.txt:data",
+        "examples/numbered-rooms/PUZZLE_LINK_clued.txt:data",
+    ],
+)
+# Starts app-solve.mjs, and greps every script of the tree for the verdict phrases.
+excepted("app-solve-lib.test.mjs", needs=[":js", ":py", ":data", "//:code"])
+# Generates the bundle index with acorn and compares it with the committed one.
+excepted("bundle-index.test.mjs", needs=[":js", ":data", ":vendor", "//:bundle-api-index"])
+# Loads the bundle, and greps every .mjs and .js of the tree for a second splice.
+excepted("bundle-load.test.mjs", needs=[":js", ":data", ":vendor", "//:code"])
+# Reads every tracked file for a path into a gridfind checkout.
+excepted("sudoku_kit_source.test.py", needs=["//:tree"])
+# Copy the whole tree, and its node_modules, into a scratch repository.
+excepted("spec_649_closing.test.py", needs=["//:tree"])
+excepted("spec_809_closing.test.py", needs=["//:tree"])
 
 # Imports only: Pants infers everything these read.
 for file in [
@@ -229,6 +257,14 @@ suite(
 # prints. `pants.toml` ignores `/_binary_shims_*`, the links the outer Pants
 # keeps in that root. Not `env`: its shim runs `~/.local/bin/env`, which is
 # no program.
+# known_edges.test.py also names the files its edges start from.
+KNOWN_EDGE_FILES = [
+    "examples/_shared/line-kind.js:js",
+    "examples/_shared/document.py:py",
+    "examples/up-to-n/PUZZLE_LINK_4x4.txt:data",
+    "examples/outside-sudoku/PUZZLE_LINK.txt:data",
+    "examples/outside-sudoku/gen.json:data",
+]
 for file in [
     "ci_workflow.test.py",
     "gate.test.py",
@@ -239,6 +275,13 @@ for file in [
     suite(
         file,
         needs=["//:tree"],
+        # They read the whole tree to run; the gate's files decide whether one
+        # runs on a narrowed run (//:gate).
+        selected_by=[
+            "//:gate",
+            "//:uvproject",
+            *(KNOWN_EDGE_FILES if file == "known_edges.test.py" else []),
+        ],
         tools=[
             *RUNNER_TOOLS,
             "pants",

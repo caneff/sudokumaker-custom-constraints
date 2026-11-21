@@ -32,9 +32,20 @@
 #     prelude and .gitignore, which Pants reads to leave files out of every
 #     sandbox) and `//:uvproject`, so a change to one of those selects them
 #     all. Pants also counts a change not yet committed;
-#   - a suite Pants has no target for, always: nothing says what it reads.
-#     Those are the tests on tests/sandbox-exceptions.txt and no other, which
-#     examples/_shared/gate.test.py checks.
+#   - a suite with a selector, by the selector: a target named
+#     `<directory>:<file>.selects` (tests/pants_prelude.py) whose dependencies
+#     say what decides the suite, and the runner asks Pants whether the
+#     selector is reached in place of the suite's own target. Two kinds have
+#     one. A test on tests/sandbox-exceptions.txt runs from the tree, not in a
+#     sandbox, so Pants has no test target for it and its selector names what
+#     it reads (gate.test.py fails an exception with none). A gate test (the
+#     suites that start the real Pants or this runner) runs on the whole tree
+#     but is decided by the gate's files (`//:gate` in the root BUILD file), so
+#     an edit to an example's code or data does not select it;
+#   - a suite with neither a test target nor a selector, always: nothing says
+#     what it reads. None is on the seam when it is wired right, and a new test
+#     file with no BUILD entry is one until gate.test.py, which a BUILD edit
+#     selects, names it;
 # No directory decides anything. The run widens to the whole seam when Pants
 # gives no answer about the diff or one that cannot be read, when the tree has
 # no pants.toml, when the diff deletes a file, and when Pants cannot place a
@@ -193,7 +204,8 @@ finish() { # <exit status>
 in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
 
 # The one question "which suites are wired": sets `wired` to Pants's test
-# targets, one address per line, and returns non-zero, with what Pants said in
+# targets and selector targets (`<dir>:<file>.selects`, tests/pants_prelude.py),
+# one address per line, and returns non-zero, with what Pants said in
 # `$scratch/err`, when Pants fails or its answer is not a list of addresses
 # that holds at least one of this tree's suites. An answer that named none of
 # them would read as "nothing is wired" and send every suite out of its
@@ -201,7 +213,7 @@ in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1
 which_are_wired() {
   local line suite
   leave_no_workdir
-  wired=$(pants --filter-target-type=test_shell_command list :: 2>"$scratch/err" </dev/null) ||
+  wired=$(pants --filter-target-type=test_shell_command,target list :: 2>"$scratch/err" </dev/null) ||
     { wired=""; return 1; }
   while IFS= read -r line; do
     case $line in "" | *:*) ;; *)
@@ -274,6 +286,11 @@ target_of() { # <suite>
   echo "${file%/*}:${file##*/}"
 }
 
+# The Pants target that selects a suite, when it has one: `<directory>:<file>.selects`.
+selector_of() { # <suite>
+  echo "$(target_of "$1").selects"
+}
+
 usage() { # <what is wrong>
   echo "tests/all.sh: $1" >&2
   echo "usage: tests/all.sh [--list] [--changed <base>] [--group <group>]" >&2
@@ -322,7 +339,15 @@ if [ -n "$base" ]; then
     selected="" units=""
     while IFS=$'\t' read -r unit suite; do
       [ -n "$suite" ] || continue
-      if in_lines "$wired" "$(target_of "$suite")"; then
+      # A suite with a selector is selected when its selector is reached: the
+      # selector names what decides it (a test that cannot run in the sandbox,
+      # or one that reads the whole tree to run but is decided by the gate's
+      # files). Otherwise a wired suite is selected when its own target is
+      # reached, and a suite with neither always runs.
+      if in_lines "$wired" "$(selector_of "$suite")"; then
+        in_lines "$affected" "$(selector_of "$suite")" || continue
+        listed "$units" "$unit" || units="$units $unit"
+      elif in_lines "$wired" "$(target_of "$suite")"; then
         in_lines "$affected" "$(target_of "$suite")" || continue
         listed "$units" "$unit" || units="$units $unit"
       fi

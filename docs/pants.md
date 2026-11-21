@@ -47,17 +47,24 @@ so that one name is the edit a new test file costs.
 
 ## A test that cannot run in the sandbox
 
-`tests/sandbox-exceptions.txt` names it, with what the sandbox printed. An
-entry runs from the tree, on every narrowed run. The gate test holds the list
-equal to the test files with no Pants target, and fails an entry with no
-reason. "It was hard" is not a reason; a quoted error is.
+`tests/sandbox-exceptions.txt` names it, with what the sandbox printed, and
+its unit's `BUILD` file gives it a selector: `excepted("<file>", needs=[...])`
+(`tests/pants_prelude.py`), a target `<file>.selects` whose dependencies are
+what the test reads (`//:code` for one that greps every script, `//:tree` for
+one that reads everything, `//:npm` and `//:uvproject` come with the call).
+An entry runs from the tree, on a narrowed run that reaches its selector. The
+gate test holds the list equal to the test files with no Pants target, fails
+an entry with no reason ("It was hard" is not a reason; a quoted error is)
+and one with no selector.
 
 ## A suite that starts Pants, the runner or `just`
 
 `gate.test.py`, `seam_runner.test.py`, `ci_workflow.test.py`,
 `known_edges.test.py` and `recipe_discovery.test.py` start the real Pants
 from the sandbox's root. They are wired like any suite, with the tools they
-start named: the sandbox's PATH holds the tools a suite names and nothing
+start named. They read the whole tree to run, but `selected_by=["//:gate", ...]`
+gives each a selector, so only the gate's files (`//:gate` in the root
+`BUILD`) select them on a narrowed run, not an example's code or data. The sandbox's PATH holds the tools a suite names and nothing
 else, so a missing one fails the suite or, worse, changes what the runner
 prints. `pants.toml` ignores `/_binary_shims_*`, the tool links the outer Pants
 keeps in that root. Do not name `env`: the shim for it would run
