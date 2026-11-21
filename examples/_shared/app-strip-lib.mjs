@@ -47,9 +47,25 @@ export function seededShuffle (arr, seed) {
 }
 
 // A grid as integer rows. A row is an integer array or a digit string (the
-// shape isofill's gen.json stores and build_link.py reads).
+// shape isofill's gen.json stores and build_link.py reads). A cell that is not
+// a non-negative integer is a usage error naming its row and column, not a
+// NaN that skips the wide-pad check.
 export function gridDigits (grid) {
-  return grid.map(row => Array.from(row, Number))
+  return grid.map((row, r) => {
+    const cells = typeof row === 'string' ? Array.from(row, Number) : row
+    if (!Array.isArray(cells)) throw new Error(`grid row ${r} is neither an array nor a digit string`)
+    cells.forEach((v, c) => {
+      if (!Number.isInteger(v) || v < 0) throw new Error(`grid cell (${r},${c}) is not a digit: ${JSON.stringify(v)}`)
+    })
+    return cells
+  })
+}
+
+// The --grid file's text as the driver uses it: the grid as given (the output
+// keeps its shape), its integer rows, and the starting clues.
+export function readGridSpec (text) {
+  const spec = JSON.parse(text)
+  return { grid: spec.grid, digits: gridDigits(spec.grid), clues: spec.clues.map(([r, c]) => [r, c]) }
 }
 
 // The surviving clue set, sorted, alongside the grid it was cut from.
