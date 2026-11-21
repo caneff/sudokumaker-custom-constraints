@@ -59,6 +59,14 @@ others. If no step is forced from that state, say so.
   every constraint change and expect zero violations. Full standards in
   `CODING_STANDARDS.md`.
 
+## Shipped digit range (always on)
+
+- **A shipped board uses the widest player-facing digit range the app
+  supports (1-29).** Givens, digit cap and rules are fixed inputs: the
+  component adapts to them, never the puzzle. Never propose adding givens or
+  lowering the cap to speed the solver. (Fillomino shipped at 1-9 and at cap
+  16 for solver speed; Chris overruled both, #893, #949.)
+
 ## Solve-time invariant (always on)
 
 - **A deduction must pay for itself in solve time.** On a deduction added or
