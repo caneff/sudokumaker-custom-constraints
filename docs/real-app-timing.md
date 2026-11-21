@@ -213,6 +213,9 @@ editor directly for every trial after that:
 node examples/_shared/app-strip.mjs <link_file> <out.json> [seed] --grid <puzzle.json>
 ```
 
+`--grid` rows may be integer arrays or digit strings (isofill's `gen.json`
+shape); the output keeps the shape it was given.
+
 For each given cell, in a seeded-random order: click the cell, press Delete,
 click `ShowCandidates`, and read the verdict. `unique` keeps the cell
 removed; anything else (not-unique, a timeout, or a `?` that still has no

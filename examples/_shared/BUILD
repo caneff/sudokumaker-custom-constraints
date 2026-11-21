@@ -42,7 +42,6 @@ files(name="data", sources=["*.toml", "*.har"])
 # Imports only: Pants infers everything these read.
 for file in [
     "app-dom.test.mjs",
-    "app-strip-lib.test.mjs",
     "backend-runner.test.mjs",
     "board.test.py",
     "board_checks.test.py",
@@ -61,6 +60,10 @@ for file in [
     "sm_document.test.py",
 ]:
     suite(file, needs=[":data"])
+
+# Reads isofill's gen.json, the digit-string grid #989 ran into: the one file,
+# by name.
+suite("app-strip-lib.test.mjs", needs=[":data", "examples/isofill/gen.json:data"])
 
 # These read shared .js files by path; coarse on purpose (every shared .js).
 for file in [

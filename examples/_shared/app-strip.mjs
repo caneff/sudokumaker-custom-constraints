@@ -55,7 +55,7 @@ import { fileURLToPath } from 'url'
 import { isBlack } from './app-solve-lib.mjs'
 import { withApp, openLink, readVerdict } from './app-session.mjs'
 import { clickText, clickIcon, openWidePad, enterDigit, readCells, cellScreenPoint } from './app-dom.mjs'
-import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
+import { parseArgs, seededShuffle, outputJson, readGridSpec } from './app-strip-lib.mjs'
 
 // The cell the app draws a digit in at (row, col), as readCells returns it,
 // or undefined when it holds none.
@@ -128,9 +128,7 @@ async function restoreGiven (page, row, col, digit) {
 async function main () {
   const { linkFile, outFile, gridFile, seed } = parseArgs(process.argv.slice(2))
   const link = fs.readFileSync(linkFile, 'utf8').trim()
-  const spec = JSON.parse(fs.readFileSync(gridFile, 'utf8'))
-  const grid = spec.grid
-  const startClues = spec.clues.map(([r, c]) => [r, c])
+  const { grid, digits, clues: startClues } = readGridSpec(fs.readFileSync(gridFile, 'utf8'))
   const order = seededShuffle(startClues, seed)
   const kept = order.slice()
   const outPath = path.resolve(outFile)
@@ -138,11 +136,11 @@ async function main () {
   await withApp({ live: false }, async app => {
     const page = await app.newPage()
     await openLink(page, link)
-    if (grid.some(row => row.some(v => v > 9))) await openWidePad(page)
+    if (digits.some(row => row.some(v => v > 9))) await openWidePad(page)
 
     for (let i = 0; i < kept.length;) {
       const [row, col] = kept[i]
-      const digit = grid[row][col]
+      const digit = digits[row][col]
 
       let readout = await trySolveWithout(page, row, col)
       let verdict = readout.verdict

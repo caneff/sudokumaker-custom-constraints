@@ -3,7 +3,8 @@
 // run. Run: node examples/_shared/app-strip-lib.test.mjs
 
 import assert from 'assert'
-import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
+import fs from 'fs'
+import { parseArgs, seededShuffle, outputJson, gridDigits, readGridSpec } from './app-strip-lib.mjs'
 
 // seededShuffle: a fixed seed reproduces one exact, known permutation
 {
@@ -18,6 +19,30 @@ import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
   const grid = ['01', '23']
   const json = outputJson(grid, [[1, 1], [0, 0]])
   assert.strictEqual(json, '{"grid":["01","23"],"clues":[[0,0],[1,1]]}\n')
+}
+
+// gridDigits: a grid row is an integer array or a digit string (isofill's
+// gen.json); both read as integer rows
+{
+  const fromStrings = gridDigits(['012', '345'])
+  assert.deepStrictEqual(fromStrings, [[0, 1, 2], [3, 4, 5]])
+  assert.deepStrictEqual(gridDigits([[0, 10], [29, 3]]), [[0, 10], [29, 3]])
+}
+
+// gridDigits refuses a cell that is not a digit, naming it
+{
+  const bad = ['01', '2x']
+  assert.throws(() => gridDigits(bad), /cell \(1,1\)/)
+  assert.throws(() => gridDigits([[0, null]]), /cell \(0,1\)/)
+  assert.throws(() => gridDigits([5]), /row 0/)
+}
+
+// readGridSpec on the real isofill gen.json (digit-string rows): the case of #989
+{
+  const spec = readGridSpec(fs.readFileSync(new URL('../isofill/gen.json', import.meta.url), 'utf8'))
+  assert.strictEqual(typeof spec.grid[0], 'string', 'the grid keeps the shape it was given')
+  assert.deepStrictEqual(spec.digits[0], [0, 0, 0, 0, 1, 1, 1, 1, 1, 1])
+  assert.deepStrictEqual(spec.clues[0], [0, 3])
 }
 
 // parseArgs: the driver's command line
