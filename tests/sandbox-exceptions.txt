@@ -3,10 +3,11 @@
 #
 #   <test file> <reason, quoting what failed in the sandbox>
 #
-# An entry stays on the seam runner's own loop for good, and is run on every
-# narrowed run: Pants selects every other suite. examples/_shared/gate.test.py
-# checks this list: every test file of the seam is wired into Pants or named
-# here, never both, and an entry with no reason fails it.
+# An entry stays on the seam runner's own loop for good, and a narrowed run
+# selects it through its selector (`excepted(...)` in its unit's BUILD file,
+# tests/pants_prelude.py). examples/_shared/gate.test.py checks this list: every
+# test file of the seam is wired into Pants or named here, never both, and an
+# entry with no reason or no selector fails it.
 #
 # npm packages: pants.toml keeps node_modules out of every sandbox, and Node
 # resolves an ES module import from no other place.

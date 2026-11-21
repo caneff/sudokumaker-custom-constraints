@@ -40,8 +40,7 @@
 #     sandbox, so Pants has no test target for it and its selector names what
 #     it reads (gate.test.py fails an exception with none). A gate test (the
 #     suites that start the real Pants or this runner) runs on the whole tree
-#     but is decided by the gate's files, `//:gate`: this runner, its config,
-#     the exception list, the justfile, CI, every BUILD file and AGENTS.md, so
+#     but is decided by the gate's files (`//:gate` in the root BUILD file), so
 #     an edit to an example's code or data does not select it;
 #   - a suite with neither a test target nor a selector, always: nothing says
 #     what it reads. None is on the seam when it is wired right, and a new test

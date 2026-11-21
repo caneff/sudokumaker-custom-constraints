@@ -29,10 +29,11 @@
 #   - every test file is run through Pants, or is on the exception list
 #     (tests/sandbox-exceptions.txt) with its reason: a test file in neither
 #     or in both fails here, and so does an entry with no reason or one that
-#     names no test file of the seam. A narrowed run (`tests/all.sh
-#     --changed`) leaves every selection to Pants and runs the excepted tests
-#     always, so a test file in neither would be one nothing selects for a
-#     reason.
+#     names no test file of the seam, or one has no selector (a target
+#     `<file>.selects`): a narrowed run (`tests/all.sh --changed`) leaves every
+#     selection to Pants, which reaches an excepted test through its selector,
+#     and a suite with neither a target nor a selector runs on every narrowed
+#     run.
 #
 #   uv run examples/_shared/gate.test.py
 
@@ -193,14 +194,14 @@ def test_files_are_wired_or_excepted(root=ROOT):
     return len(excepted)
 
 
-def an_exception_has_a_selector(root=ROOT):
+def an_exception_has_a_selector(root=ROOT, selectors=None, excepted=None):
     """A test on the exception list runs from the tree, so Pants has no test
     target for it, and a narrowed run selects it by its selector
     (`<directory>:<file>.selects`, tests/pants_prelude.py) like any suite. One
     with no selector would run on every narrowed run, and a selector for a
     file that is no test of the seam is stale."""
-    selectors = set(pants_selectors(root))
-    excepted = set(sandbox_exceptions(root))
+    selectors = set(pants_selectors(root) if selectors is None else selectors)
+    excepted = set(sandbox_exceptions(root) if excepted is None else excepted)
     gated = {a.removesuffix(".selects") for a in selectors}  # `<directory>:<file>`
     for file in sorted(excepted):
         directory, name = file.rsplit("/", 1)
@@ -213,6 +214,32 @@ def an_exception_has_a_selector(root=ROOT):
         a for a in gated if a not in wired and a.replace(":", "/") not in excepted
     )
     assert not stale, f"selector for a file that is neither wired nor excepted: {stale}"
+
+
+def a_missing_or_stale_selector_is_refused():
+    """The selector check refuses an exception with no selector, and a selector
+    for a file that is neither wired nor excepted; it passes a matched pair."""
+    ok = {"examples/_shared/e.test.py"}
+    an_exception_has_a_selector(
+        selectors={"examples/_shared:e.test.py.selects"}, excepted=ok
+    )
+    for selectors, excepted, said in (
+        (set(), ok, "with no selector"),
+        (
+            {
+                "examples/_shared:e.test.py.selects",
+                "examples/_shared:f.test.py.selects",
+            },
+            ok,
+            "selector for a file that is neither wired nor excepted",
+        ),
+    ):
+        try:
+            an_exception_has_a_selector(selectors=selectors, excepted=excepted)
+            refused = None
+        except AssertionError as e:
+            refused = said in str(e)
+        assert refused, f"{said!r} was not refused: {refused}"
 
 
 def an_exception_needs_a_reason():
@@ -314,6 +341,7 @@ if __name__ == "__main__":
 
     wired = one_mechanism_per_file()
     an_exception_needs_a_reason()
+    a_missing_or_stale_selector_is_refused()
     a_test_file_in_neither_is_refused()
     excepted = test_files_are_wired_or_excepted()
     an_exception_has_a_selector()

@@ -19,11 +19,16 @@ files(name="npm", sources=["package.json", "package-lock.json"])
 # The gate's own files, which select the gate's own tests (the suites that
 # start the real Pants or the seam runner on the whole tree): the justfile, CI,
 # the runner's config and exception list, every BUILD file (a test file is wired
-# there), the shipped isofill boards `just verify-isofill` must prove, and the
-# AGENTS.md that names the seam's commands. Those tests read the whole tree
+# there), the shipped isofill boards `just verify-isofill` must prove, a research
+# test gate.test.py holds to its by-hand list, and the AGENTS.md that names the
+# seam's commands. Those tests read the whole tree
 # (`//:tree`) to run, but only these files decide what they check, so an edit to
-# an example's code or data does not select them. A new test file with no
-# Pants target and no selector widens the run instead (tests/all.sh).
+# an example's code or data does not select them. A new test file with no BUILD
+# entry has neither a target nor a selector, so a narrowed run runs it from the
+# tree alone, and gate.test.py, which would name it, runs when a BUILD file
+# changes or in the nightly check-full. known_edges.test.py is also selected by
+# the example files its edges name; an edit to a file between them (an import
+# that carries an edge) reaches it only in the nightly run.
 files(
     name="gate",
     sources=[
@@ -34,6 +39,7 @@ files(
         "tests/**",
         "**/BUILD",
         "examples/isofill/gen*.json",
+        "docs/research/**/*.test.mjs",
     ],
 )
 

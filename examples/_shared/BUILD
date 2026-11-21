@@ -257,6 +257,14 @@ suite(
 # prints. `pants.toml` ignores `/_binary_shims_*`, the links the outer Pants
 # keeps in that root. Not `env`: its shim runs `~/.local/bin/env`, which is
 # no program.
+# known_edges.test.py also names the files its edges start from.
+KNOWN_EDGE_FILES = [
+    "examples/_shared/line-kind.js:js",
+    "examples/_shared/document.py:py",
+    "examples/up-to-n/PUZZLE_LINK_4x4.txt:data",
+    "examples/outside-sudoku/PUZZLE_LINK.txt:data",
+    "examples/outside-sudoku/gen.json:data",
+]
 for file in [
     "ci_workflow.test.py",
     "gate.test.py",
@@ -269,7 +277,11 @@ for file in [
         needs=["//:tree"],
         # They read the whole tree to run; the gate's files decide whether one
         # runs on a narrowed run (//:gate).
-        selected_by=["//:gate", "//:uvproject"],
+        selected_by=[
+            "//:gate",
+            "//:uvproject",
+            *(KNOWN_EDGE_FILES if file == "known_edges.test.py" else []),
+        ],
         tools=[
             *RUNNER_TOOLS,
             "pants",

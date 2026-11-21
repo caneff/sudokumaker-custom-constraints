@@ -29,6 +29,11 @@ branch and slice PRs into spec branches, and the old CI selection also widened o
 the runner's own files, so the two shares are not comparable: this replay counts
 merged diffs only. The replay does not reproduce 42 of 115.
 
+The share of commits selecting every suite did not move: those six are
+widened by a deletion or a runner-file change, which this ticket keeps. What
+moved is the floor for a change to docs or one example, and the mean. The
+ticket's 42 of 115 is not reproduced and not compared.
+
 ## What the floor is now
 
 A one-example change (a README) selects, besides lint and that example's suites,

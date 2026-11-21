@@ -36,16 +36,12 @@ def _kind(file):
     return "py" if file.endswith(".py") else "js"
 
 
-def selects(file, deps, runner=True):
-    """The selector of the suite `file`: the suite's own source and what else
-    decides it, `//:runner` among them unless `runner` is False."""
+def selects(file, deps):
+    """The selector of the suite `file`: the suite's own source, `deps` (what
+    else decides it) and `//:runner`."""
     target(
         name=f"{file}.selects",
-        dependencies=[
-            f"./{file}:{_kind(file)}",
-            *deps,
-            *(["//:runner"] if runner else []),
-        ],
+        dependencies=[f"./{file}:{_kind(file)}", *deps, "//:runner"],
     )
 
 
@@ -61,14 +57,14 @@ def suite(file, needs=(), tools=(), timeout=None, selected_by=None):
     """`selected_by`: the files that select this suite, in place of what its
     sandbox holds (see `selects`)."""
     path = f"{build_file_dir()}/{file}"
-    if file.endswith(".py"):
-        kind = "py"
+    kind = _kind(file)
+    if kind == "py":
         command = (
-            "python=$UV_PYTHON; unset UV_PYTHON; "
+            'python=$UV_PYTHON; unset UV_PYTHON; '
             f'uv run ${{python:+--python "$python"}} {path}'
         )
     else:
-        kind, command = "js", f"node {path}"
+        command = f"node {path}"
     if selected_by is not None:
         selects(file, selected_by)
     test_shell_command(
@@ -76,12 +72,7 @@ def suite(file, needs=(), tools=(), timeout=None, selected_by=None):
         command=command,
         tools=["uv", "node", *tools],
         workdir="/",
-        execution_dependencies=[
-            f"./{file}:{kind}",
-            *needs,
-            "//:uvproject",
-            "//:runner",
-        ],
+        execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject", "//:runner"],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
         timeout=timeout or 600,
     )

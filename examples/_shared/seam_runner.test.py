@@ -557,9 +557,9 @@ SELECTION_TREE = {
     ),
     "examples/cc/c.test.mjs": "",
 }
-# What every narrowed run keeps: lint and the suites Pants has no target for.
-# On the real tree those are the exception list's; here they are e.test.py and
-# the suites the runner names by path.
+# What every narrowed run keeps: lint and the suites with neither a Pants target
+# nor a selector. Here they are e.test.py and the suites the runner names by
+# path; an excepted test (x.test.py) has a selector and is not among them.
 S_ALWAYS = [
     *LINT,
     "uv run examples/_shared/e.test.py",
