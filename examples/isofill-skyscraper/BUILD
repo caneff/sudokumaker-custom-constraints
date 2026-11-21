@@ -2,6 +2,7 @@ unit(
     suites=[
         "build_link.test.py",
         "build_size.test.py",
+        "backend-registers.test.mjs",
         "rectangle.test.py",
         "verify.test.py",
         "verify.py",
