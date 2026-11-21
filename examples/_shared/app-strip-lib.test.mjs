@@ -3,7 +3,7 @@
 // run. Run: node examples/_shared/app-strip-lib.test.mjs
 
 import assert from 'assert'
-import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
+import { parseArgs, seededShuffle, outputJson, gridDigits } from './app-strip-lib.mjs'
 
 // seededShuffle: a fixed seed reproduces one exact, known permutation
 {
@@ -18,6 +18,14 @@ import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
   const grid = ['01', '23']
   const json = outputJson(grid, [[1, 1], [0, 0]])
   assert.strictEqual(json, '{"grid":["01","23"],"clues":[[0,0],[1,1]]}\n')
+}
+
+// gridDigits: a grid row is an integer array or a digit string (isofill's
+// gen.json); both read as integer rows
+{
+  const fromStrings = gridDigits(['012', '345'])
+  assert.deepStrictEqual(fromStrings, [[0, 1, 2], [3, 4, 5]])
+  assert.deepStrictEqual(gridDigits([[0, 10], [29, 3]]), [[0, 10], [29, 3]])
 }
 
 // parseArgs: the driver's command line

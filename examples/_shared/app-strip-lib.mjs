@@ -46,6 +46,12 @@ export function seededShuffle (arr, seed) {
   return shuffle(mulberry32(seed), arr.slice())
 }
 
+// A grid as integer rows. A row is an integer array or a digit string (the
+// shape isofill's gen.json stores and build_link.py reads).
+export function gridDigits (grid) {
+  return grid.map(row => Array.from(row, Number))
+}
+
 // The surviving clue set, sorted, alongside the grid it was cut from.
 export function outputJson (grid, clues) {
   const sorted = clues.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1])
