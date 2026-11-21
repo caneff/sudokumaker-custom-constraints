@@ -32,9 +32,21 @@
 #     prelude and .gitignore, which Pants reads to leave files out of every
 #     sandbox) and `//:uvproject`, so a change to one of those selects them
 #     all. Pants also counts a change not yet committed;
-#   - a suite Pants has no target for, always: nothing says what it reads.
-#     Those are the tests on tests/sandbox-exceptions.txt and no other, which
-#     examples/_shared/gate.test.py checks.
+#   - a suite with a selector, by the selector: a target named
+#     `<directory>:<file>.selects` (tests/pants_prelude.py) whose dependencies
+#     say what decides the suite, and the runner asks Pants whether the
+#     selector is reached in place of the suite's own target. Two kinds have
+#     one. A test on tests/sandbox-exceptions.txt runs from the tree, not in a
+#     sandbox, so Pants has no test target for it and its selector names what
+#     it reads (gate.test.py fails an exception with none). A gate test (the
+#     suites that start the real Pants or this runner) runs on the whole tree
+#     but is decided by the gate's files, `//:gate`: this runner, its config,
+#     the exception list, the justfile, CI, every BUILD file and AGENTS.md, so
+#     an edit to an example's code or data does not select it;
+#   - a suite with neither a test target nor a selector, always: nothing says
+#     what it reads. None is on the seam when it is wired right, and a new test
+#     file with no BUILD entry is one until gate.test.py, which a BUILD edit
+#     selects, names it;
 # No directory decides anything. The run widens to the whole seam when Pants
 # gives no answer about the diff or one that cannot be read, when the tree has
 # no pants.toml, when the diff deletes a file, and when Pants cannot place a
