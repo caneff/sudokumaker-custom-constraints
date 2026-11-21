@@ -11,6 +11,39 @@ files(
     sources=[".gitignore", "pants.toml", "tests/all.sh", "tests/pants_prelude.py"],
 )
 
+# The npm packages a node suite resolves. pants.toml keeps node_modules out of
+# every sandbox, so the suites on tests/sandbox-exceptions.txt that import one
+# are selected by the manifest and the lockfile instead.
+files(name="npm", sources=["package.json", "package-lock.json"])
+
+# The gate's own files, which select the gate's own tests (the suites that
+# start the real Pants or the seam runner on the whole tree): the justfile, CI,
+# the runner's config and exception list, every BUILD file (a test file is wired
+# there), the shipped isofill boards `just verify-isofill` must prove, and the
+# AGENTS.md that names the seam's commands. Those tests read the whole tree
+# (`//:tree`) to run, but only these files decide what they check, so an edit to
+# an example's code or data does not select them. A new test file with no
+# Pants target and no selector widens the run instead (tests/all.sh).
+files(
+    name="gate",
+    sources=[
+        "AGENTS.md",
+        "justfile",
+        "pants.toml",
+        ".github/workflows/*.yml",
+        "tests/**",
+        "**/BUILD",
+        "examples/isofill/gen*.json",
+    ],
+)
+
+# The generated bundle index, which examples/_shared/bundle-index.test.mjs
+# regenerates and compares.
+files(name="bundle-api-index", sources=["docs/bundle-api-index.md"])
+
+# Every source file of the code, for a test that greps all of it.
+files(name="code", sources=["**/*.py", "**/*.js", "**/*.mjs"])
+
 # The one Markdown file code reads: examples/_shared/component_scan.py takes
 # the built-in component list from it.
 files(name="builtin-components", sources=["docs/builtin-components.md"])

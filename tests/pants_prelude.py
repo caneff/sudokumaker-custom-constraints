@@ -24,7 +24,38 @@
 # names, and nothing else: a suite that starts `git` names it.
 
 
-def suite(file, needs=(), tools=(), timeout=None):
+# A suite is selected by the files its target depends on, at any distance. A
+# suite that needs more in its sandbox than it reads (a gate test runs the real
+# Pants on the whole tree) or cannot run in a sandbox at all has a selector
+# beside it: a target named `<file>.selects` whose dependencies are what
+# decides whether the suite runs on a narrowed run. `selects(file, ...)` makes
+# one, and the runner reads the selector's answer in place of the suite's own.
+
+
+def _kind(file):
+    return "py" if file.endswith(".py") else "js"
+
+
+def selects(file, deps, runner=True):
+    """The selector of the suite `file`: the suite's own source and what else
+    decides it, `//:runner` among them unless `runner` is False."""
+    target(
+        name=f"{file}.selects",
+        dependencies=[f"./{file}:{_kind(file)}", *deps, *(["//:runner"] if runner else [])],
+    )
+
+
+def excepted(file, needs=()):
+    """A test that cannot run in the sandbox (tests/sandbox-exceptions.txt):
+    it runs from the tree, and `needs` are the files that select it, as for a
+    suite. `//:uvproject` is the lockfile a `uv run` builds from, and
+    `//:npm` the packages a node suite resolves."""
+    selects(file, [*needs, "//:uvproject", "//:npm"])
+
+
+def suite(file, needs=(), tools=(), timeout=None, selected_by=None):
+    """`selected_by`: the files that select this suite, in place of what its
+    sandbox holds (see `selects`)."""
     path = f"{build_file_dir()}/{file}"
     if file.endswith(".py"):
         kind = "py"
@@ -34,6 +65,8 @@ def suite(file, needs=(), tools=(), timeout=None):
         )
     else:
         kind, command = "js", f"node {path}"
+    if selected_by is not None:
+        selects(file, selected_by)
     test_shell_command(
         name=file,
         command=command,
