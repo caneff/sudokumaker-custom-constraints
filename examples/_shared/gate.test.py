@@ -50,6 +50,7 @@ from gate_lib import (
     by_mechanism,
     commands,
     gate_tree,
+    pants_selectors,
     pants_suites,
     run_logged,
     runner_listing,
@@ -192,6 +193,28 @@ def test_files_are_wired_or_excepted(root=ROOT):
     return len(excepted)
 
 
+def an_exception_has_a_selector(root=ROOT):
+    """A test on the exception list runs from the tree, so Pants has no test
+    target for it, and a narrowed run selects it by its selector
+    (`<directory>:<file>.selects`, tests/pants_prelude.py) like any suite. One
+    with no selector would run on every narrowed run, and a selector for a
+    file that is no test of the seam is stale."""
+    selectors = set(pants_selectors(root))
+    excepted = set(sandbox_exceptions(root))
+    gated = {a.removesuffix(".selects") for a in selectors}  # `<directory>:<file>`
+    for file in sorted(excepted):
+        directory, name = file.rsplit("/", 1)
+        assert f"{directory}:{name}.selects" in selectors, (
+            f"{file} is on {EXCEPTIONS} with no selector: add `excepted({name!r}, "
+            f"needs=[...])` to {directory}/BUILD"
+        )
+    wired = set(pants_suites(root))
+    stale = sorted(
+        a for a in gated if a not in wired and a.replace(":", "/") not in excepted
+    )
+    assert not stale, f"selector for a file that is neither wired nor excepted: {stale}"
+
+
 def an_exception_needs_a_reason():
     """An entry of the exception list with no reason is refused."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -293,6 +316,7 @@ if __name__ == "__main__":
     an_exception_needs_a_reason()
     a_test_file_in_neither_is_refused()
     excepted = test_files_are_wired_or_excepted()
+    an_exception_has_a_selector()
 
     print(
         f"gate.test.py: check {len(fast)} steps, check-full {len(full)} steps, "

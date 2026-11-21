@@ -41,7 +41,11 @@ def selects(file, deps, runner=True):
     decides it, `//:runner` among them unless `runner` is False."""
     target(
         name=f"{file}.selects",
-        dependencies=[f"./{file}:{_kind(file)}", *deps, *(["//:runner"] if runner else [])],
+        dependencies=[
+            f"./{file}:{_kind(file)}",
+            *deps,
+            *(["//:runner"] if runner else []),
+        ],
     )
 
 
@@ -60,7 +64,7 @@ def suite(file, needs=(), tools=(), timeout=None, selected_by=None):
     if file.endswith(".py"):
         kind = "py"
         command = (
-            'python=$UV_PYTHON; unset UV_PYTHON; '
+            "python=$UV_PYTHON; unset UV_PYTHON; "
             f'uv run ${{python:+--python "$python"}} {path}'
         )
     else:
@@ -72,7 +76,12 @@ def suite(file, needs=(), tools=(), timeout=None, selected_by=None):
         command=command,
         tools=["uv", "node", *tools],
         workdir="/",
-        execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject", "//:runner"],
+        execution_dependencies=[
+            f"./{file}:{kind}",
+            *needs,
+            "//:uvproject",
+            "//:runner",
+        ],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
         timeout=timeout or 600,
     )
