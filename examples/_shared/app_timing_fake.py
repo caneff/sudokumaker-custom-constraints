@@ -1,7 +1,7 @@
 # The one test stand-in for the app: `fake_solve` swaps app_timing.app_solve,
 # the only call in the timing driver that needs a browser, for a stub that
 # prints canned medians as app-solve.mjs's JSON line. Shared by the timing
-# tests (app_timing, time_example, time_link, spec_895_closing) so a change to
+# tests (app_timing, time_example, time_link) so a change to
 # the driver's JSON line is made in one stub, not one copy per test.
 
 import contextlib

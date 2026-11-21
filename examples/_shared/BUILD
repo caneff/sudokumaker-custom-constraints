@@ -64,8 +64,6 @@ excepted("bundle-load.test.mjs", needs=[":js", ":data", ":vendor", "//:code"])
 # Reads every tracked file for a path into a gridfind checkout.
 excepted("sudoku_kit_source.test.py", needs=["//:tree"])
 # Copy the whole tree, and its node_modules, into a scratch repository.
-excepted("spec_649_closing.test.py", needs=["//:tree"])
-excepted("spec_809_closing.test.py", needs=["//:tree"])
 
 # Imports only: Pants infers everything these read.
 for file in [
@@ -108,6 +106,12 @@ for file in [
 ]:
     suite(file, needs=[":data", ":js"])
 
+# Runs dominator.js in node and reads fillomino's generate.py, the CP-SAT model's edges.
+suite(
+    "dominator_neighbours_model.test.py",
+    needs=[":data", ":js", "examples/fillomino/generate.py:py"],
+)
+
 # Starts grid_to_link.py as a subprocess, and runs the solver bundle.
 suite("hard-sweep-lib.test.mjs", needs=[":data", ":js", "./grid_to_link.py:py"])
 
@@ -129,15 +133,10 @@ for file in [
     "global-backends.test.mjs",
     "manifest_spec.test.py",
     "size_builders.test.py",
-    "spec_855_closing.test.py",
-    "spec_865_closing.test.py",
-    "spec_896_closing.test.py",
-    "spec_897_closing.test.mjs",
-    # spec_898_closing.test.py is below: it lists the seam, which needs RUNNER_TOOLS.
-    "spec_951_closing.test.mjs",
-    # Copies the examples tree and docs/builtin-components.md, and runs every
-    # example's build_link.py --refresh and check_layout.py on the copy.
-    "spec_952_closing.test.py",
+    # refresh_links copies the examples tree and docs/builtin-components.md, and
+    # runs every example's build_link.py --refresh and check_layout.py on the copy.
+    "refresh_links.test.py",
+    "shipped_components.test.py",
 ]:
     suite(file, needs=["//:tree"])
 
@@ -209,19 +208,6 @@ suite("time_example.test.py", needs=["//:tree"], tools=["git"])
 # Row building, verdicts and rep aggregation, with the browser call faked.
 suite("app_timing.test.py")
 
-# Spec #895's closing check: copies the real up-to-n example and the shared .js
-# it includes into a git repository of its own, builds and times its candidate
-# with the browser call faked, and reads pyproject.toml. Blind to the app: `just
-# time`'s real timing and app-strip.mjs in a browser (the test's own docstring).
-suite("spec_895_closing.test.py", needs=["//:tree"], tools=["git"])
-
-# Spec #953's closing check: copies the real up-to-n example into a git
-# repository of its own and times it (and its committed link) with the browser
-# call faked and busy reps in both modes; walks the tree for the old probe
-# names and for browser scripts that open a link themselves. Blind to the app:
-# `just time`'s real rows and openLink in a real Chromium (its docstring).
-suite("spec_953_closing.test.py", needs=["//:tree"], tools=["git"])
-
 # Row building and argument handling for `just time-link`; the browser call is
 # faked.
 suite("time_link.test.py")
@@ -231,24 +217,6 @@ suite("just_list.test.py", needs=["//:justfile"], tools=["just"])
 # What `bash tests/all.sh` calls by name; a sandbox's PATH holds these and
 # nothing else.
 RUNNER_TOOLS = ["bash", "dirname", "awk", "cut", "mkdir"]
-# Lists the seam through `bash tests/all.sh --list`, which starts these.
-suite(
-    "spec_748_closing.test.py",
-    needs=["//:tree"],
-    tools=RUNNER_TOOLS,
-)
-suite(
-    "spec_898_closing.test.py",
-    needs=["//:tree"],
-    tools=RUNNER_TOOLS,
-)
-# Rebuilds the sparse count-digits links and lists the seam; `git ls-files`
-# when the tree has a .git, a walk of the files when it has none.
-suite(
-    "spec_954_closing.test.py",
-    needs=["//:tree"],
-    tools=[*RUNNER_TOOLS, "git"],
-)
 
 # Each starts the real Pants, `bash tests/all.sh` or `just`, from the sandbox's
 # root, so they need `pants`, `just` and what the runner calls by name on the

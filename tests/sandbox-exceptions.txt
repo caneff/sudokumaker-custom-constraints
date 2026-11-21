@@ -16,10 +16,8 @@ examples/_shared/app-solve-lib.test.mjs it starts app-solve.mjs, which stops on 
 examples/_shared/bundle-index.test.mjs `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'acorn' imported from examples/_shared/bundle-index.mjs`
 tools/humanify/build-ref.test.mjs it builds with a copy of build-ref.mjs, which imports `marked`: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'marked' imported from tools/humanify/build-ref.test.mjs`
 tools/humanify/verify.test.mjs it starts verify.mjs, which imports `acorn`: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'acorn' imported from tools/humanify/verify.mjs`
-examples/_shared/spec_649_closing.test.py it copies the nearest node_modules directory and finds none: `StopIteration` from `next(d / "node_modules" for d in (ROOT, *ROOT.parents) if (d / "node_modules").is_dir())`
 #
 # git: `//:tree` leaves `.git` out of every sandbox, so a suite that asks git
 # for the tracked files has no repository there.
 examples/_shared/bundle-load.test.mjs `git grep` finds no repository: `fatal: not a git repository (or any of the parent directories): .git`
-examples/_shared/spec_809_closing.test.py it lists the tracked tree to copy it: `AssertionError: git ('ls-files', '-z') failed in the copy:` `fatal: not a git repository (or any of the parent directories): .git`
 examples/_shared/sudoku_kit_source.test.py `git ls-files` finds no repository: `subprocess.CalledProcessError: Command '['git', 'ls-files', '-z', '--', '*.py']' returned non-zero exit status 128`
