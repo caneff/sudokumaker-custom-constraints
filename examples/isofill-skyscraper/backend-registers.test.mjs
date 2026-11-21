@@ -1,8 +1,8 @@
 // What main-global.js registers: one IsofillComponent over the 9x9 interior
 // and one one-sided skyscraper component per ring clue (4 sides x 9 lines),
-// and nothing else. An interior read in another order, a clue line left
-// unregistered or a second kind of component would pass the fixpoint harnesses
-// quietly on some boards, so the count is held here.
+// and nothing else. A clue line left unregistered or a second kind of
+// component would pass the fixpoint harnesses quietly on some boards, so the
+// count is held here.
 //
 // The skyscraper component must hide a tie (ALLOW_TIES = false): an ISOFILL
 // line repeats digits, and a clue that counted a tie would be another rule.

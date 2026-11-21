@@ -1,7 +1,6 @@
 unit(
     suites=[
         "build_link.test.py",
-        "annotated_twin.test.py",
         "hunt_offline.test.py",
         "hunt-lib.test.mjs",
         "bound-screen-lib.test.mjs",

@@ -17,7 +17,6 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 EXAMPLES = HERE.parent
-sys.path.insert(0, str(HERE))
 
 
 def _load_generate():

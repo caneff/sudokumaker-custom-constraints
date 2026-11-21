@@ -6,7 +6,9 @@
      rename that leaves a link behind fails here;
   3. every example's timed component resolves to a file;
   4. every custom-constraint entry in a committed link carries `input` and
-     `style`.
+     `style`;
+  5. no `standard.ignore` entry of package.json hides a shipped component from
+     lint.
 
 Sweep 1 reads harness source for `load(...)` calls: it proves a harness loads
 the file, not that every draw reaches it. Whether the fuzz asks a component's
@@ -16,6 +18,8 @@ module that lacks the `validate` its file defines).
     uv run examples/_shared/shipped_components.test.py
 """
 
+import fnmatch
+import json
 import pathlib
 import re
 import sys
@@ -54,11 +58,11 @@ LOCAL_IMPORT = re.compile(r"""from\s+['"](\./[^'"]+\.mjs)['"]""")
 CUSTOM_CONSTRAINT = 1000
 
 
-def shipped_components(tree):
-    """Every component file under `tree`/examples except the verbatim or
+def shipped_components():
+    """Every component file under examples/ except the verbatim or
     frozen original/ snippets and the dot-directory strength floors, as
     repo-relative paths."""
-    rels = (p.relative_to(tree) for p in (tree / "examples").rglob("*Component*.js"))
+    rels = (p.relative_to(ROOT) for p in (ROOT / "examples").rglob("*Component*.js"))
     return sorted(
         rel.as_posix()
         for rel in rels
@@ -83,20 +87,20 @@ def harness_loads(harness):
     return loads
 
 
-def committed_links(tree):
-    links = sorted((tree / "examples").rglob("PUZZLE_LINK*.txt"))
+def committed_links():
+    links = sorted((ROOT / "examples").rglob("PUZZLE_LINK*.txt"))
     assert links, "no PUZZLE_LINK*.txt under examples/ to sweep"
     return links
 
 
-def test_every_shipped_component_is_fuzzed_or_excused(tree=ROOT):
+def test_every_shipped_component_is_fuzzed_or_excused():
     loads = set()
-    for harness in (tree / "examples").glob("*/soundness-harness.mjs"):
+    for harness in (ROOT / "examples").glob("*/soundness-harness.mjs"):
         loads |= harness_loads(harness)
-    shipped = shipped_components(tree)
+    shipped = shipped_components()
     problems = []
     for c in shipped:
-        loaded = (tree / c).resolve() in loads
+        loaded = (ROOT / c).resolve() in loads
         if c in NOT_FUZZED:
             if loaded:
                 problems.append(f"{c}: in NOT_FUZZED but a harness loads it")
@@ -106,25 +110,25 @@ def test_every_shipped_component_is_fuzzed_or_excused(tree=ROOT):
     assert not problems, "\n".join(problems)
 
 
-def test_every_component_a_link_registers_has_a_file(tree=ROOT):
-    names = {p.stem for p in (tree / "examples").rglob("*Component*.js")}
+def test_every_component_a_link_registers_has_a_file():
+    names = {p.stem for p in (ROOT / "examples").rglob("*Component*.js")}
     registered = [
         (link, name)
-        for link in committed_links(tree)
+        for link in committed_links()
         for name in shipped_component_code(decode_puzzle(link.read_text().strip()))
     ]
     assert registered, "no link registers a component, so the sweep checked nothing"
     missing = [
-        f"{link.relative_to(tree)}: {name}"
+        f"{link.relative_to(ROOT)}: {name}"
         for link, name in registered
         if name not in names
     ]
     assert not missing, f"links register components with no file: {missing}"
 
 
-def test_every_examples_timed_component_resolves(tree=ROOT):
+def test_every_examples_timed_component_resolves():
     checked = 0
-    for manifest in sorted((tree / "examples").glob("*/example.toml")):
+    for manifest in sorted((ROOT / "examples").glob("*/example.toml")):
         ex = manifest.parent
         traits = load_manifest(ex)
         # no board to time, or no component of its own to follow
@@ -136,11 +140,9 @@ def test_every_examples_timed_component_resolves(tree=ROOT):
     assert checked, "no timed example was checked: the sweep matched nothing"
 
 
-def test_every_custom_constraint_in_a_committed_link_carries_input_and_style(
-    tree=ROOT,
-):
+def test_every_custom_constraint_in_a_committed_link_carries_input_and_style():
     bad = []
-    for link in committed_links(tree):
+    for link in committed_links():
         doc = decode_puzzle(link.read_text().strip())
         for entry in doc["puzzle"]["constraints"]:
             if entry.get("type") != CUSTOM_CONSTRAINT:
@@ -148,8 +150,19 @@ def test_every_custom_constraint_in_a_committed_link_carries_input_and_style(
             missing = {"input", "style"} - entry.keys()
             if missing:
                 name = entry.get("definition", {}).get("name")
-                bad.append(f"{link.relative_to(tree)}: {name} lacks {sorted(missing)}")
+                bad.append(f"{link.relative_to(ROOT)}: {name} lacks {sorted(missing)}")
     assert not bad, "\n".join(bad)
+
+
+def test_no_lint_ignore_entry_hides_a_shipped_component():
+    ignore = json.loads((ROOT / "package.json").read_text())["standard"]["ignore"]
+    hidden = [
+        f"{c}: {pattern}"
+        for c in shipped_components()
+        for pattern in ignore
+        if fnmatch.fnmatch(c, pattern)
+    ]
+    assert not hidden, "lint never reads: " + "; ".join(hidden)
 
 
 if __name__ == "__main__":
@@ -157,4 +170,5 @@ if __name__ == "__main__":
     test_every_component_a_link_registers_has_a_file()
     test_every_examples_timed_component_resolves()
     test_every_custom_constraint_in_a_committed_link_carries_input_and_style()
+    test_no_lint_ignore_entry_hides_a_shipped_component()
     print("shipped_components.test.py: ok")
